@@ -1,0 +1,20 @@
+HTTP/2 200 
+content-type: application/xml; charset=utf-8
+server: openresty
+x-arc-pb-mx-id: 00000000
+x-arc-pb-request-id: 8a3a8468-11cd-429c-822f-4bac0a2a00d6
+etag: W/"b33a-TWtrQNYZ5R8guunTLyoDy6PgxJw"
+last-modified: Sat, 14 Nov 2026 04:23:51 GMT
+cache-control: private, max-age=4
+expires: Sat, 14 Nov 2026 04:25:51 GMT
+date: Sat, 14 Nov 2026 04:25:47 GMT
+content-length: 45882
+server-timing: cdn-cache; desc=HIT
+server-timing: edge; dur=35
+server-timing: origin; dur=0
+content-security-policy: upgrade-insecure-requests
+x-arc-ttl: 120
+x-arc-request-id: 0.a815d617.1794630347.eff349
+x-arc-edgecontroller: 1.8.5
+server-timing: ak_p; desc="1794630347580_399906216_15725385_3501_68537_0_10_15";dur=1
+

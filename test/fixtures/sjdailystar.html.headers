@@ -1,0 +1,26 @@
+HTTP/2 103 
+link: <https://static.parastorage.com/>; crossorigin; rel=preconnect, <https://static.parastorage.com/>; rel=preconnect, <https://static.wixstatic.com/>; crossorigin; rel=preconnect, <https://static.wixstatic.com/>; rel=preconnect, <https://siteassets.parastorage.com>; crossorigin; rel=preconnect
+
+HTTP/2 200 
+date: Sat, 14 Nov 2026 04:26:03 GMT
+content-type: text/html; charset=UTF-8
+cf-ray: a5a3417e2ec831df-PDX
+cf-cache-status: HIT
+age: 64627
+cache-control: public,max-age=0,must-revalidate
+x-seen-by: bQAXdg/f3pWGCb3VI6q72A==,
+content-language: en
+etag: W/"d023f0e735fb651208002d66ca6bd754"
+link: <https://static.parastorage.com/>; rel=preconnect; crossorigin, <https://static.parastorage.com/>; rel=preconnect, <https://static.wixstatic.com/>; rel=preconnect; crossorigin, <https://static.wixstatic.com/>; rel=preconnect, <https://siteassets.parastorage.com>; rel=preconnect; crossorigin
+server: cloudflare
+x-wix-request-id: 1794630363.867628228048271219
+strict-transport-security: max-age=31556952
+vary: Accept-Encoding
+server-timing: cache;desc=miss, varnish;desc=miss_hit, dc;desc=cloudflare
+x-content-type-options: nosniff
+x-served-by: PDX
+set-cookie: ssr-caching=cache#desc=miss#varnish=miss_hit#dc#desc=cloudflare; Max-Age=20
+set-cookie: sec-fetch-unsupported=1; Path=/; Secure; SameSite=Lax;
+set-cookie: __cf_bm=V3pLstBrOHScXyXWH2bOprWLgqZlrE6mLAVQUsY_VPc-1794630363.8618584-1.0.1.1-w8W9v9vclXXE8_4eoamfeoO0jHU8g2JO29zCHU5vvSAAfRlYM3rMuPjm1KS9oFe65fypcRs6POlqEt6.KlsgXh16uW61LJOLalHYki1G9N4Vim6RoFR1IRHasBKDEr1W; HttpOnly; SameSite=None; Partitioned; Secure; Path=/; Domain=www.sanjuandailystar.com; Expires=Sat, 14 Nov 2026 04:56:03 GMT
+alt-svc: h3=":443"; ma=86400
+

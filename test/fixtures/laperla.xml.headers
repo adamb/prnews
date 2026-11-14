@@ -1,0 +1,34 @@
+HTTP/2 301 
+date: Sat, 14 Nov 2026 04:26:03 GMT
+content-type: application/rss+xml; charset=UTF-8
+content-length: 0
+location: https://www.periodicolaperla.com/feed/
+x-powered-by: PHP/8.3.36
+cf-edge-cache: cache,platform=wordpress
+x-redirect-by: WordPress
+last-modified: Fri, 13 Nov 2026 22:58:22 GMT
+etag: "f037954456da3b12abc828f29abe0812"
+vary: User-Agent
+server: cloudflare
+cf-cache-status: DYNAMIC
+cf-apo-via: origin,feed
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=8MYrRq%2BfhOJoMZpBDEwO%2F45cCgp6dx0DS0S9eSLory1TfDjApIGDwVoiT8uJfuh%2Fl27yhTg6dwSfOYyZa4lqx8EzX2Nr4w%2FlAZqIO%2FfDL0pPQlepsvdnDY7%2BUThwChRTipBsMkmHGGFyrTFE4U5bHdoj5AI8gw%3D%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+cf-ray: a5a341793b46d0a0-PDX
+
+HTTP/2 200 
+date: Sat, 14 Nov 2026 04:26:03 GMT
+content-type: application/rss+xml; charset=UTF-8
+x-powered-by: PHP/8.3.36
+cf-edge-cache: cache,platform=wordpress
+link: <https://www.periodicolaperla.com/wp-json/>; rel="https://api.w.org/", <https://www.periodicolaperla.com/>; rel="canonical"
+last-modified: Fri, 13 Nov 2026 22:58:22 GMT
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+vary: Accept-Encoding,User-Agent
+etag: W/"f037954456da3b12abc828f29abe0812-gzip"
+server: cloudflare
+cf-cache-status: DYNAMIC
+cf-apo-via: origin,feed
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Dzo9VWZLQLd2BGG8QE0FJVsbDowHC012SBMldtuGsOG9%2B1OzkB5%2BgFFr6%2B9CcdXzL0rpwJIDtB968f1z941VU44q%2B4RrE62op4b6%2Bl8heTEpNjzKqPno1vdTBXdrKW3tyO6OTDNHxMxAPfHRJ2O7OnuGqmhA7w%3D%3D"}]}
+cf-ray: a5a3417b688ad0a0-PDX
+

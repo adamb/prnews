@@ -1,0 +1,19 @@
+HTTP/2 200 
+date: Sat, 14 Nov 2026 04:26:30 GMT
+content-type: text/xml; charset=UTF-8
+cf-ray: a5a34225c95e28b9-PDX
+cf-cache-status: HIT
+age: 64695
+cache-control: public,max-age=604800
+x-seen-by: bQAXdg/f3pWGCb3VI6q72A==,
+last-modified: Fri, 13 Nov 2026 13:34:42 GMT
+server: cloudflare
+strict-transport-security: max-age=31556952
+vary: Accept-Encoding
+server-timing: cache;desc=hit, varnish;desc=hit_hit, dc;desc=cloudflare
+x-content-type-options: nosniff
+x-wix-request-id: 1794630390.698301605783469219
+x-served-by: PDX
+set-cookie: __cf_bm=Kq4av9.lpZQM.dB1tY1IIeNXcUjPQ9l7JFw702_ooIo-1794630390.6903603-1.0.1.1-0_FqUa7CT_RbJikZxcA.60ZYVYrXzZNdGDvpv_e5gk04pkc4QarIOfwDiyVjFpf_l0WKYpXsmY_lp3YlwuPOxmtOGTk1y9cbOsKyI..QbOEFfobTtldh7aWTUwo1qw8z; HttpOnly; SameSite=None; Partitioned; Secure; Path=/; Domain=www.sanjuandailystar.com; Expires=Sat, 14 Nov 2026 04:56:30 GMT
+alt-svc: h3=":443"; ma=86400
+

@@ -1,0 +1,17 @@
+HTTP/2 200 
+server: nginx
+content-type: text/xml;charset=utf-8
+last-modified: Sat, 14 Nov 2026 04:23:16 GMT
+etag: W/"19f79affd49bab1132a780a8701c933b"
+x-hacker: If you're reading this, you should visit https://join.a8c.com/viphacker and apply to join the fun, mention this header.
+host-header: a9130478a60e5f9135f765b23f26593b
+x-content-type-options: nosniff
+link: <https://www.telemundopr.com/wp-json/>; rel="https://api.w.org/"
+x-rq: sea2 0 30 9980
+x-remembering: Eric Binnion <https://friendsofericbinnion.wordpress.com/>
+expires: Sat, 14 Nov 2026 04:26:01 GMT
+cache-control: max-age=0, no-cache, no-store
+pragma: no-cache
+date: Sat, 14 Nov 2026 04:26:01 GMT
+strict-transport-security: max-age=31536000 ; includeSubDomains
+
