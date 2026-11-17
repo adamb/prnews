@@ -13,9 +13,8 @@ export const css = `
 a right-anchored dropdown would extend past the viewport. Opened there, it becomes a full-width
 in-flow panel that pushes content down instead of an absolute popup. Closed layout is unchanged. */
 @media(max-width:768px){.more-nav[open]{flex:1 1 100%}.more-nav[open]>div{position:static;width:100%;max-width:none;box-shadow:none}}
-.listings{max-width:100%;min-width:0;margin:8px 0 20px;padding:14px 16px;background:var(--soft);border:1px solid var(--line);border-radius:4px;overflow-wrap:anywhere}.listings h2{font-size:1.05rem;margin:0}.listings p{margin:6px 0 10px;color:var(--muted);font-size:14px}.listings nav{display:flex;flex-wrap:wrap;gap:10px 16px;min-width:0}.listings a{overflow-wrap:anywhere}
 
-@media(max-width:480px){.tabs{gap:0 14px;min-width:0;max-width:100%}.tabs a{font-size:12px}.heading{flex-wrap:wrap}.heading a{white-space:normal}.source>div,.source>span,.nav,.more-nav{max-width:100%;min-width:0;overflow-wrap:anywhere}.listings nav a{display:block}}.picture img[src="/fallback.svg"]{object-fit:contain}footer a{overflow-wrap:anywhere}
+@media(max-width:480px){.tabs{gap:0 14px;min-width:0;max-width:100%}.tabs a{font-size:12px}.heading{flex-wrap:wrap}.heading a{white-space:normal}.source>div,.source>span,.nav,.more-nav{max-width:100%;min-width:0;overflow-wrap:anywhere}}.picture img[src="/fallback.svg"]{object-fit:contain}footer a{overflow-wrap:anywhere}
 
 .card h3,.hero h3{height:auto;max-height:none;overflow:visible;white-space:normal;overflow-wrap:anywhere;word-break:normal;-webkit-line-clamp:unset}.card-body{min-width:0}
 

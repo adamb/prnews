@@ -14,7 +14,7 @@ import type { HallEntry } from './trending';
 import type { AnalyticsSnapshot } from './analytics';
 import { dashboardUrl } from './analytics';
 import { sources } from './sources';
-import { sections, navigationSections, primarySection, propertyListings } from './sections';
+import { sections, navigationSections, primarySection } from './sections';
 import { safeUrl, type Item } from './parse';
 import { css } from './styles';
 import { faviconLinks } from './favicon';
@@ -173,8 +173,7 @@ export default {
   const offset = (current - 1) * 30;
   const name = sectionName(section[0], section[1]);
   const communityNotice = section[0] === 'comunidad' ? `<p class="intro">${t('Conversaciones de Reddit, no noticias verificadas. Las publicaciones con un tema reconocible también aparecen en su sección. ', 'Reddit discussions, not verified news. Posts with a matching topic also appear in that section. ')}<a href="https://www.reddit.com/r/PuertoRico/" target="_blank" rel="noopener noreferrer">${t('Visitar r/PuertoRico', 'Visit r/PuertoRico')} ↗</a></p>` : '';
-  const listings = section[0] === 'bienes-raices' ? `<aside class="listings"><h2>${t('Anuncios de propiedades','Property listings')}</h2><p>${t('Explora anuncios en ClasificadosOnline. Enlaces externos, no nuestro inventario.','Browse listings on ClasificadosOnline. External links, not our inventory.')}</p><nav aria-label="${t('Anuncios de propiedades','Property listings')}"><a href="${propertyListings.sale}" target="_blank" rel="noopener noreferrer">${t('En venta','For sale')}</a><a href="${propertyListings.rent}" target="_blank" rel="noopener noreferrer">${t('En alquiler','For rent')}</a></nav></aside>` : '';
-  return page(name, `<div class="list"><div class="eyebrow">${t('Por sección', 'By section')}</div><h1>${name}</h1>${filterForm()}${communityNotice}${listings}<p class="intro">${group.length} ${t('noticias · Más recientes primero', 'stories · Newest first')}</p><div class="rows">${group.slice(offset, offset + 30).map(i => card(i, true)).join('') || `<p>${t('No hay noticias en esta página.', 'No stories match these filters.')}</p>`}</div><div class="pagination">${current > 1 ? `<a href="${href(url.pathname + '?page=' + (current - 1))}">← ${t('Anterior', 'Previous')}</a>` : ''}${offset + 30 < group.length ? `<a href="${href(url.pathname + '?page=' + (current + 1))}">${t('Siguiente', 'Next')} →</a>` : ''}</div></div>`, section[0]);
+  return page(name, `<div class="list"><div class="eyebrow">${t('Por sección', 'By section')}</div><h1>${name}</h1>${filterForm()}${communityNotice}<p class="intro">${group.length} ${t('noticias · Más recientes primero', 'stories · Newest first')}</p><div class="rows">${group.slice(offset, offset + 30).map(i => card(i, true)).join('') || `<p>${t('No hay noticias en esta página.', 'No stories match these filters.')}</p>`}</div><div class="pagination">${current > 1 ? `<a href="${href(url.pathname + '?page=' + (current - 1))}">← ${t('Anterior', 'Previous')}</a>` : ''}${offset + 30 < group.length ? `<a href="${href(url.pathname + '?page=' + (current + 1))}">${t('Siguiente', 'Next')} →</a>` : ''}</div></div>`, section[0]);
  }
  function lighterStatsHtml() {
   const view=live?.lighterView;

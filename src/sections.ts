@@ -22,11 +22,6 @@ export const navigationSections = [
  ['mundo', 'Estados Unidos y Mundo'], ['otras', 'Otras y Opinión'],
  ['comunidad', 'Reddit'],
 ] as const;
-/** External property catalog. Not a publisher, feed, or article, and not counted as a click. */
-export const propertyListings = {
- sale: 'https://www.clasificadosonline.com/RealEstate.asp',
- rent: 'https://www.clasificadosonline.com/Rentals.asp',
-} as const;
 const keywords: Partial<Record<Section, string[]>> = {
  politica: ['gobernadora', 'gobernador', 'senado', 'legislatura', 'alcalde', 'pnp', 'ppd', 'mvc', 'pip', 'comisionada residente', 'proyecto de ley', 'junta de supervision fiscal', 'governor', 'mayor', 'senate', 'legislature', 'elections?', 'chief of staff', 'ethics complaint', 'vistas publicas', 'house speaker', 'house of representatives', 'legislation', 'gobierno', 'nmead'],
  policiales: ['polici[ae]s?', 'asesin\\w*', 'arrest\\w*', 'tiroteo', 'fiscalia', 'tribunal\\w*', 'juez', 'acusad[oa]', 'feminicid\\w*', 'carcel', 'hieren', 'bala', 'asalt\\w*', 'robo', 'agresion sexual', 'desaparecid[oa]', 'desaparecio', 'fbi', 'juicio', 'poder judicial', 'police', 'murder\\w*', 'shooting', 'court', 'crime', 'hit.and.run', 'atropell\\w*', 'arrollad[oa]', 'accidente', 'collision', 'crash'],
