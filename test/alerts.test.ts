@@ -1256,3 +1256,28 @@ describe('signed-in alert account identity', () => {
   expect(html).not.toContain('<img src=x');
  });
 });
+
+describe('alerts home navigation', () => {
+ it.each(['es', 'en'] as const)('renders localized branding across %s alert surfaces', async lang => {
+  const { DB } = database(); const env = baseEnv(DB);
+  mockFetch(c => c.url.includes('siteverify') ? turnstileOk() : Response.json({ id: 'test-only' }));
+  const { session } = await activated(env);
+  const responses = [
+   await alertsRoute(get(`/alerts?lang=${lang}`), env),
+   await alertsRoute(get(`/alerts?lang=${lang}`, { Cookie: `alerts_session=${session.secret}` }), env),
+   await alertsRoute(get(`/alerts/confirm?token=invalid&lang=${lang}`), env),
+   await alertsRoute(post(`/alerts/signin?lang=${lang}`, { email: 'fixture@example.org' }, { Origin: 'https://other.example' }), env),
+  ];
+  for (const response of responses) {
+   expect(response).toBeTruthy();
+   expect(response!.headers.get('Cache-Control')).toBe('no-store');
+   expect(response!.headers.get('Referrer-Policy')).toBe('no-referrer');
+   expect(response!.headers.get('Content-Security-Policy')).toContain("default-src 'none'");
+   const html = await response!.text();
+   expect(html).toContain(`<header class="alerts-header"><a class="home-link" href="${lang === 'en' ? '/?lang=en' : '/'}">`);
+   expect(html).toContain('<span class="brand">news<b>.dev.pr</b></span>');
+   expect(html).toContain(lang === 'en' ? 'Back to home' : 'Volver a portada');
+   expect(html).not.toMatch(/<footer|beacon.min.js|digest-footer/);
+  }
+ });
+});
