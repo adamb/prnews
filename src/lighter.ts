@@ -72,7 +72,7 @@ export async function generate(env:Env,now:number){
  const rows=await env.DB.prepare('SELECT payload FROM articles ORDER BY published_at DESC LIMIT '+CANDIDATE_LIMIT).all<{payload:string}>();
  let calls=0;
  for(const row of rows.results){
-  const i=JSON.parse(row.payload) as Item;
+  const i=currentItem(JSON.parse(row.payload) as Item);
   if(!articleEligible(i))continue;
   for(const lang of ['es','en']){
    if(calls>=CAP)return;
@@ -164,8 +164,8 @@ async function withTimeout<T>(work:Promise<T>){
 }
 function sameOrigin(request:Request, url:URL){
  if(request.headers.get('X-PRNews-Action')!=='lighter')return false;
- const origin=request.headers.get('Origin');
- if(origin&&origin!==url.origin)return false;
+ // Fail closed: a missing Origin is not treated as same-origin. Browsers send it on this POST.
+ if(request.headers.get('Origin')!==url.origin)return false;
  const site=request.headers.get('Sec-Fetch-Site');
  if(site&&site!=='same-origin')return false;
  const type=(request.headers.get('Content-Type')??'').toLowerCase();
@@ -232,42 +232,60 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
    const reason=block(again.row, now);
    return json({status:reason==='pending'?'pending':'unavailable'}, reason==='pending'?202:200);
   }
-  const day=await reserveBudget(env, now);
-  if(!day){await rollbackClaim(env, cacheKey, lease);return json({status:'budget'},429);}
-  const slot=await reserveSlot(env, now);
-  if(!slot){await releaseBudget(env, day);await rollbackClaim(env, cacheKey, lease);return json({status:'busy'},429);}
-  let phase:'model'|'decode'|'save'='model';
+  let day='';
+  let slot:{id:number;until:number}|null=null;
   let called=false;
   let recorded=false;
-  const backoffAt=now+3600000*2**Math.max(0,hit.row?.attempts??0);
+  // A timed-out call may still be running in this isolate. Keep its inflight lease until it expires
+  // instead of freeing the slot while that call is outstanding.
+  let holdSlot=false;
   try{
-   await addStats(env, lang, {attempts:1}, now);
-   called=true;
-   const output=await withTimeout(env.AI.run(MODEL,{max_tokens:MAX_OUTPUT_TOKENS,temperature:0,messages:[{role:'system',content:satirePrompt(lang)},{role:'user',content:JSON.stringify({title:item.title,excerpt:item.summary})}]}) as Promise<{response?:unknown}>);
-   phase='decode';
-   const text=decode(output.response);
-   phase='save';
-   if(valid(text, item)){
-    await env.DB.prepare('UPDATE lighter_cache SET text=? WHERE key=?').bind(text.trim(), cacheKey).run();
-    await addStats(env, lang, {generations:1}, now);
+   day=await reserveBudget(env, now);
+   if(!day){await rollbackClaim(env, cacheKey, lease);return json({status:'budget'},429);}
+   slot=await reserveSlot(env, now);
+   if(!slot){await releaseBudget(env, day);day='';await rollbackClaim(env, cacheKey, lease);return json({status:'busy'},429);}
+   let phase:'model'|'decode'|'save'='model';
+   const backoffAt=now+3600000*2**Math.max(0,hit.row?.attempts??0);
+   try{
+    await addStats(env, lang, {attempts:1}, now);
+    called=true;
+    const output=await withTimeout(env.AI.run(MODEL,{max_tokens:MAX_OUTPUT_TOKENS,temperature:0,messages:[{role:'system',content:satirePrompt(lang)},{role:'user',content:JSON.stringify({title:item.title,excerpt:item.summary})}]}) as Promise<{response?:unknown}>);
+    phase='decode';
+    const text=decode(output.response);
+    phase='save';
+    if(valid(text, item)){
+     await env.DB.prepare('UPDATE lighter_cache SET text=? WHERE key=?').bind(text.trim(), cacheKey).run();
+     await addStats(env, lang, {generations:1}, now);
+     recorded=true;
+     console.info('lighter_result',{lang,status:'generated'});
+     return json({status:'ready',text:text.trim()});
+    }
+    await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(backoffAt, cacheKey).run();
+    await addStats(env, lang, {failures:1}, now);
     recorded=true;
-    console.info('lighter_result',{lang,status:'generated'});
-    return json({status:'ready',text:text.trim()});
+    console.info('lighter_result',{lang,status:text===''?'abstained':'validation_rejected'});
+    return json({status:'unavailable'});
+   }catch(error){
+    if(called&&!recorded){
+     holdSlot=error instanceof Error&&error.message==='timeout';
+     await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(backoffAt, cacheKey).run().catch(()=>{});
+     await addStats(env, lang, {failures:1}, now).catch(()=>{});
+    }else{
+     // The model was not called. Do not keep the daily slot or the attempt claim.
+     if(day){await releaseBudget(env, day).catch(()=>{});day='';}
+     await rollbackClaim(env, cacheKey, lease).catch(()=>{});
+    }
+    console.info('lighter_result',{lang,status:phase+'_error'});
+    return json({status:'unavailable'}, called?200:503);
+   }finally{
+    if(!holdSlot)await releaseSlot(env, slot);
    }
-   await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(backoffAt, cacheKey).run();
-   await addStats(env, lang, {failures:1}, now);
-   recorded=true;
-   console.info('lighter_result',{lang,status:text===''?'abstained':'validation_rejected'});
-   return json({status:'unavailable'});
   }catch{
-   if(called&&!recorded){
-    await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(backoffAt, cacheKey).run().catch(()=>{});
-    await addStats(env, lang, {failures:1}, now).catch(()=>{});
+   if(!called){
+    if(day)await releaseBudget(env, day).catch(()=>{});
+    await rollbackClaim(env, cacheKey, lease).catch(()=>{});
    }
-   console.info('lighter_result',{lang,status:phase+'_error'});
-   return json({status:'unavailable'}, called?200:503);
-  }finally{
-   await releaseSlot(env, slot);
+   return json({status:'unavailable'},503);
   }
  }catch{
   return json({status:'unavailable'},503);

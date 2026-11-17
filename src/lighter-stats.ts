@@ -1,3 +1,4 @@
+import {currentItem} from './current-item';
 import type {Env} from './ingest';
 import type {Item} from './parse';
 import {CANDIDATE_LIMIT, articleEligible, cacheSkips, key, sensitive, valid} from './lighter';
@@ -41,7 +42,7 @@ export function readySnapshot(items: Item[], lighter: Record<string, string> | u
  const ready = emptyPair();
  const examples: ReadyExample[] = [];
  const seen: Record<Edition, number> = { es: 0, en: 0 };
- for (const item of items) {
+ for (const item of items.map(currentItem)) {
   for (const lang of ['es', 'en'] as const) {
    const text = map[key(item, lang)];
    if (!text || !valid(text, item) || sensitive(item.title + ' ' + item.summary)) continue;
@@ -86,7 +87,7 @@ export async function readLighterQueue(env: Env, now: number): Promise<QueueSnap
   // A missing cache table must not look like an empty queue.
   await env.DB.prepare('SELECT key FROM lighter_cache LIMIT 1').first();
   const rows = await env.DB.prepare('SELECT payload FROM articles ORDER BY published_at DESC LIMIT ' + CANDIDATE_LIMIT).all<{ payload: string }>();
-  const items = rows.results.map(row => JSON.parse(row.payload) as Item).filter(articleEligible);
+  const items = rows.results.map(row => currentItem(JSON.parse(row.payload) as Item)).filter(articleEligible);
   const slots = items.flatMap(item => (['es', 'en'] as const).map(lang => ({ item, lang, cacheKey: key(item, lang) })));
   const cache = await loadCache(env, slots.map(slot => slot.cacheKey));
   const pending = emptyPair(), retry = emptyPair(), failed = emptyPair(), withheld = emptyPair();

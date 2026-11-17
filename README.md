@@ -154,7 +154,7 @@ Repository attribution records contain no complete development-token ledger. Sou
 
 ### On-demand satire
 
-Eligible homepage and section cards show a keyboard button in the selected edition (Spanish: “Pedir una sátira” / “Ver la sátira guardada”; English: “Ask for a satire” / “Show the saved satire”). The original headline stays on the page. The satire text is not in the HTML. A click sends `POST /api/lighter` on the same origin with `Content-Type: application/json` and `X-PRNews-Action: lighter`. GET, HEAD, prefetch, and ordinary page views do not call the model and do not count. The 15-minute cron does not generate satire.
+Eligible homepage and section cards show a keyboard button in the selected edition (Spanish: “Pedir una sátira” / “Ver la sátira guardada”; English: “Ask for a satire” / “Show the saved satire”). The original headline stays on the page. The satire text is not in the HTML. A click sends `POST /api/lighter` with `Content-Type: application/json`, `X-PRNews-Action: lighter`, and an `Origin` header equal to the site origin. A missing or different Origin is rejected. GET, HEAD, prefetch, and ordinary page views do not call the model and do not count. The 15-minute cron does not generate satire.
 
 The body may only name a URL already stored in `articles`, `lang` of `es` or `en`, and a UUID v4 `action` for that button press. The server loads the stored headline and excerpt (the same `currentItem` view the card uses). It does not fetch the article URL and does not follow instructions inside the headline. Prompt version is `lighter-2` (`src/lighter.ts` `VERSION`). A new version does not rewrite old rows. Cache identity is version, URL, title, excerpt, and language.
 

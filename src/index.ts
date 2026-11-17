@@ -158,11 +158,9 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
-  // Namespace bumped to v20: the "English only" checkbox was retired (?english=1 canonicalizes
-  // to ?lang=en) and the rendered HTML no longer contains the checkbox, so stored entries from
-  // earlier versions never match fresh keying (no `english` variant) — the bump makes old
-  // v23 drops cached cards from before the on-demand satire button. 60s response TTL still bounds everything.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v23') : undefined;
+  // v24 drops v21 pages from the Bienes raíces deploy. Those pages have the catalog and
+  // classifier, and they do not have the on-demand satire button. 60s response TTL still applies.
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v24') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
