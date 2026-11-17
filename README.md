@@ -137,3 +137,17 @@ An authenticated POST to `/internal/archive` processes an additional image batch
 - `scripts/repair-live.ts` reapplies classification, repairs only URL-derived NIMB punctuation, and queues incomplete translations. The News is my Business issue was in the manual slug import, not the shared feed sanitizer. Other publishers' titles are untouched.
 
 - Live status: cached NWS Puerto Rico alerts, latest USGS Puerto Rico-region earthquake, and the official LUMA load-shedding layer (explicitly not all outages). Failed sources hide immediately; cache expiry hides stale chips. WAPA, WIPR and Claridad RSS feeds are enabled. El Post Antillano is excluded because its domain serves unrelated parked content.
+
+### Dated source size
+
+The About page's November 17, 2026 count measures physical lines (including comments and blank lines) in tracked, maintained `src/**/*.ts` application files. Tests, fixtures, generated JSON, dependencies and lockfiles are excluded. Reproduce at the release revision with:
+
+```sh
+python3 - <<'PY'
+import pathlib, subprocess
+files = [p for p in subprocess.check_output(['git', 'ls-files', 'src/'], text=True).splitlines() if p.endswith('.ts')]
+print(sum(len(pathlib.Path(p).read_bytes().splitlines()) for p in files))
+PY
+```
+
+Repository attribution records contain no complete development-token ledger. Source lines and Git history cannot recover token usage. Runtime Workers AI translation usage is separate; neither is estimated on About.
