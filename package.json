@@ -1,0 +1,28 @@
+{
+  "name": "prnews",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "tsx scripts/seed.ts",
+    "dev": "npm run seed && wrangler dev --config wrangler.local.toml --ip 0.0.0.0 --test-scheduled",
+    "test": "npm run seed && vitest run",
+    "typecheck": "npm run seed && tsc --noEmit",
+    "build": "npm run seed && wrangler deploy --dry-run --outdir dist",
+    "translate": "npm run seed && tsx scripts/translate.ts",
+    "db:local": "wrangler d1 migrations apply prnews --local --config wrangler.local.toml",
+    "seed:db": "npm run seed && tsx scripts/seed-db.ts && wrangler d1 execute prnews --local --config wrangler.local.toml --file .wrangler/seed.sql"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.12.1",
+    "he": "^2.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261114.1",
+    "@types/he": "^1.2.3",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.162.0"
+  }
+}

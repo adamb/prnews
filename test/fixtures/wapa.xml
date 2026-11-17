@@ -1,0 +1,485 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>wapa.tv - RSS Results of type article</title>
+        <link>https://wapa.tv/search/?f=rss&amp;t=article&amp;l=50&amp;s=start_time&amp;sd=desc</link>
+        <atom:link href="https://wapa.tv/search/?f=rss&amp;t=article&amp;l=50&amp;s=start_time&amp;sd=desc" rel="self" type="application/rss+xml" />
+        <description>
+		wapa.tv - RSS Results
+		only for asset type(s) of article
+	</description>
+        <generator>TNCMS 1.97.1</generator>
+        <docs>http://www.rssboard.org/rss-specification</docs>
+        <ttl>30</ttl>
+
+        <item>
+            <title>Tu Tiempo: ¡Mucho calor! San Juan suma cinco días consecutivos de temperaturas récord</title>
+            <description>Al momento, predominan condiciones mayormente estables, con poca actividad de lluvia.</description>
+            <pubDate>Sat, 14 Nov 2026 17:57:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/89f5a040-f5d4-4d3e-a687-6d6209cadd30</guid>
+            <link>https://wapa.tv/noticias/eltiempo/tu-tiempo-mucho-calor-san-juan-suma-cinco-d-as-consecutivos-de-temperaturas-r-cord/article_89f5a040-f5d4-4d3e-a687-6d6209cadd30.html</link>
+            <dc:creator>Carlos Omar Rivera / Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Rescatista de animales lo pierde todo en incendio en San Juan; varios gatos murieron</title>
+            <description>La mujer será evaluada médicamente para descartar posibles complicaciones de salud.</description>
+            <pubDate>Sat, 14 Nov 2026 17:28:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/6790bf94-915d-43ee-845b-4e1707d80040</guid>
+            <link>https://wapa.tv/noticias/locales/rescatista-de-animales-lo-pierde-todo-en-incendio-en-san-juan-varios-gatos-murieron/article_6790bf94-915d-43ee-845b-4e1707d80040.html</link>
+            <dc:creator>Alanis Quiñones / Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Paralización del tráfico aéreo en Estados Unidos levanta dudas sobre la respuesta federal</title>
+            <description>Expertos cuestionan las fallas que provocaron la emergencia y el futuro de la infraestructura aérea.</description>
+            <pubDate>Sat, 14 Nov 2026 17:07:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/c7c6e554-5c60-4179-a8f1-f0bb89c4cefd</guid>
+            <link>https://wapa.tv/noticias/internacionales/paralizaci-n-del-tr-fico-a-reo-en-estados-unidos-levanta-dudas-sobre-la-respuesta/article_c7c6e554-5c60-4179-a8f1-f0bb89c4cefd.html</link>
+            <dc:creator>Noticentro / Sylvia Verónica Camacho</dc:creator>
+        </item>
+
+        <item>
+            <title>Mujer logra salir pero pierde a sus dos mascotas tras incendio en su casa en San Juan</title>
+            <description>El Cuerpo de Bomberos atiende un incendio reportado en una casa ubicada en el área de Reparto Metropolitana, en San Juan.</description>
+            <pubDate>Sat, 14 Nov 2026 16:11:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/039485b2-f98c-4335-877f-10e1d1afb692</guid>
+            <link>https://wapa.tv/noticias/locales/mujer-logra-salir-pero-pierde-a-sus-dos-mascotas-tras-incendio-en-su-casa-en/article_039485b2-f98c-4335-877f-10e1d1afb692.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/8/f0/8f03bbeb-7ec7-4125-8ff8-85c159d7095b/6af8c2071fafc.image.png?resize=300%2C200" length="630384" type="image/png" />
+        </item>
+
+        <item>
+            <title>Venezuela y su legado de siete coronas</title>
+            <description>2013. Venezuela alcanzaba una cifra histórica en Miss Universe.</description>
+            <pubDate>Sat, 14 Nov 2026 15:30:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/f344c65a-adbc-40b4-85ba-7c1825211bf6</guid>
+            <link>https://wapa.tv/programas/missuniverse/venezuela-y-su-legado-de-siete-coronas/article_f344c65a-adbc-40b4-85ba-7c1825211bf6.html</link>
+            <dc:creator>Miss Universe</dc:creator>
+        </item>
+
+        <item>
+            <title>Escuela Libre de Música celebrará su encendido navideño para recaudar fondos</title>
+            <description>El dinero está dirigido a las clases graduandas de octavo y duodécimo grado.</description>
+            <pubDate>Sat, 14 Nov 2026 15:29:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/ff1b4de8-01d0-4481-a8fc-7cc3e1e69a03</guid>
+            <link>https://wapa.tv/noticias/locales/escuela-libre-de-m-sica-celebrar-su-encendido-navide-o-para-recaudar-fondos/article_ff1b4de8-01d0-4481-a8fc-7cc3e1e69a03.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>¡Manténgase hidratado! Hay advertencia de calor hasta las 5:00p.m.</title>
+            <description>Se exhorta a la ciudadanía a mantenerse hidratada y evitar la exposición prolongada al aire libre.</description>
+            <pubDate>Sat, 14 Nov 2026 14:56:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/149579a3-4513-43b8-9c95-75e1ecf4df66</guid>
+            <link>https://wapa.tv/noticias/eltiempo/mant-ngase-hidratado-hay-advertencia-de-calor-hasta-las-5-00p-m/article_149579a3-4513-43b8-9c95-75e1ecf4df66.html</link>
+            <dc:creator>Carlos Omar Rivera / Noticentro</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/2/24/2241a8ef-8b36-46a1-9e57-2d8f3e595608/6af8b081e8c10.image.png?resize=300%2C200" length="1296710" type="image/png" />
+        </item>
+
+        <item>
+            <title>Dos adultos y dos menores resultan heridos tras accidente de auto en Orocovis</title>
+            <description>Al momento, se desconoce la condición de los involucrados.</description>
+            <pubDate>Sat, 14 Nov 2026 14:04:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/ea23d592-e9b3-4583-96cd-960545d23dcc</guid>
+            <link>https://wapa.tv/noticias/locales/dos-adultos-y-dos-menores-resultan-heridos-tras-accidente-de-auto-en-orocovis/article_ea23d592-e9b3-4583-96cd-960545d23dcc.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/0/a7/0a791cde-abbe-46e2-a470-5ca8d9131d14/6af8a73d456ca.image.jpg?resize=300%2C170" length="249316" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Feria Intercultural del Libro regresa a Río Piedras con su segunda edición</title>
+            <description>La escritora Mayra Santos destacó el interés por la literatura puertorriqueña, pero señaló la falta de apoyo institucional para el sector.</description>
+            <pubDate>Sat, 14 Nov 2026 13:30:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/3c056a77-8fa1-4d2a-9539-95e317732461</guid>
+            <link>https://wapa.tv/feria-intercultural-del-libro-regresa-a-r-o-piedras-con-su-segunda-edici-n/article_3c056a77-8fa1-4d2a-9539-95e317732461.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Miss Universe aclara que no organizó ni produjo el evento “Beauty at the Beach”</title>
+            <description>La entidad expuso que este evento fue organizado y producido de manera independiente por Magali Febles y su empresa, quienes adquirieron los derechos para celebrar y producir la actividad bajo el nombre de Miss Universe</description>
+            <pubDate>Sat, 14 Nov 2026 13:15:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/0906a6ff-da6e-4ec6-a148-0c7b870a206a</guid>
+            <link>https://wapa.tv/noticias/entretenimiento/miss-universe-aclara-que-no-organiz-ni-produjo-el-evento-beauty-at-the-beach/article_0906a6ff-da6e-4ec6-a148-0c7b870a206a.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/c/5f/c5ff476b-9477-46de-ad7d-641e05eb85b0/6af8b0cdd13d1.image.jpg?resize=300%2C169" length="262559" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Festival de las Orquídeas reúne a amantes de las plantas en La Marquesa</title>
+            <description>El evento ofrece exhibiciones, venta de plantas y seminarios sobre el cultivo y cuidado de las orquídeas durante todo el fin de semana.</description>
+            <pubDate>Sat, 14 Nov 2026 13:07:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/c2be86cf-df10-46d7-a0d5-6f0d563979f7</guid>
+            <link>https://wapa.tv/noticias/locales/festival-de-las-orqu-deas-re-ne-a-amantes-de-las-plantas-en-la-marquesa/article_c2be86cf-df10-46d7-a0d5-6f0d563979f7.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Cáncer de pulmón: síntomas, diagnóstico y la importancia de detectarlo a tiempo</title>
+            <description>Aunque puede no presentar síntomas en sus primeras etapas, existen pruebas diagnósticas y tratamientos para combatir la enfermedad.</description>
+            <pubDate>Sat, 14 Nov 2026 12:35:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/b830317a-295a-456c-98fb-f906730cf9b0</guid>
+            <link>https://wapa.tv/noticias/salud/c-ncer-de-pulm-n-s-ntomas-diagn-stico-y-la-importancia-de-detectarlo-a/article_b830317a-295a-456c-98fb-f906730cf9b0.html</link>
+            <dc:creator>Luz Nereida Vélez / Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Tome rutas alternas: cierran tramo en Juana Díaz por caída de tendido eléctrico</title>
+            <description>Las autoridades mantienen cerrada la PR-149 intersección con la PR-1</description>
+            <pubDate>Sat, 14 Nov 2026 11:59:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/482853d9-28cb-4dcb-9e01-9c7086b35456</guid>
+            <link>https://wapa.tv/noticias/locales/tome-rutas-alternas-cierran-tramo-en-juana-d-az-por-ca-da-de-tendido-el/article_482853d9-28cb-4dcb-9e01-9c7086b35456.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/3/4a/34a0e6c7-dade-4dfd-89e1-e3f0d2f9833e/6853ee9440195.image.png?resize=300%2C169" length="1722545" type="image/png" />
+        </item>
+
+        <item>
+            <title>Olivia Culpo: Del violonchelo a la corona de Miss Universe</title>
+            <description>2012. La nueva Miss Universe también tenía una historia con la música.</description>
+            <pubDate>Sat, 14 Nov 2026 11:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/0f61dd10-3ae7-4de0-ab78-ee0f1b9266b7</guid>
+            <link>https://wapa.tv/programas/missuniverse/olivia-culpo-del-violonchelo-a-la-corona-de-miss-universe/article_0f61dd10-3ae7-4de0-ab78-ee0f1b9266b7.html</link>
+            <dc:creator>Miss Universe</dc:creator>
+        </item>
+
+        <item>
+            <title>Hombre resulta herido tras accidente en PR-18 que provoca congestión vehicular</title>
+            <description>El accidente se reportó en dirección de San Juan hacia Caguas</description>
+            <pubDate>Sat, 14 Nov 2026 10:39:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/8c03a950-fe5e-4e5a-b8fc-006b0c8317ee</guid>
+            <link>https://wapa.tv/noticias/locales/hombre-resulta-herido-tras-accidente-en-pr-18-que-provoca-congesti-n-vehicular/article_8c03a950-fe5e-4e5a-b8fc-006b0c8317ee.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/2/61/26157635-a89b-4e09-a1d4-946b94092f7f/6af873f080f1a.image.jpg?resize=300%2C169" length="397888" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Arrestan a dos personas y ocupan drogas durante intervención en Carolina</title>
+            <description>Durante el operativo, se ocuparon cápsulas de crack, heroína, marihuana, cocaína y dinero en efectivo</description>
+            <pubDate>Sat, 14 Nov 2026 09:15:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/75371f27-a7fc-4652-8c7b-6d0e863d0c57</guid>
+            <link>https://wapa.tv/noticias/locales/arrestan-a-dos-personas-y-ocupan-drogas-durante-intervenci-n-en-carolina/article_75371f27-a7fc-4652-8c7b-6d0e863d0c57.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/d/12/d126913f-a053-416d-9c1d-8c0e8acdd86f/6af882185d659.image.png?resize=300%2C200" length="997726" type="image/png" />
+        </item>
+
+        <item>
+            <title>Hombre sufre accidente grave por hacer &quot;wheelies&quot; en motora en Bayamón</title>
+            <description>El motorista fue transportado a un hospital de la zona, donde su condición fue descrita como inestable</description>
+            <pubDate>Sat, 14 Nov 2026 09:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/b5d81ec0-0c13-43da-b6a7-d3e19ec6fb2a</guid>
+            <link>https://wapa.tv/noticias/locales/hombre-sufre-accidente-grave-por-hacer-wheelies-en-motora-en-bayam-n/article_b5d81ec0-0c13-43da-b6a7-d3e19ec6fb2a.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/f/32/f3248028-fdd7-11ef-b018-b7fa7d0c7937/67cf26296e369.image.png?resize=300%2C169" length="923285" type="image/png" />
+        </item>
+
+        <item>
+            <title>Jennifer Barreto destaca en la pasarela de traje de baño &quot;Beauty at the Beach&quot;</title>
+            <description>El experto en certámenes Luis Daniel Rosario destacó su proyección y conexión con el público</description>
+            <pubDate>Sat, 14 Nov 2026 09:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/297aefc5-8fd8-4456-b4b2-97dc29168588</guid>
+            <link>https://wapa.tv/noticias/entretenimiento/jennifer-barreto-destaca-en-la-pasarela-de-traje-de-ba-o-beauty-at-the-beach/article_297aefc5-8fd8-4456-b4b2-97dc29168588.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Talleres gratuitos en Caguas acercan a miles de estudiantes a la ciencia</title>
+            <description>Niños y jóvenes de todos los grados experimentan con análisis de ADN y técnicas en el nuevo Laboratorio de Biotecnología del Centro Criollo de Ciencia y Tecnología del Caribe</description>
+            <pubDate>Sat, 14 Nov 2026 09:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/8e31f9ec-ca5c-4d4c-85a3-d1e9e26a8552</guid>
+            <link>https://wapa.tv/noticias/ciencia/talleres-gratuitos-en-caguas-acercan-a-miles-de-estudiantes-a-la-ciencia/article_8e31f9ec-ca5c-4d4c-85a3-d1e9e26a8552.html</link>
+            <dc:creator>NotiCentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Mujer resulta herida de bala por su pareja durante incidente en Mayagüez</title>
+            <description>Los hechos ocurrieron durante la madrugada luego de que el hombre le bloqueara el paso con su vehículo y abriera fuego en su contra</description>
+            <pubDate>Sat, 14 Nov 2026 08:57:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/7c2d9023-d673-4de2-a076-b55ebe240f99</guid>
+            <link>https://wapa.tv/noticias/locales/mujer-resulta-herida-de-bala-por-su-pareja-durante-incidente-en-mayag-ez/article_7c2d9023-d673-4de2-a076-b55ebe240f99.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/0/56/0569c948-ed30-4768-9963-8f00ebda07b2/692c334f496e7.image.jpg?resize=300%2C200" length="82117" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Candidatas de Miss Universe se visten de rosa para apoyar lucha contra el cáncer</title>
+            <description>Las delegadas compartirán con pacientes y sobrevivientes de cáncer durante el evento “Luz de Esperanza: Universo Rosa”</description>
+            <pubDate>Sat, 14 Nov 2026 08:30:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/ce65e650-16f8-4419-aba1-d9e130f1eabc</guid>
+            <link>https://wapa.tv/noticias/locales/candidatas-de-miss-universe-se-visten-de-rosa-para-apoyar-lucha-contra-el-c-ncer/article_ce65e650-16f8-4419-aba1-d9e130f1eabc.html</link>
+            <dc:creator>Yarimar Marrero / NotiCentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Verifica tu vuelo: prevén atrasos mientras se reanudan operaciones tras fallo aéreo</title>
+            <description>Al menos 3 mil vuelos podrían enfrentar retrasos o cancelaciones este sábado</description>
+            <pubDate>Sat, 14 Nov 2026 08:15:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/3cda229f-a170-41a5-b55a-36175b7b9766</guid>
+            <link>https://wapa.tv/noticias/locales/verifica-tu-vuelo-prev-n-atrasos-mientras-se-reanudan-operaciones-tras-fallo-a-reo/article_3cda229f-a170-41a5-b55a-36175b7b9766.html</link>
+            <dc:creator>NotiCentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Tu Tiempo: emiten advertencia de calor y advierten sobre riesgo de corrientes marinas</title>
+            <description>La advertencia está en efecto desde las 10:00 a.m. hasta las 5:00 p.m., mientras el riesgo de corrientes marinas es para toda la isla</description>
+            <pubDate>Sat, 14 Nov 2026 08:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/d627e35c-09fd-45a9-a9f3-78a4cf4835e2</guid>
+            <link>https://wapa.tv/noticias/eltiempo/tu-tiempo-emiten-advertencia-de-calor-y-advierten-sobre-riesgo-de-corrientes-marinas/article_d627e35c-09fd-45a9-a9f3-78a4cf4835e2.html</link>
+            <dc:creator>Cherilyn Toro / NotiCentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Sexagenario fallece tras ser arrollado en Lares</title>
+            <description>El hombre de 65 años, quien fue identificado, caminaba por la vía cuando fue impactado por un vehículo de motor</description>
+            <pubDate>Sat, 14 Nov 2026 07:30:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/b958cc2b-d9a7-4a05-b708-bf3cc5a86d8f</guid>
+            <link>https://wapa.tv/noticias/locales/sexagenario-fallece-tras-ser-arrollado-en-lares/article_b958cc2b-d9a7-4a05-b708-bf3cc5a86d8f.html</link>
+            <dc:creator>Noticentro</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/d/0d/d0ddf485-147c-4e8c-a19f-8ccac73c7d12/689a5a6f64789.image.jpg?resize=300%2C200" length="168573" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Luces LED y decoraciones naturales: alternativas para ahorrar energía esta Navidad</title>
+            <description>Ante el aumento en la tarifa eléctrica, seleccionar adornos de bajo consumo puede ayudar a reducir el impacto en la factura de luz</description>
+            <pubDate>Sat, 14 Nov 2026 07:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/e772f8b0-00aa-4521-ab90-800e34f1ee5c</guid>
+            <link>https://wapa.tv/noticias/estilodevida/luces-led-y-decoraciones-naturales-alternativas-para-ahorrar-energ-a-esta-navidad/article_e772f8b0-00aa-4521-ab90-800e34f1ee5c.html</link>
+            <dc:creator>Katiria Soto / NotiCentro</dc:creator>
+        </item>
+
+        <item>
+            <title>¿Piensas comprarte un carro nuevo? Toma decisiones con Toyota</title>
+            <description>Comprarse un carro nuevo es emocionante, pero también es una decisión importante que conlleva orientación.</description>
+            <pubDate>Sat, 14 Nov 2026 07:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/721be8f8-95d3-4bd0-9362-d5db7e144a6b</guid>
+            <link>https://wapa.tv/noticias/negocios/piensas-comprarte-un-carro-nuevo-toma-decisiones-con-toyota/article_721be8f8-95d3-4bd0-9362-d5db7e144a6b.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Protégete de los aumentos con Power Solar</title>
+            <description>Con todos los aumentos que representan cambios en el hogar, ¿qué alternativas existen?</description>
+            <pubDate>Sat, 14 Nov 2026 07:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/74a0c372-37b7-4a0d-8a7c-08ea4b58d1c7</guid>
+            <link>https://wapa.tv/noticias/negocios/prot-gete-de-los-aumentos-con-power-solar/article_74a0c372-37b7-4a0d-8a7c-08ea4b58d1c7.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Así Lo Hago Yo: Aprende a esculpir una casita de Snoopy</title>
+            <description>Douglas Candelario combinó creatividad y trabajo artesanal en esta hermosa escultura de madera.</description>
+            <pubDate>Sat, 14 Nov 2026 07:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/bf61d87a-56ec-4e1b-bfa3-5ec94a42cfe7</guid>
+            <link>https://wapa.tv/noticias/entretenimiento/as-lo-hago-yo-aprende-a-esculpir-una-casita-de-snoopy/article_bf61d87a-56ec-4e1b-bfa3-5ec94a42cfe7.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Conoce todas las opciones de planes que te esperan en Medicare Advantage</title>
+            <description>Conoce todas las opciones disponibles llamando al 787-756-9137 o al 787-756-9128.</description>
+            <pubDate>Sat, 14 Nov 2026 06:45:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/e9bbb725-3b75-4612-a739-604d363719d6</guid>
+            <link>https://wapa.tv/noticias/negocios/conoce-todas-las-opciones-de-planes-que-te-esperan-en-medicare-advantage/article_e9bbb725-3b75-4612-a739-604d363719d6.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Consigue tus cremas de AstroDerma por Wapa Ofertas para lucir una piel radiante</title>
+            <description>Consigue tus productos con un 30% de descuento</description>
+            <pubDate>Sat, 14 Nov 2026 06:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/7af8fa0f-be00-49da-9791-981856b034ac</guid>
+            <link>https://wapa.tv/noticias/negocios/consigue-tus-cremas-de-astroderma-por-wapa-ofertas-para-lucir-una-piel-radiante/article_7af8fa0f-be00-49da-9791-981856b034ac.html</link>
+            <dc:creator>NotiCentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Obtén una aspiradora ideal para tenerla en tu casa y hasta tu carro</title>
+            <description>Con Wapa Ofertas, tienes envío gratis y hasta incluye un regalo</description>
+            <pubDate>Sat, 14 Nov 2026 06:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/a41a58aa-77b6-48c5-99d5-ab3dbe91f8b4</guid>
+            <link>https://wapa.tv/noticias/negocios/obt-n-una-aspiradora-ideal-para-tenerla-en-tu-casa-y-hasta-tu-carro/article_a41a58aa-77b6-48c5-99d5-ab3dbe91f8b4.html</link>
+            <dc:creator>NotiCentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Ponce aplasta a los Senadores 17-2</title>
+            <description>Con su cuarta victoria de la campaña, los Leones nivelaron su marca en 4-4, mientras los Senadores descendieron a 2-4.</description>
+            <pubDate>Fri, 13 Nov 2026 23:40:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/142029a3-6d06-4381-88a0-4cb0b16da324</guid>
+            <link>https://wapa.tv/wapadeportes/lbprc/ponce-aplasta-a-los-senadores-17-2/article_142029a3-6d06-4381-88a0-4cb0b16da324.html</link>
+            <dc:creator>LBPRC</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/a/fd/afdf8ec1-9e1a-4064-bbb4-182f00b134b6/6af7d8d9be812.image.jpg?resize=300%2C200" length="270882" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Candidatas desfilan en Beauty at the Beach</title>
+            <description>Las candidatas de Miss Universe desfilaron en traje de baño durante Beauty at the Beach, celebrado ante un lleno total en el hotel Caribe Hilton.</description>
+            <pubDate>Fri, 13 Nov 2026 23:40:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/dfdd9d41-f6c3-48d7-a45c-d52b76a0a9c7</guid>
+            <link>https://wapa.tv/candidatas-desfilan-en-beauty-at-the-beach/article_dfdd9d41-f6c3-48d7-a45c-d52b76a0a9c7.html</link>
+            <dc:creator>Wapa TV/ Video: Josian Bruno</dc:creator>
+        </item>
+
+        <item>
+            <title>Senado aprueba proyecto que limita participación de atletas trans en deportes</title>
+            <description>La propuesta generó objeciones de distintos sectores, que alertaron sobre posibles violaciones a la privacidad y el impacto emocional.</description>
+            <pubDate>Fri, 13 Nov 2026 23:09:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/bdadd2d2-c99e-4775-8b2e-aa8eeedc820a</guid>
+            <link>https://wapa.tv/senado-aprueba-proyecto-que-limita-participaci-n-de-atletas-trans-en-deportes/article_bdadd2d2-c99e-4775-8b2e-aa8eeedc820a.html</link>
+            <dc:creator>Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Criollos de Caguas se imponen ante los Indios y consiguen su quinta victoria</title>
+            <description>Los Indios de Mayagüez cayeron 13-3 en el Estadio Yldefonso Solá Morales en su segundo encuentro con los Criollos.</description>
+            <pubDate>Fri, 13 Nov 2026 22:57:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/e11c243f-746a-4802-af49-14778ba27104</guid>
+            <link>https://wapa.tv/wapadeportes/lbprc/criollos-de-caguas-se-imponen-ante-los-indios-y-consiguen-su-quinta-victoria/article_e11c243f-746a-4802-af49-14778ba27104.html</link>
+            <dc:creator>Wapa Digital/Criollos de Caguas</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/e/93/e93b4fdd-7137-4438-b680-2feffab522e1/6af7d2f947d27.image.jpg?resize=300%2C223" length="288095" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>FAA emite directriz para renaudar vuelos en EEUU y descartan ataque cibernético</title>
+            <description>Las autoridades advirtieron que la normalización de las operaciones podría tomar varias horas debido a las interrupciones acumuladas.</description>
+            <pubDate>Fri, 13 Nov 2026 21:34:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/3bb8a4a2-a4ae-4fce-800c-c8eb4003677f</guid>
+            <link>https://wapa.tv/noticias/locales/faa-emite-directriz-para-renaudar-vuelos-en-eeuu-y-descartan-ataque-cibern-tico/article_3bb8a4a2-a4ae-4fce-800c-c8eb4003677f.html</link>
+            <dc:creator>Ariana Rivera Franco / Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Danilo Beauchamp: &quot;gracias por la segunda oportunidad de regresar a mi casa&quot;</title>
+            <description>En su despedida, el comediante reconoció que antes de entrar a la competencia no sabía nada de cocina y que todo lo aprendió aquí.</description>
+            <pubDate>Fri, 13 Nov 2026 21:15:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/666d2498-c85b-4a65-8f64-3639c40669c3</guid>
+            <link>https://wapa.tv/programas/superchef/danilo-beauchamp-gracias-por-la-segunda-oportunidad-de-regresar-a-mi-casa/article_666d2498-c85b-4a65-8f64-3639c40669c3.html</link>
+            <dc:creator>Frances M. Narváez Morales</dc:creator>
+        </item>
+
+        <item>
+            <title>Danilo y Karla se convierten en la novena dupla eliminada de Super Chef Celebrities</title>
+            <description>Con esta doble eliminación, solo quedan cuatro duplas en competencia.</description>
+            <pubDate>Fri, 13 Nov 2026 21:00:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/06301b9e-749c-4c71-8487-c4a8feef6a9c</guid>
+            <link>https://wapa.tv/programas/superchef/danilo-y-karla-se-convierten-en-la-novena-dupla-eliminada-de-super-chef-celebrities/article_06301b9e-749c-4c71-8487-c4a8feef6a9c.html</link>
+            <dc:creator>Frances M. Narváez Morales</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/5/20/520acef0-84f3-496f-be06-9057fd0d0117/6af7b468bc5b3.image.jpg?resize=300%2C200" length="436373" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Receta: soufflé de queso cheddar con tostadas, lomo de cerdo y campari garden cooler</title>
+            <description>Conoce aquí cómo preparar estos deliciosos platos para que sorprendas en casa.</description>
+            <pubDate>Fri, 13 Nov 2026 20:30:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/40f2486f-b26e-4584-b159-b9920287046b</guid>
+            <link>https://wapa.tv/programas/superchef/receta-souffl-de-queso-cheddar-con-tostadas-lomo-de-cerdo-y-campari-garden-cooler/article_40f2486f-b26e-4584-b159-b9920287046b.html</link>
+            <dc:creator>Super Chef Celebrities</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/e/45/e457da43-5646-4618-be49-eba2d0407b81/6af629dd425bb.image.jpg?resize=300%2C200" length="354397" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Receta: huevo mollet sobre crema de espárragos, costillas de cerdo y clafoutis</title>
+            <description>Conoce aquí cómo preparar estos deliciosos platos para que sorprendas en casa.</description>
+            <pubDate>Fri, 13 Nov 2026 20:30:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/4b96cc49-ed38-4301-aee3-c20c3df1719b</guid>
+            <link>https://wapa.tv/programas/superchef/receta-huevo-mollet-sobre-crema-de-esp-rragos-costillas-de-cerdo-y-clafoutis/article_4b96cc49-ed38-4301-aee3-c20c3df1719b.html</link>
+            <dc:creator>Super Chef Celebrities</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/4/5f/45fc4fa7-73f3-4fb0-aa57-c101d6beee3a/6af62b6a24e58.image.jpg?resize=300%2C200" length="286569" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Identifican a joven de 21 años que falleció tras palma caer sobre ella en Piñones</title>
+            <description>Una joven identificada como Jazmín Roldán Reyes, de 21 años, falleció luego de que una palma colapsara sobre ella mientras compartía con una amiga en la playa de Piñones, en el sector Monte Grande, en Loíza.</description>
+            <pubDate>Fri, 13 Nov 2026 18:56:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/c47a21a8-5153-40a1-8335-f2e8445dba11</guid>
+            <link>https://wapa.tv/noticias/locales/identifican-a-joven-de-21-a-os-que-falleci-tras-palma-caer-sobre-ella-en/article_c47a21a8-5153-40a1-8335-f2e8445dba11.html</link>
+            <dc:creator>Kelvin Meléndez / Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Madre de estudiante de escuela en Guánica señalado por bullying defiende a su familia</title>
+            <description>La familia del niño que presuntamente actuó de forma violenta aseguró que el agresor es el hijo de Aneysha Crespo.</description>
+            <pubDate>Fri, 13 Nov 2026 18:10:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/0835e33a-8176-41c3-b2fb-66e7a19de723</guid>
+            <link>https://wapa.tv/programas/losetodo/madre-de-estudiante-de-escuela-en-gu-nica-se-alado-por-bullying-defiende-a-su/article_0835e33a-8176-41c3-b2fb-66e7a19de723.html</link>
+            <dc:creator>Lo Sé Todo</dc:creator>
+        </item>
+
+        <item>
+            <title>Detención de tráfico aéreo se debe a &quot;interrupción en las comunicaciones&quot;, según Homeland Security</title>
+            <description>El secretario de Seguridad Nacional descartó que haya peligro alguno para la ciudadanía y aseguró trabajan en solucionar la falla de telecomunicación.</description>
+            <pubDate>Fri, 13 Nov 2026 18:10:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/d271d441-4fc5-4b36-b8ef-b369bb879621</guid>
+            <link>https://wapa.tv/noticias/internacionales/detenci-n-de-tr-fico-a-reo-se-debe-a-interrupci-n-en-las-comunicaciones/article_d271d441-4fc5-4b36-b8ef-b369bb879621.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/7/93/79322957-4fe5-4919-a0b3-172137176061/6af78c1da9180.image.jpg?resize=300%2C225" length="271843" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Yadira Hidalgo recuerda su primera vez en Wapa TV para el show de “Hello Wapa”</title>
+            <description>Nos contó también sobre su pasión por la producción de eventos y sobre su matrimonio.</description>
+            <pubDate>Fri, 13 Nov 2026 17:51:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/135304e7-0c2a-4aba-bf52-f1e7e588589c</guid>
+            <link>https://wapa.tv/programas/losetodo/yadira-hidalgo-recuerda-su-primera-vez-en-wapa-tv-para-el-show-de-hello-wapa/article_135304e7-0c2a-4aba-bf52-f1e7e588589c.html</link>
+            <dc:creator>Lo Sé Todo</dc:creator>
+        </item>
+
+        <item>
+            <title>Aerostar informa detención de operaciones aéreas en Aeropuerto Luis Muñoz Marín por orden de FAA</title>
+            <description>Se espera impacto en los itinerarios de vuelos hasta tanto la FAA autorice el restablecimiento del servicio.</description>
+            <pubDate>Fri, 13 Nov 2026 17:39:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/2b0c646b-8799-4158-be88-49f5333ec80e</guid>
+            <link>https://wapa.tv/noticias/locales/aerostar-informa-detenci-n-de-operaciones-a-reas-en-aeropuerto-luis-mu-oz-mar-n/article_2b0c646b-8799-4158-be88-49f5333ec80e.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+            <enclosure url="https://bloximages.newyork1.vip.townnews.com/wapa.tv/content/tncms/assets/v3/editorial/4/ee/4eed34ec-c3c0-11ef-9dcc-33f04dcd2ec4/69593730270aa.image.jpg?resize=300%2C169" length="35511" type="image/jpeg" />
+        </item>
+
+        <item>
+            <title>Laura Hernández se mantiene positiva durante su tratamiento para el cáncer en Alemania</title>
+            <description>El tamaño del tumor se redujo con el primer tratamiento y según el Dr. Guillermo Colón, ya recibió el segundo.</description>
+            <pubDate>Fri, 13 Nov 2026 17:15:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/cf3b596a-fc22-4d88-8d2b-591e81dfcbc1</guid>
+            <link>https://wapa.tv/programas/losetodo/laura-hern-ndez-se-mantiene-positiva-durante-su-tratamiento-para-el-c-ncer-en-alemania/article_cf3b596a-fc22-4d88-8d2b-591e81dfcbc1.html</link>
+            <dc:creator>Lo Sé Todo</dc:creator>
+        </item>
+
+        <item>
+            <title>FAA emite orden de detener vuelos a nivel nacional por “circunstancias extraordinarias”</title>
+            <description>La causa no fue inmediatamente revelada. Esto es una noticia en desarrollo.</description>
+            <pubDate>Fri, 13 Nov 2026 17:16:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/09c12449-c92a-4aad-bea7-8ceceaecd603</guid>
+            <link>https://wapa.tv/noticias/internacionales/faa-emite-orden-de-detener-vuelos-a-nivel-nacional-por-circunstancias-extraordinarias/article_09c12449-c92a-4aad-bea7-8ceceaecd603.html</link>
+            <dc:creator>Wapa Digital</dc:creator>
+        </item>
+
+        <item>
+            <title>Missiólogo comparte cómo transcurrió presentación de nueva corona de Miss Universe</title>
+            <description>Expresó que hubo mucha emoción cuando se develó la corona “El Resplandor del Legado Eterno”.</description>
+            <pubDate>Fri, 13 Nov 2026 16:55:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/39ba9ec2-2e0f-4bf9-998b-a5802e564a25</guid>
+            <link>https://wapa.tv/programas/losetodo/missi-logo-comparte-c-mo-transcurri-presentaci-n-de-nueva-corona-de-miss-universe/article_39ba9ec2-2e0f-4bf9-998b-a5802e564a25.html</link>
+            <dc:creator>Lo Sé Todo</dc:creator>
+        </item>
+
+        <item>
+            <title>Microsoft restaura sus servicios de forma gradual tras avería global</title>
+            <description>El desperfecto impactó las operaciones cotidianas de varias agencias del Gobierno, ya que la mayoría utiliza herramientas como Outlook y Teams.</description>
+            <pubDate>Fri, 13 Nov 2026 16:51:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/c11a7b88-5585-4c0b-bbc0-ec57d819cd7d</guid>
+            <link>https://wapa.tv/noticias/locales/microsoft-restaura-sus-servicios-de-forma-gradual-tras-aver-a-global/article_c11a7b88-5585-4c0b-bbc0-ec57d819cd7d.html</link>
+            <dc:creator>Aixa Vázquez / Noticentro</dc:creator>
+        </item>
+
+        <item>
+            <title>Tu Tiempo: Cuatro días corridos con temperaturas sumamente calurosas</title>
+            <description>Si experimenta cansancio, confusión o mareos, tome las medidas necesarias para protegerse. Manténgase bien hidratado y limite la exposición prolongada al sol.</description>
+            <pubDate>Fri, 13 Nov 2026 16:50:00 -0400</pubDate>
+            <guid isPermaLink="false">http://wapa.tv/tncms/asset/editorial/b499d3dc-802b-4d19-b9c1-38b89e272889</guid>
+            <link>https://wapa.tv/noticias/eltiempo/tu-tiempo-cuatro-d-as-corridos-con-temperaturas-sumamente-calurosas/article_b499d3dc-802b-4d19-b9c1-38b89e272889.html</link>
+            <dc:creator>Ada Monzón / Noticentro</dc:creator>
+        </item>
+
+    </channel>
+</rss>

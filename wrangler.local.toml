@@ -1,0 +1,20 @@
+name = "prnews-local"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+[vars]
+CONTACT_EMAIL = "prnews@code.pr"
+DIGEST_FROM = "El resumen de la isla <digest@code.pr>"
+ALERTS_FROM = "prnews"
+ALERTS_DOMAIN = "code.pr"
+
+[triggers]
+crons = ["*/15 * * * *", "30 10 * * *"]
+[[d1_databases]]
+binding = "DB"
+database_name = "prnews"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "ARCHIVE"
+bucket_name = "prnews-archive"

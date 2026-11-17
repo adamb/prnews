@@ -19,8 +19,5 @@ vary: Accept-Encoding
 server-timing: cache;desc=miss, varnish;desc=miss_hit, dc;desc=cloudflare
 x-content-type-options: nosniff
 x-served-by: PDX
-set-cookie: ssr-caching=cache#desc=miss#varnish=miss_hit#dc#desc=cloudflare; Max-Age=20
-set-cookie: sec-fetch-unsupported=1; Path=/; Secure; SameSite=Lax;
-set-cookie: __cf_bm=V3pLstBrOHScXyXWH2bOprWLgqZlrE6mLAVQUsY_VPc-1794630363.8618584-1.0.1.1-w8W9v9vclXXE8_4eoamfeoO0jHU8g2JO29zCHU5vvSAAfRlYM3rMuPjm1KS9oFe65fypcRs6POlqEt6.KlsgXh16uW61LJOLalHYki1G9N4Vim6RoFR1IRHasBKDEr1W; HttpOnly; SameSite=None; Partitioned; Secure; Path=/; Domain=www.sanjuandailystar.com; Expires=Sat, 14 Nov 2026 04:56:03 GMT
 alt-svc: h3=":443"; ma=86400
 

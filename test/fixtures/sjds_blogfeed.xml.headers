@@ -14,6 +14,5 @@ server-timing: cache;desc=hit, varnish;desc=hit_hit, dc;desc=cloudflare
 x-content-type-options: nosniff
 x-wix-request-id: 1794630390.698301605783469219
 x-served-by: PDX
-set-cookie: __cf_bm=Kq4av9.lpZQM.dB1tY1IIeNXcUjPQ9l7JFw702_ooIo-1794630390.6903603-1.0.1.1-0_FqUa7CT_RbJikZxcA.60ZYVYrXzZNdGDvpv_e5gk04pkc4QarIOfwDiyVjFpf_l0WKYpXsmY_lp3YlwuPOxmtOGTk1y9cbOsKyI..QbOEFfobTtldh7aWTUwo1qw8z; HttpOnly; SameSite=None; Partitioned; Secure; Path=/; Domain=www.sanjuandailystar.com; Expires=Sat, 14 Nov 2026 04:56:30 GMT
 alt-svc: h3=":443"; ma=86400
 

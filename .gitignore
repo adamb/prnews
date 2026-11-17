@@ -1,0 +1,19 @@
+node_modules/
+.wrangler/
+dist/
+src/data.json
+
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+/0
+
+# Local credentials, runtime data and editor artifacts
+*.log
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+.DS_Store
+coverage/

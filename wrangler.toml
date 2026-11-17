@@ -1,0 +1,35 @@
+name = "prnews"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+workers_dev = true
+routes = [{ pattern = "news.dev.pr", custom_domain = true }]
+
+[vars]
+DIGEST_ENABLED = "false"
+CONTACT_EMAIL = "prnews@code.pr"
+DIGEST_FROM = "El resumen de la isla <digest@code.pr>"
+# Keyword alerts sending identity: prnews@code.pr (confirmed with the user; catch-all on
+# code.pr forwards it). 
+ALERTS_FROM = "prnews"
+ALERTS_DOMAIN = "code.pr"
+# Public Turnstile widget for the news.dev.pr public forms (the site key is public by
+# design; the secret side lives only in the TURNSTILE_SECRET_KEY Worker secret).
+TURNSTILE_SITE_KEY = "0x4AAAAAAGBgOxdiwxaNdKZs"
+# Hostnames siteverify must report for public-form tokens; never localhost in production.
+TURNSTILE_HOSTNAMES = "news.dev.pr"
+
+[triggers]
+crons = ["*/15 * * * *", "30 10 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "prnews"
+database_id = "b9223985-e9f6-4384-a8ae-173699c18ea9"
+migrations_dir = "migrations"
+
+[ai]
+binding = "AI"
+
+[[r2_buckets]]
+binding = "ARCHIVE"
+bucket_name = "prnews-archive"
