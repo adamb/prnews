@@ -23,7 +23,8 @@
  */
 import type { Item } from './parse';
 import { safeUrl } from './parse';
-import { validTranslation, type Translation, type Language } from './i18n';
+import { sources } from './sources';
+import { translated, needsTranslation, validTranslation, type Translation, type Language } from './i18n';
 import { hash } from './importance';
 import { alertsSender, sendMail, probeAccepted, type ImprovMXEnv } from './improvmx';
 import { verifyTurnstile, type TurnstileEnv } from './turnstile';
@@ -364,7 +365,7 @@ export async function listWatchers(env: AlertEnv, accountId: string): Promise<{ 
 }
 
 /** Manage mutations — every caller must already hold the session and a valid CSRF token. */
-export async function manageWatcher(env: AlertEnv, accountId: string, action: 'add' | 'edit' | 'pause' | 'resume' | 'delete' | 'pauseall', watcherId: string, phrase: string, now = Date.now()): Promise<'ok' | 'invalid'> {
+export async function manageWatcher(env: AlertEnv, accountId: string, action: 'add' | 'edit' | 'pause' | 'resume' | 'delete' | 'pauseall', watcherId: string, phrase: string, now = Date.now(), language?: Language): Promise<'ok' | 'invalid'> {
 	const tokens = phraseTokens(phrase || '');
 	if (action === 'add') {
 		if (!tokens || (await watcherCount(env, accountId)) >= MAX_WATCHERS) return 'invalid';
@@ -372,6 +373,7 @@ export async function manageWatcher(env: AlertEnv, accountId: string, action: 'a
 		// A brand-new phrase judges only newly collected stories: watermark = now.
 		await env.DB.prepare('INSERT INTO alert_watchers(id,account_id,phrase,tokens,status,baseline,scan_cursor,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)')
 			.bind(id, accountId, oneLine(phrase).slice(0, 120), tokens, 'active', now, now, now, now).run();
+		if (language) await env.DB.prepare('UPDATE alert_accounts SET language=? WHERE id=?').bind(language, accountId).run();
 		return 'ok';
 	}
 	if (action === 'edit') {
@@ -516,26 +518,24 @@ async function flushDue(env: AlertEnv, now: number): Promise<number> {
 		if (row.last_notification > now - HOUR) continue;
 		const queued = await env.DB.prepare('SELECT url,payload FROM alert_queue WHERE account_id=? ORDER BY enqueued_at LIMIT ?').bind(row.account_id, NOTIFY_ITEMS_MAX).all<{ url: string; payload: string }>();
 		if (!queued.results.length) continue;
-		const urls = queued.results.map(i => i.url);
-		// A translation that arrived after the match now upgrades the email text, exactly as
-		// the site renders it: original equality checks gate every translated field.
-		const stored = await env.DB.prepare(`SELECT url,translation FROM articles WHERE url IN (${urls.map(() => '?').join(',')})`).bind(...urls).all<{ url: string; translation: string | null }>();
-		const translations = new Map(stored.results.map(r => [r.url, r.translation]));
-		const items = queued.results.map(i => {
-			const snapshot = JSON.parse(i.payload) as QueuePayload;
-			let title = snapshot.title, summary = snapshot.summary;
-			const raw = translations.get(snapshot.url);
-			if (raw) {
-				try {
-					const parsed = JSON.parse(raw) as Translation;
-					if (validTranslation(itemOf(snapshot), parsed)) {
-						title = parsed.title.slice(0, 300);
-						summary = (parsed.summary || snapshot.summary).slice(0, 300);
-					}
-				} catch { /* keep the original snapshot text */ }
-			}
-			return { ...snapshot, title, summary };
-		});
+		const candidates = queued.results.map(i => i.url);
+		const stored = await env.DB.prepare(`SELECT url,payload,translation FROM articles WHERE url IN (${candidates.map(() => '?').join(',')})`).bind(...candidates).all<{ url: string; payload: string; translation: string | null }>();
+		const articles = new Map(stored.results.map(r => [r.url, r]));
+		const items: QueuePayload[] = [];
+		for (const queuedItem of queued.results) {
+			const snapshot = JSON.parse(queuedItem.payload) as QueuePayload;
+			const live = articles.get(snapshot.url);
+			// Missing live metadata cannot establish English eligibility for legacy snapshots.
+			if (!live && row.language === 'en') continue;
+			const item = live ? JSON.parse(live.payload) as Item : itemOf(snapshot);
+			const cache: Record<string, Translation> = {};
+			try { if (live?.translation) cache[item.url] = JSON.parse(live.translation); } catch { /* validate bundled fallback */ }
+			if (row.language === 'en' && needsTranslation(item, cache)) continue;
+			const localized = translated(item, row.language === 'en' ? 'en' : 'es', cache);
+			items.push({ ...snapshot, title: localized.title.slice(0, 300), summary: localized.summary.slice(0, 300) });
+		}
+		if (!items.length) continue;
+		const urls = items.map(i => i.url);
 		// Fresh single-use manage link inside the notification (14-day validity, used once).
 		const manageToken = await createToken(env, row.account_id, 'manage', MANAGE_TTL, now);
 		const id = await createOutbox(env, 'notify', row.account_id, row.email, {
@@ -681,11 +681,11 @@ function renderOutboxEmail(row: OutboxRow): { to: string; subject: string; text:
 	const manage = payload.manageToken ? `${ORIGIN}/alerts/m?token=${payload.manageToken}&lang=${es ? 'es' : 'en'}` : `${ORIGIN}/alerts?lang=${es ? 'es' : 'en'}`;
 	const out = payload.outToken ? `${ORIGIN}/alerts/out?token=${payload.outToken}&lang=${es ? 'es' : 'en'}` : `${ORIGIN}/alerts?lang=${es ? 'es' : 'en'}`;
 	const keywords = [...new Set(snapshots.flatMap(i => i.phrases))].slice(0, 4);
-	const itemBlocks = snapshots.map(i => `<p><strong>${escape(i.title)}</strong><br>${i.summary ? escape(i.summary) + '<br>' : ''}<em>${escape(i.source)}</em> · <a href="${safeUrl(i.url) ?? ORIGIN}">${escape(i.url)}</a></p>`);
+	const itemBlocks = snapshots.map(i => `<p><strong>${escape(i.title)}</strong><br>${i.summary ? escape(i.summary) + '<br>' : ''}<em>${escape(sources.find(s => s.id === i.source)?.name ?? i.source)}</em> · <a href="${safeUrl(i.url) ?? ORIGIN}">${escape(i.url)}</a></p>`);
 	const subject = oneLine(snapshots.length === 1
 		? `${es ? 'Alerta' : 'Keyword alert'}: ${snapshots[0].title.slice(0, 70)} · news.dev.pr${tag}`
 		: `${es ? 'Alertas' : 'Alerts'}: ${keywords.join(', ')} — ${snapshots.length} ${snapshots.length === 1 ? (es ? 'noticia' : 'story') : (es ? 'noticias' : 'stories')} · news.dev.pr${tag}`);
 	const html = `<h1>${es ? 'Coincidencias con tus alertas' : 'Matches for your keyword alerts'}</h1>${keywords.length ? `<p>${es ? 'Palabras clave' : 'Keywords'}: <strong>${escape(keywords.join(', '))}</strong></p>` : ''}${itemBlocks.join('')}<hr><p><a href="${manage}">${es ? 'Administrar mis alertas (enlace de un solo uso)' : 'Manage my alerts (single-use link)'}</a></p><p><a href="${out}">${es ? 'Cancelar todas mis alertas' : 'Unsubscribe from all alerts'}</a></p><p>${es ? 'Recibes este correo porque una noticia de las últimas horas coincide con una de tus alertas. Máximo un correo por hora. news.dev.pr reúne titulares de medios de Puerto Rico y enlaza al artículo original; no enviamos boletines ni promociones.' : 'You receive this because a recent story matched one of your keyword alerts. At most one email per hour. news.dev.pr collects Puerto Rico news headlines and links to the original article; we do not send newsletters or promotions.'}</p>`;
-	const text = `${es ? 'Coincidencias con tus alertas' : 'Matches for your keyword alerts'}${keywords.length ? ` (${es ? 'palabras clave' : 'keywords'}: ${keywords.join(', ')})` : ''}\n\n` + snapshots.map(i => `${i.title}\n${i.summary}\n${i.source}\n${i.url}`).join('\n\n') + `\n\n${manage}\n${out}`;
+	const text = `${es ? 'Coincidencias con tus alertas' : 'Matches for your keyword alerts'}${keywords.length ? ` (${es ? 'palabras clave' : 'keywords'}: ${keywords.join(', ')})` : ''}\n\n` + snapshots.map(i => `${i.title}\n${i.summary}\n${sources.find(s => s.id === i.source)?.name ?? i.source}\n${i.url}`).join('\n\n') + `\n\n${manage}\n${out}`;
 	return { to: row.email, subject, text, html };
 }
