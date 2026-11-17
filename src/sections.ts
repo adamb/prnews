@@ -1,6 +1,7 @@
 export const sections = [
  ['comunidad', 'Reddit'],
  ['politica', 'Gobierno y Política'], ['negocios', 'Economía y Negocios'],
+ ['bienes-raices', 'Bienes raíces'],
  ['policiales', 'Policiales y Tribunales'], ['energia', 'Energía e Infraestructura'],
  ['salud', 'Salud'], ['educacion', 'Educación'], ['clima', 'Clima y Ambiente'],
  ['deportes', 'Deportes'], ['entretenimiento', 'Entretenimiento y Cultura'],
@@ -15,16 +16,22 @@ export function primarySection(section: string): string {
 export const navigationSections = [
  ['politica', 'Gobierno y Política'],
  ['negocios', 'Economía, Negocios y Tecnología'], ['policiales', 'Seguridad y Justicia'],
+ ['bienes-raices', 'Bienes raíces'],
  ['energia', 'Ambiente e Infraestructura'], ['salud', 'Salud, Educación y Sociedad'],
  ['deportes', 'Deportes'], ['entretenimiento', 'Entretenimiento y Cultura'],
  ['mundo', 'Estados Unidos y Mundo'], ['otras', 'Otras y Opinión'],
  ['comunidad', 'Reddit'],
 ] as const;
+/** External property catalog. Not a publisher, feed, or article, and not counted as a click. */
+export const propertyListings = {
+ sale: 'https://www.clasificadosonline.com/RealEstate.asp',
+ rent: 'https://www.clasificadosonline.com/Rentals.asp',
+} as const;
 const keywords: Partial<Record<Section, string[]>> = {
  politica: ['gobernadora', 'gobernador', 'senado', 'legislatura', 'alcalde', 'pnp', 'ppd', 'mvc', 'pip', 'comisionada residente', 'proyecto de ley', 'junta de supervision fiscal', 'governor', 'mayor', 'senate', 'legislature', 'elections?', 'chief of staff', 'ethics complaint', 'vistas publicas', 'house speaker', 'house of representatives', 'legislation', 'gobierno', 'nmead'],
  policiales: ['polici[ae]s?', 'asesin\\w*', 'arrest\\w*', 'tiroteo', 'fiscalia', 'tribunal\\w*', 'juez', 'acusad[oa]', 'feminicid\\w*', 'carcel', 'hieren', 'bala', 'asalt\\w*', 'robo', 'agresion sexual', 'desaparecid[oa]', 'desaparecio', 'fbi', 'juicio', 'poder judicial', 'police', 'murder\\w*', 'shooting', 'court', 'crime', 'hit.and.run', 'atropell\\w*', 'arrollad[oa]', 'accidente', 'collision', 'crash'],
  energia: ['luma', 'genera pr', 'aee', 'apagon', 'negociado de energia', 'aaa', 'acueductos', 'carreteras?', 'aeropuert\\w*', 'aerostar', 'electric\\w*', 'power outage', 'water outage', 'grid', 'airport', 'vuelos?', 'aerolineas?', 'faa', 'transito', 'infrastructur\\w*'],
- negocios: ['hacienda', 'ivu', 'empresas?', 'econom\\w*', 'empleo', 'turismo', 'vivienda', 'inversion', 'business', 'investment', 'housing', 'tax\\w*', 'tourism', 'comercio', 'precios?', 'ddec', 'mercado', 'acciones', 'nasdaq', 'stocks', 'futures', 'fraudulentos', 'microsoft', 'outlook', 'software', 'tecnolog\\w*', 'technology', 'pep boys', 'crucero', 'norwegian prima'],
+ negocios: ['hacienda', 'ivu', 'empresas?', 'econom\\w*', 'empleo', 'turismo', 'inversion', 'business', 'investment', 'tax\\w*', 'tourism', 'comercio', 'precios?', 'ddec', 'mercado', 'acciones', 'nasdaq', 'stocks', 'futures', 'fraudulentos', 'microsoft', 'outlook', 'software', 'tecnolog\\w*', 'technology', 'pep boys', 'crucero', 'norwegian prima'],
  salud: ['hospital\\w*', 'salud', 'dengue', 'medic[oa]s?', 'medicaid', 'plan vital', 'health\\w*', 'doctor', 'enfermedad', 'dermatitis', 'tratamiento', 'higado', 'espalda', 'mente activa', 'maltrato infantil', 'programas comunitarios', 'sin fines de lucro', 'givingtuesday'],
  educacion: ['educacion', 'escuela', 'maestr[oa]s?', 'upr', 'estudiante', 'universidad', 'school', 'university', 'college', 'education', 'doctoral', 'interamericana'],
  clima: ['huracan', 'tormenta', 'lluvias?', 'sequia', 'meteorologia', 'nws', 'inundacion', 'sargazo', 'hurricane', 'storm', 'drought', 'flood\\w*', 'weather', 'contaminacion', 'climate', 'environmental', 'medio ambiente'],
@@ -39,6 +46,7 @@ export function classify(url: string, categories: string[], text: string): { sec
  const paths: [RegExp, Section][] = [
  [/\/opinion\//, 'opinion'], [/\/(policia-tribunales|tribunales|policiacas|policiales|ley-y-orden|crime)\//, 'policiales'],
  [/\/(gobierno-politica|puerto-rico-voto|elecciones|gobierno|politics)\/|\/corresponsalias\/washington-dc\//, 'politica'],
+ [/\/(?:bienes-raices|real-estate|realestate)\//, 'bienes-raices'],
  [/\/(negocios|tu-dinero|economia|business|technology|tecnologia)\/|\/noticias\/consumo\//, 'negocios'],
  [/\/(deportes[^/]*|sports)\//, 'deportes'], [/\/(entretenimiento|sabrosia|estilos?-de-vida|escenario|entertainment|culture)\//, 'entretenimiento'],
  [/\/(salud|health)\//, 'salud'], [/\/(educacion|education)\//, 'educacion'],
@@ -46,13 +54,17 @@ export function classify(url: string, categories: string[], text: string): { sec
  [/\/noticias\/(estados-unidos|eeuu|mundo|texas)\/|\/(world|international)\//, 'mundo'],
  ];
  for (const [rule, section] of paths) if (rule.test(path)) return { section, reason: 'url' };
- const cats: Record<string, Section> = { policiacas: 'policiales', policiales: 'policiales', seguridad: 'policiales', policia: 'policiales', crime: 'policiales', gobierno: 'politica', legislatura: 'politica', politics: 'politica', deportes: 'deportes', mundo: 'mundo', 'estados unidos': 'mundo', business: 'negocios', negocios: 'negocios', economia: 'negocios', technology: 'negocios', tecnologia: 'negocios', sports: 'deportes', mainland: 'mundo', international: 'mundo', viewpoint: 'opinion', opinion: 'opinion', salud: 'salud', health: 'salud', educacion: 'educacion', education: 'educacion', entretenimiento: 'entretenimiento', entertainment: 'entretenimiento', cultura: 'entretenimiento', clima: 'clima', weather: 'clima', ambiente: 'clima', energia: 'energia' };
+ const cats: Record<string, Section> = { policiacas: 'policiales', policiales: 'policiales', seguridad: 'policiales', policia: 'policiales', crime: 'policiales', gobierno: 'politica', legislatura: 'politica', politics: 'politica', deportes: 'deportes', mundo: 'mundo', 'estados unidos': 'mundo', business: 'negocios', negocios: 'negocios', economia: 'negocios', technology: 'negocios', tecnologia: 'negocios', sports: 'deportes', mainland: 'mundo', international: 'mundo', viewpoint: 'opinion', opinion: 'opinion', salud: 'salud', health: 'salud', educacion: 'educacion', education: 'educacion', entretenimiento: 'entretenimiento', entertainment: 'entretenimiento', cultura: 'entretenimiento', clima: 'clima', weather: 'clima', ambiente: 'clima', energia: 'energia', 'bienes raices': 'bienes-raices', 'real estate': 'bienes-raices', inmobiliaria: 'bienes-raices', inmobiliario: 'bienes-raices' };
  for (const category of categories) if (cats[fold(category).trim()]) return { section: cats[fold(category).trim()], reason: 'category' };
  const normalized = fold(text);
  // Events of violence and traffic injury beat incidental hospitals and roads.
  if (matches(normalized, 'tiroteo|shooting|asesin\\w*|feminicid\\w*|hieren de bala|hit.and.run|arrollad[oa]|atropell\\w*|agresion sexual|explotacion sexual|pornografia infantil|asalt\\w*|robo|motociclista.*accidente')) return { section: 'policiales', reason: 'keywords' };
  // A software outage is a technology/business story, even when transport is affected.
  if (matches(normalized, 'microsoft|outlook|software outage|it outage|cloud outage')) return { section: 'negocios', reason: 'keywords' };
+ // Specific property signals only. Bare casa/home/bank/venta/housing/alquiler also match fires, crime, and ordinary sales.
+ // A fire in a listed home stays out of real estate; violence above already wins over a sale or rental.
+ const propertySignal = 'bienes raices|inmobiliari\\w*|hipotec\\w*|mortgages?|zonificacion|zoning|real estate|realtors?|mercado de alquiler|rental markets?|new housing|affordable housing|public housing|housing (?:market|development|projects?|units|prices|inventory|starts|crisis|shortage|construction)|departamento de la vivienda|mercado de vivienda|desarrollo de vivienda|vivienda publica|vivienda asequible|viviendas? en venta|casas? en venta|propiedades? en venta|venta de (?:una |la )?(?:propiedad|vivienda|casa|residencia|mansion)|se vende (?:una |la )?(?:casa|propiedad|vivienda|residencia|mansion)|se vende por \\$?\\d+(?:\\.\\d+)? millones|(?:casas?|apartamentos?|propiedades?|viviendas?|locales?) en alquiler|se alquila (?:un |una |el |la )?(?:apartamento|casa|propiedad|vivienda|local|residencia)|alquiler(?:es)? de (?:viviendas?|apartamentos?|casas?|propiedades|locales)|(?:apartments?|houses?|homes?|propert(?:y|ies)|condos?) for rent|mansion(?:es)? costera|property (?:sales?|development|market)|propert(?:y|ies) sells for \\$?\\d+(?:\\.\\d+)? million|(?:homes?|houses?|mansions?|residences?) (?:sells|sold(?! out)|for sale)|desarrollo inmobiliario|desarrollo residencial|proyectos? residenciales?|mercado inmobiliario';
+ if (matches(normalized, propertySignal) && !matches(normalized, 'incendio|fuego|house fire|home fire|fires? (?:en|in|at)|bomberos')) return { section: 'bienes-raices', reason: 'keywords' };
  let best: Section = 'otras', highest = 0;
  for (const [section, words] of Object.entries(keywords)) {
   const score = words.filter(w => matches(normalized, w)).length;
