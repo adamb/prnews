@@ -1,3 +1,4 @@
+import {generate,read as readLighter} from './lighter';
 import {sampleQueue,queueHistory} from './stats';
 import { searchArticles } from './search';
 import { clickRoute, topClicked, cleanupClicks, hallOfFame, cumulativeTop, totalClicks, type ClickEnv } from './trending';
@@ -29,6 +30,7 @@ export default {
  async scheduled(event: ScheduledController, env: Env): Promise<void> {
   if(event.cron==='30 10 * * *') {await runDigest(env,event.scheduledTime);return;}
   await refresh(env);
+  await generate(env,event.scheduledTime).catch(()=>{});
   await sampleQueue(env).catch(()=>{});
   await cleanupClicks(env).catch(()=>{});
   // Bounded Web Analytics refresh: at most one GraphQL read per TTL, only when stale.
@@ -153,7 +155,7 @@ export default {
   // to ?lang=en) and the rendered HTML no longer contains the checkbox, so stored entries from
   // earlier versions never match fresh keying (no `english` variant) — the bump makes old
   // lang=es variants vanish the moment this version is live. 60s response TTL still bounds everything.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v20') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v21') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
@@ -176,7 +178,7 @@ export default {
    const totals=url.pathname==='/stats'?await totalClicks(env).catch(()=>undefined):undefined;
    const popular=url.pathname==='/stats'?await cumulativeTop(env).catch(()=>[]):[];
    const analytics=url.pathname==='/stats'?await webAnalyticsSnapshot(env).catch(()=>undefined):undefined;
-   const response = renderer.fetch(request,{alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics},digestConfigured(env));
+   const response = renderer.fetch(request,{lighter:await readLighter(env),alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics},digestConfigured(env));
    if(response.status === 200) {
     response.headers.set('Cache-Control','public, max-age=60');
     // CDN-Cache-Control pins the edge TTL too, in case a zone Cache Rule ever overrides it.

@@ -1,4 +1,6 @@
 export const css = `
+.lighter{font-size:.85rem;overflow-wrap:anywhere}.lighter summary{cursor:pointer;padding:.6rem 0;min-height:44px}.lighter summary:focus-visible{outline:2px solid currentColor}.lighter .opened,.lighter[open] .closed{display:none}.lighter[open] .opened{display:inline}
+
 .island-now{margin:24px 0;padding:16px;background:var(--soft);border-radius:4px}.island-now>div{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.island-now a{flex:1 1 220px;min-width:0;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:4px;font-size:13px;overflow-wrap:anywhere}.island-now small{display:block;color:var(--muted);margin-top:6px}
 
 .more-nav{position:relative;align-self:center;font-size:13px;font-weight:600}.more-nav summary{cursor:pointer;padding:10px 0;color:var(--accent)}.more-nav>div{position:absolute;right:0;top:100%;width:260px;max-width:85vw;z-index:5;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 16px #0002;padding:8px 16px}.more-nav>div a{display:block}.more-nav summary:focus-visible{outline:3px solid var(--accent)}

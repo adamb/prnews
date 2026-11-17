@@ -1,0 +1,49 @@
+import {it,expect} from 'vitest';
+import {key,valid,sensitive,CAP} from '../src/lighter';
+import type {Item} from '../src/parse';
+const item={url:'https://example.com/a',title:'Traffic delays',summary:'The agency reports traffic delays.'} as Item;
+it('separates content, URL and editions',()=>{
+ expect(key(item,'es')).not.toBe(key(item,'en'));
+ expect(key(item,'es')).not.toBe(key({...item,summary:'Changed'},'es'));
+ expect(key(item,'es')).not.toBe(key({...item,url:'https://example.com/b'},'es'));
+ expect(key({...item},'es')).toBe(key(item,'es'));
+});
+it('rejects unchanged, oversized, markup, invented numbers and reassurance',()=>{
+ for(const text of [item.summary,'x'.repeat(301),'<script>alert(1)</script>','Traffic delayed for 99 hours.','Do not worry, you are safe.'])expect(valid(text,item)).toBe(false);
+ expect(valid('The agency reports delays on the roads.',item)).toBe(true);
+});
+it('withholds recognized sensitive topics in both languages',()=>{
+ for(const text of ['Two dead after outage','Heridos en accidente','Health hazard','Emergencia por huracán','Police investigate murder'])expect(sensitive(text)).toBe(true);
+ expect(sensitive('Agency paperwork and traffic delays')).toBe(false);
+ expect(CAP).toBe(2);
+});
+import {DatabaseSync} from 'node:sqlite';
+import {readFileSync} from 'node:fs';
+import {generate,read} from '../src/lighter';
+import type {Env} from '../src/ingest';
+import {vi} from 'vitest';
+it('bounds concurrent generation, caches successes and backs off failures',async()=>{
+ const sql=new DatabaseSync(':memory:');sql.exec(readFileSync('migrations/0011_lighter.sql','utf8'));sql.exec('CREATE TABLE articles(payload TEXT,published_at INTEGER)');
+ sql.prepare('INSERT INTO articles VALUES(?,1)').run(JSON.stringify(item));
+ const DB={prepare(query:string){let args: any[]=[];return {bind(...a:any[]){args=a;return this},async run(){return {meta:{changes:Number(sql.prepare(query).run(...args).changes)}}},async first(){return sql.prepare(query).get(...args)},async all(){return {results:sql.prepare(query).all(...args)}}}}} as unknown as D1Database;
+ const run=vi.fn(async()=>({response:JSON.stringify({text:'The agency reports delays on the roads.'})}));const env={DB,AI:{run}} as unknown as Env;
+ await Promise.all([generate(env,9000000),generate(env,9000000)]);expect(run).toHaveBeenCalledTimes(2);
+ await generate(env,9900000);expect(run).toHaveBeenCalledTimes(2);expect(Object.keys(await read(env))).toHaveLength(2);
+ sql.prepare('UPDATE articles SET payload=?').run(JSON.stringify({...item,summary:'A changed report.'}));run.mockRejectedValue(new Error('private error'));
+ await generate(env,10800000);expect(run).toHaveBeenCalledTimes(4);
+ await generate(env,11700000);expect(run).toHaveBeenCalledTimes(4);
+ sql.close();
+});
+import renderer from '../src/render';
+it('renders optional escaped edition-specific disclosure with originals and mobile styling',async()=>{
+ const story={...item,source:'nimb',image:'',time:Date.now(),observed:false,section:'negocios',reason:'manual-import'} as Item;
+ for(const lang of ['es','en']){
+  const text=lang==='es'?'La agencia informa demoras & más trámites.':'The agency reports delays & more paperwork.';
+  const data={items:[story],translations:{},feeds:[],lighter:{[key(story,lang)]:text}};
+  const html=await renderer.fetch(new Request('https://news.dev.pr/?lang='+lang),data).text();
+  expect(html).toContain('<details class="lighter">');expect(html).toContain(text.replace('&','&amp;'));
+  expect(html).toContain(story.title);expect(html).toContain(encodeURIComponent(story.url));expect(html).toContain('min-height:44px');
+  expect(html).toContain(lang==='es'?'Volver al original':'Return to original');
+  const fallback=await renderer.fetch(new Request('https://news.dev.pr/?lang='+lang),{...data,lighter:{}}).text();expect(fallback).not.toContain('<details class="lighter">');
+ }
+});

@@ -151,3 +151,9 @@ PY
 ```
 
 Repository attribution records contain no complete development-token ledger. Source lines and Git history cannot recover token usage. Runtime Workers AI translation usage is separate; neither is estimated on About.
+
+### Optional lighter take
+
+Homepage/section cards may expose a native keyboard-accessible “A lighter take” disclosure (Spanish: “Una mirada más ligera”). Originals and publisher links remain visible. Missing or rejected output has no button. Only existing titles/excerpts are sent to the same Llama 3.3 70B FP8 Fast model, never full articles. Scheduled generation reserves a durable 15-minute slot before making at most **two calls**, each capped at 180 output tokens (maximum 192 calls / 34,560 output tokens per day). Input titles are capped at 500 characters; excerpts use the existing 300-character policy. No page-view AI. This is a token/call ceiling, not a dollar-cost guarantee.
+
+Migration 0011 only adds two tables. Cache identity includes URL, original title/excerpt, edition and prompt version. Failed attempts back off 1/2/4 hours and stop after three; successful results are reused. Slot reservations survive failures to prevent duplicate concurrent spending. Recognized sensitive topics are withheld entirely, retaining the sober original. Prompt and lexical checks are best-effort: they cannot prove factual grounding, language accuracy or absence of inappropriate humor. AI labeling and source links remain essential. Cache/slot rows currently persist; periodic operational cleanup may be needed. Coverage is deliberately sparse, newest 60 candidates first; only homepage/section cards currently expose takes.
