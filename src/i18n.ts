@@ -31,6 +31,7 @@ export function localUrl(path: string, lang: Language) {
 }
 export const englishSections: Record<string, string> = {
  comunidad: 'Reddit', politica: 'Government & Politics', negocios: 'Business & Technology', policiales: 'Safety & Justice',
+ 'bienes-raices': 'Real Estate',
  energia: 'Environment & Infrastructure', salud: 'Health, Education & Society', educacion: 'Education', clima: 'Weather & Environment',
  deportes: 'Sports', entretenimiento: 'Entertainment & Culture', mundo: 'United States & World', opinion: 'Opinion', otras: 'Other & Opinion',
 };
