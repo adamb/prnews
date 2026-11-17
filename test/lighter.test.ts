@@ -29,9 +29,17 @@ it('bounds concurrent generation, caches successes and backs off failures',async
  const run=vi.fn(async()=>({response:JSON.stringify({text:'The agency reports delays on the roads.'})}));const env={DB,AI:{run}} as unknown as Env;
  await Promise.all([generate(env,9000000),generate(env,9000000)]);expect(run).toHaveBeenCalledTimes(2);
  await generate(env,9900000);expect(run).toHaveBeenCalledTimes(2);expect(Object.keys(await read(env))).toHaveLength(2);
+ const log=vi.spyOn(console,'info').mockImplementation(()=>{});
  sql.prepare('UPDATE articles SET payload=?').run(JSON.stringify({...item,summary:'A changed report.'}));run.mockRejectedValue(new Error('private error'));
  await generate(env,10800000);expect(run).toHaveBeenCalledTimes(4);
  await generate(env,11700000);expect(run).toHaveBeenCalledTimes(4);
+ expect(log).toHaveBeenCalledWith('lighter_result',{lang:'es',status:'model_error'});
+ sql.prepare('UPDATE articles SET payload=?').run(JSON.stringify({...item,summary:'Another public report.'}));
+ run.mockResolvedValue({response:'private malformed response'});
+ await generate(env,12600000);
+ expect(log).toHaveBeenCalledWith('lighter_result',{lang:'es',status:'decode_error'});
+ expect(JSON.stringify(log.mock.calls)).not.toContain('private');
+ log.mockRestore();
  sql.close();
 });
 import renderer from '../src/render';
