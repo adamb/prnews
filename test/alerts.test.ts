@@ -1277,7 +1277,9 @@ describe('alerts home navigation', () => {
    expect(html).toContain(`<header class="alerts-header"><a class="home-link" href="${lang === 'en' ? '/?lang=en' : '/'}">`);
    expect(html).toContain('<span class="brand">news<b>.dev.pr</b></span>');
    expect(html).toContain(lang === 'en' ? 'Back to home' : 'Volver a portada');
-   expect(html).not.toMatch(/<footer|beacon.min.js|digest-footer/);
+   expect(html).not.toMatch(/beacon.min.js|digest-footer/);
+   expect(html.match(/© /g)).toHaveLength(1);
+   expect(html).toContain('Adam Beguelin');
   }
  });
 });
