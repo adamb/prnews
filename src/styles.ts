@@ -1,5 +1,8 @@
 export const css = `
 .lighter{font-size:.85rem;overflow-wrap:anywhere}.lighter summary{cursor:pointer;padding:.6rem 0;min-height:44px}.lighter summary:focus-visible{outline:2px solid currentColor}.lighter .opened,.lighter[open] .closed{display:none}.lighter[open] .opened{display:inline}
+.lighter-ask{display:block;width:100%;box-sizing:border-box;min-height:44px;margin:.35rem 0;padding:.55rem .8rem;text-align:left;white-space:normal;line-height:1.35}
+.lighter-note{margin:0 0 .4rem;overflow-wrap:anywhere}.lighter-note small{display:block;color:var(--muted)}
+@media(max-width:390px){.lighter-ask{font-size:.85rem;padding:.55rem .7rem}}
 .lighter-stats{margin:28px 0}.lighter-stats p,.lighter-stats h3,.lighter-stats a{overflow-wrap:anywhere}.lighter-stats .take{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:8px 0}.lighter-stats summary{cursor:pointer;min-height:44px;padding:8px 0}
 @media(max-width:390px){.lighter-stats .source{flex-direction:column;align-items:flex-start;gap:6px}.lighter-stats{margin:20px 0}}
 

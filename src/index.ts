@@ -1,4 +1,4 @@
-import {generate,read as readLighter} from './lighter';
+import {lighterRoute,read as readLighter} from './lighter';
 import {attachStoryIds, lighterCacheReadable, readLighterLedger, readLighterQueue, readySnapshot, type LighterView} from './lighter-stats';
 import {sampleQueue,queueHistory} from './stats';
 import { searchArticles } from './search';
@@ -32,7 +32,7 @@ export default {
  async scheduled(event: ScheduledController, env: Env): Promise<void> {
   if(event.cron==='30 10 * * *') {await runDigest(env,event.scheduledTime);return;}
   await refresh(env);
-  await generate(env,event.scheduledTime).catch(()=>{});
+  // Satire is POST /api/lighter only. This job must not spend the daily model cap.
   await sampleQueue(env).catch(()=>{});
   await cleanupClicks(env).catch(()=>{});
   // Bounded Web Analytics refresh: at most one GraphQL read per TTL, only when stale.
@@ -115,6 +115,8 @@ export default {
    return Response.json(url.pathname==='/internal/archive'?await archiveImages(env):await refresh(env));
   }
   if(!env.DB) return renderer.fetch(request,undefined,digestConfigured(env));
+  const satire=await lighterRoute(request,env);
+  if(satire)return satire;
   const click=await clickRoute(request,env);
   if(click)return click;
   if(url.pathname==='/search') {
@@ -159,8 +161,8 @@ export default {
   // Namespace bumped to v20: the "English only" checkbox was retired (?english=1 canonicalizes
   // to ?lang=en) and the rendered HTML no longer contains the checkbox, so stored entries from
   // earlier versions never match fresh keying (no `english` variant) — the bump makes old
-  // lang=es variants vanish the moment this version is live. v22 drops cached HTML from before the lighter-take stats section. 60s response TTL still bounds everything.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v22') : undefined;
+  // v23 drops cached cards from before the on-demand satire button. 60s response TTL still bounds everything.
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v23') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
