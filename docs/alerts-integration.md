@@ -212,3 +212,35 @@ confirmation failure pages, tokenless retry pages and generic sign-in outcomes w
 checked after deployment. The generic outcome probe used an invalid synthetic address,
 no challenge and the honeypot (no account lookup or send). No real email was sent and no
 user account was activated; inbox delivery after a new legitimate request remains unverified.
+
+## Notification edition policy (November 17, 2026)
+
+The notification template was bilingual, but flushDue previously substituted English
+translations regardless of account language. It now uses the site's validated edition
+helpers and full live article metadata before applying the 300-character email limits.
+Source labels use the existing publication names.
+
+Language remains account-wide, matching the per-address hourly batch and dedup model.
+Signup persists the page edition; authenticated creation of an additional alert selects
+that page's edition for all future batches, explicitly disclosed on the add form.
+Editing, pausing, signing in, and viewing another edition do not change this preference.
+Existing accounts retain their stored preference; no historical choice is inferred.
+Calls without a language preserve that preference. Already-created outbox messages retain
+their immutable text and language; this release does not change previously delivered mail.
+
+English batches defer stories without validated English text (including missing live
+metadata), leaving them queued until translation arrives or the existing queue retention
+expires. No email invokes AI or schedules bulk translation. Spanish follows the site's
+original edition, including original English stories and the site's existing Reddit summary
+policy; it does not promise Spanish translations of English originals. Publisher URLs
+remain original URLs; management and unsubscribe links carry the batch language.
+No database migration or production account mutation is required.
+
+Release: source commit `30beef092bd255059f924a78e353a2da30c08e3f`, Worker
+`ad483168-e464-4619-b912-92cc7b03478c`. Coordinated exclusive release slot;
+fast-forwarded remote main from ed69e1e, verified its SHA before deploying the clean
+committed checkout using Wrangler OAuth. Validation: npm ci, 272 tests across 25 files,
+typecheck, build, and diff review. Regression tests cover both notification editions,
+delayed English translation, publication labels, HTML/text language links, signup preference
+and authenticated add-alert language changes. No live email, resend, account mutation,
+migration, bulk translation, or changes to previously delivered mail.

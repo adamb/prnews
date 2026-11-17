@@ -1283,3 +1283,33 @@ describe('alerts home navigation', () => {
   }
  });
 });
+
+describe('notification edition', () => {
+ for (const language of ['es', 'en'] as const) it(language + ' preserves a coherent batch and defers missing English', async () => {
+  const { DB } = database(); const env = baseEnv(DB);
+  const mock = mockFetch(call => call.url.includes('siteverify') ? turnstileOk() : Response.json({id:'ok'}));
+  const {now, session} = await activated(env, {language});
+  expect((await DB.prepare('SELECT language FROM alert_accounts').first<any>()).language).toBe(language);
+  const story = {...item('https://example.org/edition', 'LUMA repara el servicio', now+1000, 'La reparación continúa.'), source:'endi'};
+  await insertArticle(env, story, now+1000, language === 'es' ? {originalTitle:story.title,originalSummary:story.summary,title:'LUMA repairs service',summary:'Repairs continue.'} : undefined);
+  await runAlertSweep(env, now+2000);
+  if(language === 'en') expect(await getOutbox(env,'notify').first()).toBeNull();
+  await DB.prepare('UPDATE articles SET translation=?').bind(JSON.stringify({originalTitle:story.title,originalSummary:story.summary,title:'LUMA repairs service',summary:'Repairs continue.'})).run();
+  await runAlertSweep(env, now+4000);
+  const row = await getOutbox(env,'notify').first<any>();
+  const payload = JSON.parse(row.payload);
+  expect(payload.items[0].title).toBe(language==='en'?'LUMA repairs service':story.title);
+  const mail = mock.calls.find(c => String(c.json.subject).startsWith(language==='en'?'Keyword alert:':'Alerta:'))!.json;
+  for (const body of [mail.html,mail.text]) {
+   expect(body).toContain(language==='en'?'LUMA repairs service':story.title);
+   expect(body).toContain(language==='en'?'Matches for your keyword alerts':'Coincidencias con tus alertas');
+   expect(body).toContain('lang='+language);
+   expect(body).toContain('El Nuevo Día');
+  }
+  const nextLanguage = language==='en'?'es':'en';
+  const response = await alertsRoute(post('/alerts/watcher?lang='+nextLanguage, {action:'add',phrase:'budget',csrf:session.csrf}, {Cookie:'alerts_session='+session.secret}), env);
+  expect(response!.status).toBe(303);
+  expect((await DB.prepare('SELECT language FROM alert_accounts').first<any>()).language).toBe(language==='en'?'es':'en');
+  mock.restore();
+ });
+});
