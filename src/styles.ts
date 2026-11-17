@@ -1,5 +1,7 @@
 export const css = `
 .lighter{font-size:.85rem;overflow-wrap:anywhere}.lighter summary{cursor:pointer;padding:.6rem 0;min-height:44px}.lighter summary:focus-visible{outline:2px solid currentColor}.lighter .opened,.lighter[open] .closed{display:none}.lighter[open] .opened{display:inline}
+.lighter-stats{margin:28px 0}.lighter-stats p,.lighter-stats h3,.lighter-stats a{overflow-wrap:anywhere}.lighter-stats .take{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:8px 0}.lighter-stats summary{cursor:pointer;min-height:44px;padding:8px 0}
+@media(max-width:390px){.lighter-stats .source{flex-direction:column;align-items:flex-start;gap:6px}.lighter-stats{margin:20px 0}}
 
 .island-now{margin:24px 0;padding:16px;background:var(--soft);border-radius:4px}.island-now>div{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.island-now a{flex:1 1 220px;min-width:0;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:4px;font-size:13px;overflow-wrap:anywhere}.island-now small{display:block;color:var(--muted);margin-top:6px}
 
