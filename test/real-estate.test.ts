@@ -6,7 +6,6 @@ import { feeds } from '../src/ingest';
 import { parseFeed, type Item } from '../src/parse';
 import { redditTopic } from '../src/reddit';
 import renderer from '../src/render';
-import { propertyListings } from '../src/sections';
 import { sources } from '../src/sources';
 import { sitemapRoute, type SyndicationEnv } from '../src/syndication';
 import { clickRoute, totalClicks, type ClickEnv } from '../src/trending';
@@ -66,7 +65,11 @@ it('shows Real Estate in the More menu and on its own Spanish and English pages'
  expect(spanish).toContain('name="source"');
  expect(spanish).toContain(':root[data-theme=dark]');
  expect(spanish).toContain('@media(max-width:480px)');
- expect(spanish).toContain('.listings{max-width:100%');
+ expect(spanish).not.toContain('.listings');
+ expect(spanish).not.toContain('clasificadosonline.com');
+ expect(spanish).not.toContain('Anuncios de propiedades');
+ expect(spanish).not.toContain('>En venta</a>');
+ expect(spanish).not.toContain('>En alquiler</a>');
  expect(spanish).toContain('.tabs{display:flex;flex-wrap:wrap');
  const english = await renderer.fetch(new Request('https://news.dev.pr/s/bienes-raices?lang=en'), data).text();
  expect(english).toContain('<html lang="en">');
@@ -76,6 +79,10 @@ it('shows Real Estate in the More menu and on its own Spanish and English pages'
  expect(english).toContain('Coastal mansion in Rio Grande sells for $27 million');
  expect(english).toContain(bahiaTitle);
  expect(english).not.toContain('>Mansión costera en Río Grande');
+ expect(english).not.toContain('clasificadosonline.com');
+ expect(english).not.toContain('Property listings');
+ expect(english).not.toContain('>For sale</a>');
+ expect(english).not.toContain('>For rent</a>');
  const unread = await renderer.fetch(new Request('https://news.dev.pr/s/bienes-raices?lang=en'), { ...data, translations: {} }).text();
  expect(unread).not.toContain('Mansión costera');
  expect(unread).toContain(bahiaTitle);
@@ -93,7 +100,7 @@ it('shows Real Estate in the More menu and on its own Spanish and English pages'
  expect(home).not.toContain('clasificadosonline.com');
 });
 
-it('paginates the section and keeps the external catalog off the article click path', async () => {
+it('paginates the section without an external property catalog', async () => {
  const items = Array.from({ length: 31 }, (_, n) => story({
   url: `https://example.com/propiedad-${n}/`, source: n % 2 ? 'endi' : 'metro', title: `Casa en venta número ${n}`, time: seen - n * 1000, originalLanguage: 'en',
  }));
@@ -101,21 +108,19 @@ it('paginates the section and keeps the external catalog off the article click p
  expect(page).toContain('Casa en venta número 30');
  expect(page).not.toContain('Casa en venta número 0');
  expect(page).toContain('/s/bienes-raices?page=1&amp;lang=en');
- expect(page).toContain('Property listings');
- expect(page).toContain('Browse listings on ClasificadosOnline. External links, not our inventory.');
- expect(page).toContain(`href="${propertyListings.sale}"`);
- expect(page).toContain(`href="${propertyListings.rent}"`);
- expect(page).toContain('>For sale</a>');
- expect(page).toContain('>For rent</a>');
+ expect(page).not.toContain('Property listings');
+ expect(page).not.toContain('Browse listings on ClasificadosOnline');
+ expect(page).not.toContain('clasificadosonline.com');
+ expect(page).not.toContain('>For sale</a>');
+ expect(page).not.toContain('>For rent</a>');
  expect(page).toContain('/click?url=' + encodeURIComponent(items[30].url));
- expect(page).not.toContain('/click?url=' + encodeURIComponent(propertyListings.sale));
- expect(page).not.toContain('/click?url=' + encodeURIComponent(propertyListings.rent));
  expect(page).not.toContain('$28.5');
  const spanish = await renderer.fetch(new Request('https://news.dev.pr/s/bienes-raices'), { items: items.slice(0, 1), translations: {}, feeds: [] }).text();
- expect(spanish).toContain('Anuncios de propiedades');
- expect(spanish).toContain('Explora anuncios en ClasificadosOnline. Enlaces externos, no nuestro inventario.');
- expect(spanish).toContain('>En venta</a>');
- expect(spanish).toContain('>En alquiler</a>');
+ expect(spanish).not.toContain('Anuncios de propiedades');
+ expect(spanish).not.toContain('Explora anuncios en ClasificadosOnline');
+ expect(spanish).not.toContain('clasificadosonline.com');
+ expect(spanish).not.toContain('>En venta</a>');
+ expect(spanish).not.toContain('>En alquiler</a>');
  const other = await renderer.fetch(new Request('https://news.dev.pr/s/policiales'), { items, translations: {}, feeds: [] }).text();
  expect(other).not.toContain('clasificadosonline.com');
  const sourcesPage = await renderer.fetch(new Request('https://news.dev.pr/fuentes'), { items: items.slice(0, 2), translations: {}, feeds: [] }).text();
@@ -123,7 +128,7 @@ it('paginates the section and keeps the external catalog off the article click p
  expect(sourcesPage).not.toContain('clasificadosonline.com');
 });
 
-it('lists the section in both sitemaps and does not count the catalog as a known article', async () => {
+it('lists the section in both sitemaps and does not count ClasificadosOnline as an article', async () => {
  const fallback = await discovery(new Request('https://news.dev.pr/sitemap.xml'))!.text();
  expect(fallback).toContain('https://news.dev.pr/s/bienes-raices');
  expect(fallback).toContain('https://news.dev.pr/s/bienes-raices?lang=en');
@@ -138,7 +143,7 @@ it('lists the section in both sitemaps and does not count the catalog as a known
  const env = { DB } as ClickEnv;
  const article = 'https://example.com/propiedad-conocida/';
  sql.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').run(article, 'endi', JSON.stringify(story({ url: article, source: 'endi', title: 'Propiedad en venta número 1' })), seen, seen, seen);
- for (const catalog of [propertyListings.sale, propertyListings.rent]) {
+ for (const catalog of ['https://www.clasificadosonline.com/RealEstate.asp', 'https://www.clasificadosonline.com/Rentals.asp']) {
   const missed = await clickRoute(new Request(`https://news.dev.pr/click?url=${encodeURIComponent(catalog)}`), env);
   expect(missed?.status).toBe(404);
  }
