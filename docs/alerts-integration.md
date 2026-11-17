@@ -235,3 +235,12 @@ original edition, including original English stories and the site's existing Red
 policy; it does not promise Spanish translations of English originals. Publisher URLs
 remain original URLs; management and unsubscribe links carry the batch language.
 No database migration or production account mutation is required.
+
+Release: source commit `30beef092bd255059f924a78e353a2da30c08e3f`, Worker
+`ad483168-e464-4619-b912-92cc7b03478c`. Coordinated exclusive release slot;
+fast-forwarded remote main from ed69e1e, verified its SHA before deploying the clean
+committed checkout using Wrangler OAuth. Validation: npm ci, 272 tests across 25 files,
+typecheck, build, and diff review. Regression tests cover both notification editions,
+delayed English translation, publication labels, HTML/text language links, signup preference
+and authenticated add-alert language changes. No live email, resend, account mutation,
+migration, bulk translation, or changes to previously delivered mail.
