@@ -60,6 +60,17 @@ describe('bilingual classification', () => {
   expect(classify('https://example.com/a/', [], 'Asesinan a un hombre dentro de una casa en Río Grande').section).toBe('policiales');
   expect(classify('https://example.com/a/', [], 'Robo a un banco en San Juan').section).toBe('policiales');
   expect(classify('https://example.com/a/', [], 'Shooting inside a home listed for sale').section).toBe('policiales');
+  expect(classify('https://example.com/a/', [], 'Incendio en una casa en venta en San Juan').section).toBe('otras');
+  expect(classify('https://example.com/a/', [], 'Robo en un apartamento en alquiler').section).toBe('policiales');
+  expect(classify('https://example.com/a/', [], 'Governor signs a housing bill after senate debate').section).toBe('politica');
+  expect(classify('https://example.com/a/', [], 'The estate sold family heirlooms at auction').section).not.toBe('bienes-raices');
+  expect(classify('https://example.com/a/', [], 'House sold out for the concert').section).not.toBe('bienes-raices');
+  expect(classify('https://example.com/a/', [], 'Alquiler de autos en el aeropuerto').section).not.toBe('bienes-raices');
+  expect(classify('https://example.com/a/', [], 'Suben los alquileres de apartamentos en Condado').section).toBe('bienes-raices');
+  expect(classify('https://example.com/a/', [], 'Oceanfront apartment for rent in Condado').section).toBe('bienes-raices');
+  expect(classify('https://example.com/a/', [], 'Se alquila apartamento en Isla Verde').section).toBe('bienes-raices');
+  expect(classify('https://example.com/a/', [], 'Se vende casa en Rincón').section).toBe('bienes-raices');
+  expect(classify('https://example.com/a/', [], 'New housing announced in Dorado').section).toBe('bienes-raices');
   expect(classify('https://example.com/a/', [], 'Irrumpieron en la vivienda y se llevaron efectivo').section).not.toBe('bienes-raices');
   expect(classify('https://example.com/a/', [], 'Incendio en una casa en San Juan deja a una familia sin hogar')).toEqual({ section: 'otras', reason: 'fallback' });
   expect(classify('https://example.com/a/', [], 'Mujer pierde a sus mascotas tras incendio en su casa')).toEqual({ section: 'otras', reason: 'fallback' });
