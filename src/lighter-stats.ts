@@ -45,7 +45,7 @@ export function readySnapshot(items: Item[], lighter: Record<string, string> | u
  for (const item of items.map(currentItem)) {
   for (const lang of ['es', 'en'] as const) {
    const text = map[key(item, lang)];
-   if (!text || !valid(text, item) || sensitive(item.title + ' ' + item.summary)) continue;
+   if (!text || !valid(text, item, lang) || sensitive(item.title + ' ' + item.summary)) continue;
    ready[lang]++;
    if (seen[lang] < EXAMPLE_CAP) {
     seen[lang]++;
@@ -94,7 +94,7 @@ export async function readLighterQueue(env: Env, now: number): Promise<QueueSnap
   for (const slot of slots) {
    const old = cache.get(slot.cacheKey) ?? null;
    const text = old?.text ?? null;
-   if (text && valid(text, slot.item)) continue;
+   if (text && valid(text, slot.item, slot.lang)) continue;
    if (text) { withheld[slot.lang]++; continue; }
    if (cacheSkips(old, now)) { (old && old.attempts >= 3 ? failed : retry)[slot.lang]++; continue; }
    pending[slot.lang]++;

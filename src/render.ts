@@ -93,7 +93,7 @@ export default {
  function card(original: Item, large = false) {
   const item = displayItem(original);
   const take=live?.lighter?.[lighterKey(original,lang)];
-  const known=!!(take&&validLighter(take,original));
+  const known=!!(take&&validLighter(take,original,lang));
   const lighter=articleEligible(original)?`<div class="lighter"><button type="button" class="lighter-ask" data-lighter-url="${escape(original.url)}" data-lighter-lang="${lang}" data-cached="${known?'1':'0'}" aria-expanded="false">${known?t('Ver la sátira guardada','Show the saved satire'):t('Pedir una sátira','Ask for a satire')}</button><p class="lighter-note" role="status" aria-live="polite"></p></div>`:'';
   const image = safeUrl(item.image)||'/fallback.svg';
   // Every outbound link runs through /click when the page is served live, so the

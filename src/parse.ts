@@ -67,6 +67,19 @@ export function detectSpanish(title: string, summaryText: string = ''): 'es' | u
  if (englishTitle === 0 && t === 0 && englishSummary === 0 && both >= 4) return 'es';
  return undefined;
 }
+/**
+ * Edition of one generated sentence, using the same function-word, morphology,
+ * and name rules as detectSpanish. Capitalized proper nouns and acronyms are
+ * not signals, so "PRITS", "WIPR", "Manatí", or "Suzanne Roig" do not decide
+ * the edition. Undefined means the sentence is not clearly one language.
+ */
+export function sentenceEdition(text: string): 'es' | 'en' | undefined {
+ const es = spanishSignals(text), en = englishSignals(text);
+ if (en >= 1 && en > es) return 'en';
+ if (es >= 2 && es > en) return 'es';
+ if (es >= 1 && en === 0 && /[áéíóúñü]/.test(text)) return 'es';
+ return undefined;
+}
 const list = (x: any): any[] => x == null ? [] : Array.isArray(x) ? x : [x];
 const str = (x: any): string => typeof x === 'string' ? x : typeof x === 'number' ? String(x) : x?.['#text'] ?? '';
 export function parseFeed(xml: string, source: Source, seen: number): Item[] {

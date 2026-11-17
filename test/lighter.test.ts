@@ -26,7 +26,7 @@ it('bounds concurrent generation, caches successes and backs off failures',async
  const sql=new DatabaseSync(':memory:');sql.exec(readFileSync('migrations/0011_lighter.sql','utf8'));sql.exec('CREATE TABLE articles(payload TEXT,published_at INTEGER)');
  sql.prepare('INSERT INTO articles VALUES(?,1)').run(JSON.stringify(item));
  const DB={prepare(query:string){let args: any[]=[];return {bind(...a:any[]){args=a;return this},async run(){return {meta:{changes:Number(sql.prepare(query).run(...args).changes)}}},async first(){return sql.prepare(query).get(...args)},async all(){return {results:sql.prepare(query).all(...args)}}}}} as unknown as D1Database;
- const run=vi.fn(async()=>({response:JSON.stringify({text:'The agency reports delays on the roads.'})}));const env={DB,AI:{run}} as unknown as Env;
+ const run=vi.fn(async(_model:string,options:{messages:{content:string}[]})=>{const english=options.messages[0].content.includes('sentence in English');return {response:JSON.stringify({text:english?'The agency reports delays on the roads.':'La agencia informa demoras en las carreteras hoy.'})};});const env={DB,AI:{run}} as unknown as Env;
  await Promise.all([generate(env,9000000),generate(env,9000000)]);expect(run).toHaveBeenCalledTimes(2);
  await generate(env,9900000);expect(run).toHaveBeenCalledTimes(2);expect(Object.keys(await read(env))).toHaveLength(2);
  const log=vi.spyOn(console,'info').mockImplementation(()=>{});
