@@ -28,8 +28,8 @@ function database(): D1Database {
  const sqlite = new DatabaseSync(':memory:');
  for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql']) sqlite.exec(readFileSync(file,'utf8'));
  const prepare = (query: string) => {
-  let args: unknown[] = [];
-  return {bind(...values: unknown[]){args=values;return this;}, async first(){return sqlite.prepare(query).get(...args) ?? null;}, async all(){return {results: sqlite.prepare(query).all(...args)};}, async run(){const result = sqlite.prepare(query).run(...args); return {meta:{changes:Number(result.changes)}};}};
+  let args: any[] = [];
+  return {bind(...values: any[]){args=values;return this;}, async first(){return sqlite.prepare(query).get(...args) ?? null;}, async all(){return {results: sqlite.prepare(query).all(...args)};}, async run(){const result = sqlite.prepare(query).run(...args); return {meta:{changes:Number(result.changes)}};}};
  };
  return {prepare, async batch(statements: Array<{run:()=>Promise<unknown>}>){return Promise.all(statements.map(s=>s.run()));}} as unknown as D1Database;
 }
@@ -124,7 +124,7 @@ it('rejects a Spanish sentence for an English view of a Spanish article and does
 it('rejects an English sentence for a Spanish view of an English article', async () => {
  const DB = database();
  await store(DB, englishStory);
- const run = vi.fn(async () => ({response: JSON.stringify({text: symposiumTake})}));
+ const run = vi.fn(async (_model: string, options: {messages:{content:string}[]}) => ({response: JSON.stringify({text: symposiumTake})}));
  const env = {DB, AI:{run}} as unknown as Env;
  const now = Date.UTC(2026, 10, 17, 18, 10, 0);
  const failed = await post(env, {url:englishStory.url, lang:'es', action:'33333333-3333-4333-8333-333333333333'}, now);
@@ -132,7 +132,7 @@ it('rejects an English sentence for a Spanish view of an English article', async
  expect(run).toHaveBeenCalledTimes(1);
  const saved = await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(englishStory,'es')).first<{text:string|null}>();
  expect(saved?.text).toBeNull();
- const prompt = run.mock.calls[0]?.[1] as {messages:{content:string}[]};
+ const prompt = run.mock.calls[0][1];
  expect(prompt.messages[0].content).toContain('must be Spanish');
  expect(JSON.parse(prompt.messages[1].content).outputLanguage).toBe('Spanish');
  expect(JSON.parse(prompt.messages[1].content).title).toBe(englishStory.title);
@@ -175,7 +175,7 @@ it('replaces only a wrong-language cache cell and will not serve it from the oth
  expect(homeHtml).toContain('Ask for a satire');
  expect(homeHtml).not.toContain(spanishTake);
  expect(run).not.toHaveBeenCalled();
- expect((await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string}>()).text).toBe(spanishTake);
+ expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string}>()).toEqual({text:spanishTake});
  const esAction = '66666666-6666-4666-8666-666666666666';
  const spanish = await post(env, {url:spanishStory.url, lang:'es', action:esAction}, now);
  expect(await spanish?.json()).toEqual({status:'ready', text:spanishTake});
@@ -186,7 +186,7 @@ it('replaces only a wrong-language cache cell and will not serve it from the oth
  expect(JSON.stringify(crossedBody)).not.toContain('capacitación');
  expect(run).not.toHaveBeenCalled();
  expect((await DB.prepare('SELECT text, attempts FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string|null;attempts:number}>())).toEqual({text:null, attempts:0});
- expect((await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first<{text:string}>()).text).toBe(spanishTake);
+ expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first<{text:string}>()).toEqual({text:spanishTake});
  const enAction = '77777777-7777-4777-8777-777777777777';
  const english = await post(env, {url:spanishStory.url, lang:'en', action:enAction}, now + 2000);
  expect(await english?.json()).toEqual({status:'ready', text:namedEnglish});
@@ -194,13 +194,13 @@ it('replaces only a wrong-language cache cell and will not serve it from the oth
  const replay = await post(env, {url:spanishStory.url, lang:'en', action:enAction}, now + 3000);
  expect(await replay?.json()).toEqual({status:'ready', text:namedEnglish});
  expect(run).toHaveBeenCalledTimes(1);
- expect((await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first<{text:string}>()).text).toBe(spanishTake);
+ expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first<{text:string}>()).toEqual({text:spanishTake});
  const quotedRow = quoted;
  await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(englishStory,'en'), quotedRow, 1, 0).run();
  await store(DB, englishStory);
  const kept = await post(env, {url:englishStory.url, lang:'en', action:'88888888-8888-4888-8888-888888888888'}, now + 4000);
  expect(await kept?.json()).toEqual({status:'unavailable'});
- expect((await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(englishStory,'en')).first<{text:string}>()).text).toBe(quotedRow);
+ expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(englishStory,'en')).first<{text:string}>()).toEqual({text:quotedRow});
  expect(run).toHaveBeenCalledTimes(1);
 });
 
@@ -218,6 +218,6 @@ it('does not count a wrong-language line as ready and does not delete an unclear
  const response = await post({DB, AI:{run}} as unknown as Env, {url:spanishStory.url, lang:'en', action:'99999999-9999-4999-8999-999999999999'}, now);
  expect(await response?.json()).toEqual({status:'unavailable'});
  expect(run).not.toHaveBeenCalled();
- expect((await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string}>()).text).toBe(ambiguous);
- expect((await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first<{text:string}>()).text).toBe(spanishTake);
+ expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string}>()).toEqual({text:ambiguous});
+ expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first<{text:string}>()).toEqual({text:spanishTake});
 });
