@@ -178,7 +178,7 @@ it('hall of fame is capped and ordered, and its page renders title, source, summ
   expect([...clicks].sort((a, b) => b - a)).toEqual(clicks); // most clicked first
   const html = await renderer.fetch(new Request('https://news.dev.pr/hall'), { items: [], translations: {}, feeds: [], hall: entries, totals: { clicks: 55, startedAt: NOW - 5 * HOUR } }).text();
   expect(html).toContain('Titular 11'); // displayed archive title (top entries, desc by clicks)
-  expect(html).toContain('https://example.com/vieja-11/'); // original link, straight to the source
+  expect(html).toContain('/click?url='+encodeURIComponent('https://example.com/vieja-11/')); // tracked original destination
   expect(html).not.toContain('https://example.com/vieja-0/'); // bounded: only the top HALL_TOP rows render
   expect(html).not.toContain('Titular 0');
   expect(html).toContain('NotiCel');
@@ -241,3 +241,31 @@ it('web analytics refresh is cached, additive-durable, and fails safe without a 
 });
 
 afterEach(() => vi.restoreAllMocks());
+
+
+it.each(['es', 'en'])('tracks Stats popular/pending and Hall links in %s through local redirects', async lang => {
+  const { sql, DB } = setup(['0001_live.sql', '0002_archive.sql', '0003_search_clicks.sql', '0008_click_totals.sql']);
+  const article = item('https://example.com/original/?a=1&b=2', 'Titular de prueba', 'noticel', NOW - 20 * DAY);
+  seed(sql, article);
+  const entry = { url: article.url, clicks: 1, item: article, translation: null, capturedAt: NOW };
+  const live = { items: [article], translations: {}, feeds: [], history: [], popular: [entry], hall: [entry] };
+  const href = '/click?url='+encodeURIComponent(article.url);
+  for (const path of ['/stats', '/hall']) {
+    const html = await renderer.fetch(new Request(`https://news.dev.pr${path}?lang=${lang}`), live).text();
+    expect(html.split(`href="${href}"`).length - 1).toBe(path === '/stats' ? 2 : 1);
+    expect(html).not.toContain('href="https://example.com/original/');
+    expect(globalRow(sql)?.clicks ?? 0).toBe(0);
+  }
+  for (const archived of [false, true]) {
+    if (archived) sql.exec('DELETE FROM articles; DELETE FROM story_ids'); // archive-only fallback
+    const head = await clickRoute(new Request('https://news.dev.pr'+href, { method: 'HEAD' }), DB, NOW);
+    expect(head?.headers.get('Location')).toBe(article.url);
+    expect(globalRow(sql)?.clicks ?? 0).toBe(archived ? 1 : 0);
+    const get = await clickRoute(new Request('https://news.dev.pr'+href), DB, NOW);
+    expect(get?.status).toBe(302);
+    expect(get?.headers.get('Location')).toBe(article.url);
+    expect(globalRow(sql)?.clicks).toBe(archived ? 2 : 1);
+  }
+  expect(perArticle(sql)).toEqual([{ url: article.url, clicks: 2 }]);
+  sql.close();
+});

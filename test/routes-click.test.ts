@@ -49,7 +49,7 @@ it('serves the hall of fame through the worker with totals and honest empty stat
   sql.prepare('DELETE FROM articles WHERE url=?').run(aged.url);
   const full = await worker.fetch(new Request('https://news.dev.pr/hall?lang=en'), env).then(r => r.text());
   expect(full).toContain('Titular viejo');
-  expect(full).toContain('https://example.com/vieja/');
+  expect(full).toContain('/click?url='+encodeURIComponent('https://example.com/vieja/'));
   expect(full).toContain('3 clicks · published more than 14 days ago');
   const method = await worker.fetch(new Request('https://news.dev.pr/hall', { method: 'POST' }), env);
   expect(method.status).toBe(405);
