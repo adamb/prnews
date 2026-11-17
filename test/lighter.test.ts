@@ -63,3 +63,16 @@ it('decodes fenced and structured model JSON without relaxing text validation',(
  expect(()=>decode('Unstructured prose')).toThrow();
  for(const title of ['Hallan el cadáver de un hombre','Muere conductor tras choque vehicular'])expect(sensitive(title)).toBe(true);
 });
+
+it('parses the sanitized real November 17 Workers AI responses',()=>{
+ // Only public response.text retained from the two budgeted 13:30 UTC calls.
+ const original={...item,title:'Maestros realizan hoy manifestaciones en escuelas: “Hay unos reclamos puntuales”',summary:'Maestros de distintas escuelas públicas de Puerto Rico comenzaron este martes una nueva jornada de manifestaciones para exigir mejoras salariales, el pago de deudas pendientes y atención a sus reclamos de retiro, como parte de un plan de lucha que…'};
+ for(const response of [
+  {text:'Maestros en Puerto Rico realizan manifestaciones para exigir mejoras salariales y pago de deudas.'},
+  {text:'Teachers in Puerto Rico are protesting for salary improvements and debt payment.'},
+ ]) {
+  expect(decode(response)).toBe(response.text);
+  expect(valid(decode(response),original)).toBe(true);
+  expect(sensitive(original.title+' '+original.summary)).toBe(false);
+ }
+});
