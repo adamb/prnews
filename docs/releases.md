@@ -1,5 +1,18 @@
 # Releases
 
+## 2026-11-17 — On-demand satire and lighter stats
+
+- Deployed source: 5bbcff1c0245884698e0adbab3bbc8c0af0240a1. This notes commit is later and was not deployed.
+- Cloudflare Worker version: 22419e8d-f0af-437c-95bc-10634cf3e2b6.
+- Fast-forward of https://github.com/adamb/prnews/pull/3 onto main after the Bienes raíces release (source bd568c7ad13d78765981c3aaa848e0c92cc0904e, Worker faa154ee-17b0-41ac-8ecc-565744140eeb). Remote main matched 5bbcff1 before `npx wrangler deploy`. OAuth session used; no token printed. https://github.com/adamb/prnews/pull/1 is included in that history and was not deployed on its own.
+- Bienes raíces classifier, catalog, styles, and navigation stayed: top tabs remain política, negocios, and policiales; Bienes raíces stays in the more menu. ClasificadosOnline sale and rent stay raw external hrefs on `/s/bienes-raices` only.
+- HTML cache name is `prnews-html-v24`, so the previous `prnews-html-v21` pages (catalog, no satire button) are not reused. On-demand cache version is `lighter-2`.
+- Validation on 5bbcff1: `npm ci` (zero vulnerabilities), 29 files / 300 tests, typecheck, and wrangler dry-run build.
+- Remote D1 journal had stopped at 0010 while `lighter_cache` (12 rows) and `lighter_slots` (6 rows) already existed. `0011_lighter.sql` was applied idempotently and left those rows in place. `0012_lighter_stats.sql` then added `lighter_stats`, `lighter_actions`, `lighter_budget`, `lighter_inflight` (2 rows), and `lighter_rate`. The ledger started at zero at 2026-11-17 10:31 AM AST. No lighter-1 generation backfill. Migrations 0001 and the seed/import scripts were not replayed.
+- Public HTTP checks (curl, not a browser): `/` and `/s/bienes-raices` in Spanish and English returned 200; the homepage had 47 satire buttons; sale and rent catalog hrefs were present. `GET /api/lighter` returned 405.
+- One production `POST /api/lighter` (Spanish, Metro public-employee training story) returned 200 with the line "Ahora los empleados públicos podrán aprender a proteger sus archivos de café virtual en la nube." The same action id returned that same JSON and did not spend a second model call. The homepage HTML did not contain the line. After the 60-second page cache, one card was `data-cached="1"` and 46 were `data-cached="0"`.
+- Before that POST, combined, Spanish, and English stats were all zero since 10:31 AM AST. The public `/stats` page stayed at zero for about 60 seconds because the worker cache had stored the earlier HTML. After that window, combined and Spanish showed 1 button request, 0 cache hits, 1 attempt, 1 stored generation, and 0 failures. English stayed at zero. The D1 ledger matched. The click section did not gain those counts. Daily model use for this check: 1 of 24. No production `GET /click` and no email.
+
 ## 2026-11-17 — Bienes raíces section
 
 - Deployed source: bd568c7ad13d78765981c3aaa848e0c92cc0904e.
