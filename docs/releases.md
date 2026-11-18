@@ -1,5 +1,16 @@
 # Releases
 
+## 2026-11-18 — WAPA image rate limits retry on the next run
+
+- Deployed source: 3b4a4ae7d84a9699b5ce955d76c5eb0588e15757. This notes commit is later and was not deployed.
+- Cloudflare Worker version: 8ad3cc6f-059b-4445-87df-8e6a6086e307 (version created 2026-11-18 21:48:46 UTC, deployment created 2026-11-18 21:48:46 UTC, 100%). Fast-forward of https://github.com/adamb/prnews/pull/6 onto main (`638543f..3b4a4ae`). Remote main matched 3b4a4ae before `npx wrangler deploy`. OAuth session used; no token printed. No migration. The 12-page / 15-minute cap, newest-per-source order, metadata-only lookup, feed-image precedence, and R2 copy rules were not changed.
+- A page with no `og:image` still uses the hour-scale backoff and stops after 4 attempts. A `429` or `503` keeps that attempt cap but waits 15 minutes, or `Retry-After` when that falls between 15 and 60 minutes. Rows already parked longer than 60 minutes for those statuses are eligible on the next run.
+- The reported card is WAPA, “Jennifer Barreto nos cuenta algunos retos que enfrentó en su juventud”, https://wapa.tv/programas/losetodo/jennifer-barreto-nos-cuenta-algunos-retos-que-enfrent-en-su-juventud/article_8f47299f-242f-4d6a-a701-c3c4d082758c.html, `pubDate` Wed, 18 Nov 2026 16:48 -0400. The live RSS item has title, description, and link, and no `enclosure`. The article HTML has `og:image` and `twitter:image` for `…/75f7b84f-2430-5454-9ab6-4969ab193cb4/6afe1078083c6.image.png`. Before the fix the payload image was empty and `image_enrich_queue` had attempts 1, error `Article page unavailable or not HTML (429, text/plain)`, `next_attempt` 2026-11-18 23:00:15 UTC.
+- The 22:00 UTC cron, on the new worker, stored that `og:image` and removed the queue row. `archive_images` saved it at 2026-11-18 22:00:14 UTC as `images/ac53d31ce3e081f5e8b25030131c54bbdf742551edb91bfb7ed8404c0b4f5e76`, `image/png`, 596710 bytes. The same byte count and PNG signature came back from the publisher URL and from `GET /archive/images/ac53d31ce3e081f5e8b25030131c54bbdf742551edb91bfb7ed8404c0b4f5e76` (`content-type: image/png`, `content-length: 596710`). No `GET /click`.
+- `GET /?lang=es` at 2026-11-18 22:04:03 UTC returned 200, `cache-control: public, max-age=60`, and that card’s `img src` was the publisher PNG. The `onerror` handler still names `/fallback.svg`. WAPA articles with an empty image: 0.
+- The same 429 backlog also included three other WAPA URLs. Two already had `og:image` URLs before this deploy, after their earlier wait elapsed. The fianza story was still parked and received its own page `og:image` on the 22:00 run. One El Nuevo Día queue row remains, attempts 1, error `No usable og:image metadata from publisher`, for an article whose payload already has a feed image. That row is not selected while the image is present.
+- Validation on 3b4a4ae, before deploy: `npm ci` reported 0 vulnerabilities. `npm test` was 31 files / 316 tests, then typecheck and a wrangler dry-run build (977.41 KiB / gzip 286.45 KiB).
+
 ## 2026-11-18 — Satire retry tells you when another press can run
 
 - Deployed source: 25150ec81318127fb3b1a7a4626e4c8c308054bf. This notes commit is later and was not deployed.
