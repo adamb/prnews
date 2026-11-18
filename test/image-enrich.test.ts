@@ -106,6 +106,67 @@ it('rejects unsafe or non-HTML targets without fetching them, and never queues c
  expect(row.error).toContain('not HTML');
 });
 
+it('retries a publisher 429 on the next 15-minute run and then stores that page og:image', async () => {
+ const DB = database(), now = Date.parse('2026-11-18T21:00:15Z');
+ const url = 'https://wapa.tv/programas/losetodo/jennifer-barreto/article_8f47299f-242f-4d6a-a701-c3c4d082758c.html';
+ await insert(DB, item({url, source: 'wapa', title: 'Jennifer Barreto nos cuenta algunos retos que enfrentó en su juventud', time: now - 12 * 60000}));
+ let calls = 0;
+ vi.stubGlobal('fetch', async () => {
+  calls++;
+  if (calls === 1) return new Response('slow down', {status: 429, headers: {'Content-Type': 'text/plain', 'Retry-After': '10'}});
+  return new Response('<html><head><meta property="og:image" content="https://bloximages.example/wapa.png?resize=1200%2C630"></head></html>', {headers: {'Content-Type': 'text/html'}});
+ });
+ const env = {DB} as unknown as Env;
+ await enrichImages(env, now);
+ const parked = await DB.prepare('SELECT attempts,next_attempt,error FROM image_enrich_queue WHERE url=?').bind(url).first<any>();
+ expect(parked.attempts).toBe(1);
+ expect(parked.error).toContain('429');
+ expect(parked.next_attempt).toBe(now + 15 * 60 * 1000); // short Retry-After still waits for the next cron, not two hours
+ await enrichImages(env, now + 14 * 60 * 1000);
+ expect(calls).toBe(1);
+ await enrichImages(env, now + 15 * 60 * 1000);
+ expect((await payloadOf(DB, url)).image).toBe('https://bloximages.example/wapa.png?resize=1200%2C630');
+ expect((await DB.prepare('SELECT COUNT(*) AS n FROM image_enrich_queue').first<any>()).n).toBe(0);
+});
+
+it('picks up a rate-limited article the old multi-hour backoff had parked', async () => {
+ const DB = database(), now = Date.parse('2026-11-18T21:40:00Z');
+ const url = 'https://wapa.tv/programas/losetodo/jennifer-barreto/article_8f47299f-242f-4d6a-a701-c3c4d082758c.html';
+ await insert(DB, item({url, source: 'wapa', time: now - 60000}));
+ await DB.prepare('INSERT INTO image_enrich_queue(url,attempts,next_attempt,error) VALUES(?,?,?,?)')
+  .bind(url, 1, now + 2 * 3600000, 'Article page unavailable or not HTML (429, text/plain)').run();
+ vi.stubGlobal('fetch', async () => new Response('<meta property="og:image" content="https://bloximages.example/jennifer.png">', {headers: {'Content-Type': 'text/html'}}));
+ await enrichImages({DB} as unknown as Env, now);
+ expect((await payloadOf(DB, url)).image).toBe('https://bloximages.example/jennifer.png');
+ // A page that truly has no image keeps its hour-scale backoff and is not pulled forward.
+ const plain = 'https://noticel.com/sin-imagen-parked/';
+ await insert(DB, item({url: plain}));
+ await DB.prepare('INSERT INTO image_enrich_queue(url,attempts,next_attempt,error) VALUES(?,?,?,?)')
+  .bind(plain, 1, now + 2 * 3600000, 'No usable og:image metadata from publisher').run();
+ const calls = vi.fn(async () => new Response('<html></html>', {headers: {'Content-Type': 'text/html'}}));
+ vi.stubGlobal('fetch', calls);
+ await enrichImages({DB} as unknown as Env, now);
+ expect(calls).not.toHaveBeenCalled();
+ expect((await DB.prepare('SELECT next_attempt FROM image_enrich_queue WHERE url=?').bind(plain).first<any>()).next_attempt).toBe(now + 2 * 3600000);
+});
+
+it('honors a Retry-After inside the 15–60 minute window and caps a multi-hour one', async () => {
+ const DB = database(), now = Date.parse('2026-11-18T21:00:15Z');
+ const waited = 'https://wapa.tv/a/';
+ const capped = 'https://wapa.tv/b/';
+ await insert(DB, item({url: waited, source: 'wapa'}));
+ await insert(DB, item({url: capped, source: 'wapa', time: Date.parse('2026-11-18T20:00:00Z')}));
+ vi.stubGlobal('fetch', async (input: unknown) => {
+  const href = String(input);
+  const retry = href.endsWith('/b/') ? '7200' : '1800';
+  return new Response('busy', {status: 503, headers: {'Content-Type': 'text/plain', 'Retry-After': retry}});
+ });
+ await enrichImages({DB} as unknown as Env, now);
+ const hour = 60 * 60 * 1000;
+ expect((await DB.prepare('SELECT next_attempt FROM image_enrich_queue WHERE url=?').bind(waited).first<any>()).next_attempt).toBe(now + 30 * 60 * 1000);
+ expect((await DB.prepare('SELECT next_attempt FROM image_enrich_queue WHERE url=?').bind(capped).first<any>()).next_attempt).toBe(now + hour);
+});
+
 it('resolves a relative og:image against the publisher page and keeps enrichment across rescans', async () => {
  const DB = database(), now = Date.now();
  await insert(DB, item({ url: 'https://metro.pr/historia/' }));

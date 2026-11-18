@@ -22,7 +22,22 @@ const CONCURRENCY = 2;
 /** A publisher without an image exhausts its attempts and is then left to fall back. */
 const MAX_ATTEMPTS = 4;
 const nextDelay = (attempts: number) => Math.min(24 * 3600000, 3600000 * 2 ** attempts);
+/** 429/503 is the publisher asking us to wait, not a page without an image.
+ * Retry on a later 15-minute run. Honor Retry-After inside 15–60 minutes. */
+const TRANSIENT_RETRY = 15 * 60 * 1000;
+const TRANSIENT_CAP = 60 * 60 * 1000;
 const HTML_TYPES = new Set(['text/html', 'application/xhtml+xml']);
+const YEAR = 365 * 86400000;
+
+/** Retry-After as a delay from now. HTTP-date is converted with the local clock;
+ * the scheduler then applies that delay to its own `now`. */
+function retryDelayMs(header: string | null): number | undefined {
+ if (!header) return undefined;
+ const seconds = Number(header);
+ if (Number.isFinite(seconds)) return Math.max(0, seconds) * 1000;
+ const when = Date.parse(header);
+ return Number.isFinite(when) ? when - Date.now() : undefined;
+}
 
 /** Ordered og:image/twitter:image metadata URLs from the page's <meta> tags.
  * Entity decoding must handle double-encoded publishers (raw `&amp;#38;` seen on
@@ -41,10 +56,20 @@ export function extractImageCandidates(html: string): string[] {
  return candidates;
 }
 
-/** Streams at most PAGE_READ_LIMIT bytes of the article page; redirects are followed. */
+/** Streams at most PAGE_READ_LIMIT bytes of the article page; redirects are followed.
+ * 429/503 carries retryIn so the queue waits for the next run instead of the
+ * multi-hour "no image" backoff. */
 async function fetchPage(url: string): Promise<string> {
  const response = await fetch(url, {headers: {'User-Agent': 'news.dev.pr/1.0 (+https://news.dev.pr/about)'}, signal: AbortSignal.timeout(PAGE_TIMEOUT)});
  const type = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+ if (response.status === 429 || response.status === 503) {
+  const retryIn = retryDelayMs(response.headers.get('retry-after'));
+  await response.body?.cancel();
+  const error = new Error(`Article page unavailable or not HTML (${response.status}, ${type})`) as Error & {transient: true; retryIn?: number};
+  error.transient = true;
+  if (retryIn !== undefined) error.retryIn = retryIn;
+  throw error;
+ }
  if (!response.ok || !HTML_TYPES.has(type)) {await response.body?.cancel(); throw new Error(`Article page unavailable or not HTML (${response.status}, ${type})`);}
  if (!response.body) throw new Error('Empty article response');
  const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let length = 0;
@@ -68,7 +93,16 @@ async function release(row: {url: string}, env: Env) {
 async function fail(row: {url: string; attempts: number}, env: Env, now: number, message: string) {
  const attempts = row.attempts + 1;
  await env.DB.prepare('UPDATE image_enrich_queue SET attempts=?,next_attempt=?,error=? WHERE url=?')
-  .bind(attempts, attempts >= MAX_ATTEMPTS ? now + 365 * 86400000 : now + nextDelay(attempts), message.slice(0, 300), row.url).run();
+  .bind(attempts, attempts >= MAX_ATTEMPTS ? now + YEAR : now + nextDelay(attempts), message.slice(0, 300), row.url).run();
+}
+
+/** Rate limit: same four-attempt cap, but the wait is the next cron (or Retry-After), not hours. */
+async function failTransient(row: {url: string; attempts: number}, env: Env, now: number, message: string, retryIn?: number) {
+ const attempts = row.attempts + 1;
+ const requested = now + (retryIn ?? TRANSIENT_RETRY);
+ const wait = Math.min(now + TRANSIENT_CAP, Math.max(now + TRANSIENT_RETRY, requested));
+ await env.DB.prepare('UPDATE image_enrich_queue SET attempts=?,next_attempt=?,error=? WHERE url=?')
+  .bind(attempts, attempts >= MAX_ATTEMPTS ? now + YEAR : wait, message.slice(0, 300), row.url).run();
 }
 
 /** Processes the queue: enqueue recent image-less articles, then bounded page fetches. */
@@ -87,6 +121,10 @@ export async function enrichImages(env: Env, now: number = Date.now()) {
    AND a.source NOT IN ('reddit_puertorico','nimb')
    AND NOT EXISTS (SELECT 1 FROM image_enrich_queue q WHERE q.url=a.url AND q.attempts>=?)
    ON CONFLICT(url) DO NOTHING`).bind(now - 14 * 86400000, MAX_ATTEMPTS).run();
+  // A 429/503 used to wait hours, longer than any wait this scheduler still
+  // chooses (15–60 minutes). Those parked rows are due on this run. A wait we
+  // just scheduled inside the cap is left alone, including Retry-After.
+  await env.DB.prepare(`UPDATE image_enrich_queue SET next_attempt=? WHERE attempts<? AND next_attempt>? AND (error LIKE 'Article page unavailable or not HTML (429%' OR error LIKE 'Article page unavailable or not HTML (503%')`).bind(now, MAX_ATTEMPTS, now + TRANSIENT_CAP).run();
   const rows = (await env.DB.prepare(`WITH ready AS (SELECT q.url,q.attempts,a.published_at, ROW_NUMBER() OVER (PARTITION BY a.source ORDER BY a.published_at DESC,q.url) AS source_rank FROM image_enrich_queue q JOIN articles a USING(url) WHERE q.next_attempt<=? AND q.attempts<? AND COALESCE(json_extract(a.payload,'$.image'),'')='') SELECT url,attempts FROM ready ORDER BY source_rank,published_at DESC,url LIMIT ?`).bind(now, MAX_ATTEMPTS, PER_RUN).all<{url: string; attempts: number}>()).results;
   let next = 0, enriched = 0, failed = 0;
   await Promise.all(Array.from({length: CONCURRENCY}, async() => {
@@ -118,7 +156,13 @@ export async function enrichImages(env: Env, now: number = Date.now()) {
      else {failed++; await fail(row, env, now, 'No usable og:image metadata from publisher');}
     } catch (error) {
      failed++;
-     try {await fail(row, env, now, String(error instanceof Error ? error.message : error));}
+     const transient = error instanceof Error && (error as {transient?: boolean}).transient === true;
+     const retryIn = error instanceof Error ? (error as {retryIn?: number}).retryIn : undefined;
+     try {
+      const message = String(error instanceof Error ? error.message : error);
+      if (transient) await failTransient(row, env, now, message, retryIn);
+      else await fail(row, env, now, message);
+     }
      catch { /* queue row rotated away */ }
     }
    }
