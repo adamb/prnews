@@ -158,9 +158,9 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
-  // v25 drops v24 pages. Those pages clamp the satire note and still include the
-  // Bienes raíces catalog aside. 60s response TTL still applies. On-demand keys stay lighter-2.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v25') : undefined;
+  // v26 drops v25 pages. Those pages offer an immediate satire retry during cooldown.
+  // 60s response TTL still applies. On-demand keys stay lighter-2.
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v26') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);

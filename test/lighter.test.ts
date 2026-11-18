@@ -65,6 +65,8 @@ import {decode} from '../src/lighter';
 it('decodes fenced and structured model JSON without relaxing text validation',()=>{
  expect(decode('```json\n{"text":"An alternative summary."}\n```')).toBe('An alternative summary.');
  expect(decode({text:'An alternative summary.'})).toBe('An alternative summary.');
+ expect(decode({text:{sentence:'An alternative summary.'}})).toBe('An alternative summary.');
+ expect(decode('{"text":{"content":"An alternative summary."}}')).toBe('An alternative summary.');
  expect(()=>decode('Unstructured prose')).toThrow();
  for(const title of ['Hallan el cadáver de un hombre','Muere conductor tras choque vehicular'])expect(sensitive(title)).toBe(true);
 });

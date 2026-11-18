@@ -110,9 +110,15 @@ it('records a failed attempt once and does not count a second press during backo
  const run = vi.fn(async () => { throw new Error('model down'); });
  const env = {DB, AI:{run}} as unknown as Env;
  const failed = await post(env, {url:item.url, lang:'en', action});
- expect(await failed.json()).toEqual({status:'unavailable'});
+ const failedBody = await failed.json() as {status:string; retry_after:number};
+ expect(failedBody.status).toBe('cooldown');
+ expect(failedBody.retry_after).toBe(3600);
+ expect(JSON.stringify(failedBody)).not.toContain('model down');
  const retry = await post(env, {url:item.url, lang:'en', action:'55555555-5555-4555-8555-555555555555'});
- expect(await retry.json()).toEqual({status:'unavailable'});
+ const retryBody = await retry.json() as {status:string; retry_after:number};
+ expect(retryBody.status).toBe('cooldown');
+ expect(retryBody.retry_after).toBeGreaterThan(3500);
+ expect(retryBody.retry_after).toBeLessThanOrEqual(3600);
  expect(run).toHaveBeenCalledTimes(1);
  const all = (await totals(DB)).results.find(row => row.scope==='all');
  expect(all).toMatchObject({interactions:2, cache_hits:0, attempts:1, generations:0, failures:1});
@@ -183,13 +189,15 @@ it('stops at 60 new presses in one UTC minute and at three attempts', async () =
  const failing = vi.fn(async () => { throw new Error('model down'); });
  const failEnv = {DB:fresh, AI:{run:failing}} as unknown as Env;
  let clock = Date.UTC(2026, 10, 17, 0, 30, 0);
+ const bodies: {status:string; retry_after?:number}[] = [];
  for (let attempt = 1; attempt <= 3; attempt++) {
   const response = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:item.url, lang:'es', action:`00000000-0000-4000-8000-${String(100+attempt).padStart(12,'0')}`})}), failEnv, clock);
-  expect(await response?.json()).toEqual({status:'unavailable'});
+  bodies.push(await response?.json() as {status:string; retry_after?:number});
   clock += 5 * 3600 * 1000;
  }
+ expect(bodies).toEqual([{status:'cooldown', retry_after:3600},{status:'cooldown', retry_after:7200},{status:'exhausted'}]);
  const stopped = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:item.url, lang:'es', action:'00000000-0000-4000-8000-000000000104'})}), failEnv, clock);
- expect(await stopped?.json()).toEqual({status:'unavailable'});
+ expect(await stopped?.json()).toEqual({status:'exhausted'});
  expect(failing).toHaveBeenCalledTimes(3);
  const spent = await fresh.prepare('SELECT calls FROM lighter_budget').first<{calls:number}>();
  expect(spent?.calls).toBe(3);

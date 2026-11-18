@@ -108,14 +108,14 @@ it('rejects a Spanish sentence for an English view of a Spanish article and does
  const failed = await post(env, {url:spanishStory.url, lang:'en', action:'11111111-1111-4111-8111-111111111111'}, now);
  expect(failed?.status).toBe(200);
  const failedBody = await failed?.json();
- expect(failedBody).toEqual({status:'unavailable'});
+ expect(failedBody).toEqual({status:'cooldown', retry_after:3600});
  expect(JSON.stringify(failedBody)).not.toContain('ahora ofrece');
  expect(run).toHaveBeenCalledTimes(1);
  const row = await DB.prepare('SELECT text, attempts FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string|null;attempts:number}>();
  expect(row?.text).toBeNull();
  expect(row?.attempts).toBe(1);
  const again = await post(env, {url:spanishStory.url, lang:'en', action:'22222222-2222-4222-8222-222222222222'}, now + 1000);
- expect(await again?.json()).toEqual({status:'unavailable'});
+ expect(await again?.json()).toEqual({status:'cooldown', retry_after:3599});
  expect(run).toHaveBeenCalledTimes(1);
  const totals = await DB.prepare("SELECT failures, generations, attempts FROM lighter_stats WHERE scope='en'").first<{failures:number;generations:number;attempts:number}>();
  expect(totals).toEqual({failures:1, generations:0, attempts:1});
@@ -128,7 +128,7 @@ it('rejects an English sentence for a Spanish view of an English article', async
  const env = {DB, AI:{run}} as unknown as Env;
  const now = Date.UTC(2026, 10, 17, 18, 10, 0);
  const failed = await post(env, {url:englishStory.url, lang:'es', action:'33333333-3333-4333-8333-333333333333'}, now);
- expect(await failed?.json()).toEqual({status:'unavailable'});
+ expect(await failed?.json()).toEqual({status:'cooldown', retry_after:3600});
  expect(run).toHaveBeenCalledTimes(1);
  const saved = await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(englishStory,'es')).first<{text:string|null}>();
  expect(saved?.text).toBeNull();
@@ -199,7 +199,7 @@ it('replaces only a wrong-language cache cell and will not serve it from the oth
  await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(englishStory,'en'), quotedRow, 1, 0).run();
  await store(DB, englishStory);
  const kept = await post(env, {url:englishStory.url, lang:'en', action:'88888888-8888-4888-8888-888888888888'}, now + 4000);
- expect(await kept?.json()).toEqual({status:'unavailable'});
+ expect(await kept?.json()).toEqual({status:'exhausted'});
  expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(englishStory,'en')).first<{text:string}>()).toEqual({text:quotedRow});
  expect(run).toHaveBeenCalledTimes(1);
 });
@@ -216,7 +216,7 @@ it('does not count a wrong-language line as ready and does not delete an unclear
  const run = vi.fn();
  const now = Date.UTC(2026, 10, 17, 18, 40, 0);
  const response = await post({DB, AI:{run}} as unknown as Env, {url:spanishStory.url, lang:'en', action:'99999999-9999-4999-8999-999999999999'}, now);
- expect(await response?.json()).toEqual({status:'unavailable'});
+ expect(await response?.json()).toEqual({status:'exhausted'});
  expect(run).not.toHaveBeenCalled();
  expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string}>()).toEqual({text:ambiguous});
  expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first<{text:string}>()).toEqual({text:spanishTake});

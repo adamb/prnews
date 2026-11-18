@@ -44,12 +44,27 @@ export function valid(text:unknown,i:Item,lang?:string):text is string {
  if(lang==='es'||lang==='en')return sentenceEdition(text)===lang;
  return true;
 }
+/** One sentence from a string, a `{text}` object, or a nested object. A non-string stays invalid. */
+function unwrapText(value:unknown, depth=0):unknown {
+ if(typeof value==='string'||value==null||depth>3)return value;
+ if(typeof value!=='object'||Array.isArray(value))return value;
+ const record=value as Record<string,unknown>;
+ if('text' in record)return unwrapText(record.text, depth+1);
+ for(const name of ['sentence','satire','content'] as const) if(typeof record[name]==='string')return record[name];
+ return value;
+}
 export function decode(response:unknown):unknown {
  if(typeof response==='string') {
   const clean=response.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
-  return JSON.parse(clean)?.text;
+  return unwrapText(JSON.parse(clean));
  }
- return response && typeof response==='object' ? (response as {text?:unknown}).text : undefined;
+ if(response&&typeof response==='object')return unwrapText(response);
+ return undefined;
+}
+/** Workers AI returns `{response: string|object}`. A bare object is accepted too. */
+function modelOutput(output:unknown):unknown {
+ if(output&&typeof output==='object'&&'response' in output)return decode((output as {response?:unknown}).response);
+ return decode(output);
 }
 /** Original satire instructions. Not a request to copy any existing publication. */
 export function satirePrompt(lang:string){
@@ -99,9 +114,9 @@ export async function generate(env:Env,now:number){
    calls++;
    let phase:'model'|'decode'|'save'='model';
    try{
-    const output=await env.AI.run(MODEL,modelInput(lang,i)) as {response?:unknown};
+    const output=await env.AI.run(MODEL,modelInput(lang,i));
     phase='decode';
-    const text=decode(output.response);
+    const text=modelOutput(output);
     phase='save';
     if(valid(text,i,lang))await env.DB.prepare('UPDATE lighter_cache SET text=? WHERE key=?').bind(text.trim(),k).run();
     else console.info('lighter_result', {lang,status: text===''?'abstained':'validation_rejected'});
@@ -155,12 +170,27 @@ async function reserveSlot(env:Env, now:number){
 async function releaseSlot(env:Env, slot:{id:number;until:number}|null){
  if(slot)await env.DB.prepare('UPDATE lighter_inflight SET until_ms=0 WHERE id=? AND until_ms=?').bind(slot.id, slot.until).run();
 }
-function block(old:CacheRow|null, now:number):'ready'|'pending'|'stop'|'open'{
- if(old?.text)return 'ready';
- if(!old)return 'open';
- if(old.attempts>=3)return 'stop';
- if(old.next_try>now)return old.next_try-now<=PENDING_WINDOW_MS?'pending':'stop';
- return 'open';
+/** Public wait, in seconds. The longest designed cooldown is 2 hours; the third attempt is exhausted instead. */
+function retryAfter(until:number, now:number){
+ return Math.min(4*3600, Math.max(1, Math.ceil((until-now)/1000)));
+}
+type Hold={status:'pending'}|{status:'cooldown';retry_after:number}|{status:'exhausted'};
+/** Why this press must not call the model. Null means a new attempt is still allowed. */
+function hold(old:CacheRow|null, now:number):Hold|null {
+ if(old?.text||old&&old.attempts>=3)return {status:'exhausted'};
+ if(old&&old.next_try>now){
+  if(old.next_try-now<=PENDING_WINDOW_MS)return {status:'pending'};
+  return {status:'cooldown', retry_after:retryAfter(old.next_try, now)};
+ }
+ return null;
+}
+function holdResponse(decision:Hold):Response {
+ if(decision.status==='pending')return json({status:'pending'},202);
+ return json(decision);
+}
+function failedAttempt(previousAttempts:number, backoffAt:number, now:number):Response {
+ if(previousAttempts+1>=3)return json({status:'exhausted'});
+ return json({status:'cooldown', retry_after:retryAfter(backoffAt, now)});
 }
 async function loadStored(env:Env, articleUrl:string):Promise<Item|null>{
  const row=await env.DB.prepare('SELECT payload FROM articles WHERE url=?').bind(articleUrl).first<{payload:string}>();
@@ -224,8 +254,8 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
   if(await remembered(env, action)){
    const hit=await cachedText(env, item, lang);
    if(hit.text)return json({status:'ready',text:hit.text});
-   const state=block(hit.row, now);
-   return json({status:state==='pending'?'pending':'unavailable'}, state==='pending'?202:200);
+   const replay=hold(hit.row, now);
+   return replay?holdResponse(replay):json({status:'unavailable'});
   }
   if(!(await allowRate(env, now)))return json({status:'rate'},429);
   const inserted=await env.DB.prepare('INSERT INTO lighter_actions(action_id, created_at) VALUES(?,?) ON CONFLICT(action_id) DO NOTHING').bind(action, now).run();
@@ -240,10 +270,10 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
    console.info('lighter_result',{lang,status:'cache'});
    return json({status:'ready',text:hit.text});
   }
-  const state=block(hit.row, now);
-  if(state==='pending'||state==='stop'){
+  const decision=hold(hit.row, now);
+  if(decision){
    await addStats(env, lang, {interactions:1}, now);
-   return json({status:state==='pending'?'pending':'unavailable'}, state==='pending'?202:200);
+   return holdResponse(decision);
   }
   await addStats(env, lang, {interactions:1}, now);
   const cacheKey=key(item, lang);
@@ -254,8 +284,8 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
     await addStats(env, lang, {cache_hits:1}, now);
     return json({status:'ready',text:again.text});
    }
-   const reason=block(again.row, now);
-   return json({status:reason==='pending'?'pending':'unavailable'}, reason==='pending'?202:200);
+   const reason=hold(again.row, now);
+   return reason?holdResponse(reason):json({status:'unavailable'});
   }
   let day='';
   let slot:{id:number;until:number}|null=null;
@@ -274,9 +304,9 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
    try{
     await addStats(env, lang, {attempts:1}, now);
     called=true;
-    const output=await withTimeout(env.AI.run(MODEL,modelInput(lang,item)) as Promise<{response?:unknown}>);
+    const output=await withTimeout(Promise.resolve(env.AI.run(MODEL,modelInput(lang,item))));
     phase='decode';
-    const text=decode(output.response);
+    const text=modelOutput(output);
     phase='save';
     if(valid(text, item, lang)){
      await env.DB.prepare('UPDATE lighter_cache SET text=? WHERE key=?').bind(text.trim(), cacheKey).run();
@@ -289,19 +319,20 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
     await addStats(env, lang, {failures:1}, now);
     recorded=true;
     console.info('lighter_result',{lang,status:text===''?'abstained':'validation_rejected'});
-    return json({status:'unavailable'});
+    return failedAttempt(hit.row?.attempts??0, backoffAt, now);
    }catch(error){
     if(called&&!recorded){
      holdSlot=error instanceof Error&&error.message==='timeout';
      await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(backoffAt, cacheKey).run().catch(()=>{});
      await addStats(env, lang, {failures:1}, now).catch(()=>{});
-    }else{
-     // The model was not called. Do not keep the daily slot or the attempt claim.
-     if(day){await releaseBudget(env, day).catch(()=>{});day='';}
-     await rollbackClaim(env, cacheKey, lease).catch(()=>{});
+     console.info('lighter_result',{lang,status:phase+'_error'});
+     return failedAttempt(hit.row?.attempts??0, backoffAt, now);
     }
+    // The model was not called. Do not keep the daily slot or the attempt claim.
+    if(day){await releaseBudget(env, day).catch(()=>{});day='';}
+    await rollbackClaim(env, cacheKey, lease).catch(()=>{});
     console.info('lighter_result',{lang,status:phase+'_error'});
-    return json({status:'unavailable'}, called?200:503);
+    return json({status:'unavailable'},503);
    }finally{
     if(!holdSlot)await releaseSlot(env, slot);
    }
@@ -318,7 +349,7 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
 }
 
 export const lighterClientScript = `(function(){
- var labels={es:{ask:'Pedir una sátira',saved:'Ver la sátira guardada',loading:'Preparando la sátira…',hide:'Ocultar sátira',retry:'Reintentar',fail:'La sátira no está disponible. El original sigue arriba.',budget:'El cupo de sátiras de hoy se agotó. El original sigue arriba.',busy:'Otra sátira está en camino. Prueba de nuevo en un momento.',rate:'Demasiadas solicitudes ahora mismo. Prueba de nuevo en un momento.',label:'Sátira de IA · comentario, no es una noticia.'},en:{ask:'Ask for a satire',saved:'Show the saved satire',loading:'Preparing the satire…',hide:'Hide satire',retry:'Try again',fail:'Satire is unavailable. The original stays above.',budget:"Today's satire limit is used up. The original stays above.",busy:'Another satire is in progress. Try again in a moment.',rate:'Too many requests right now. Try again in a moment.',label:'AI satire · commentary, not reporting.'}};
+ var labels={es:{ask:'Pedir una sátira',saved:'Ver la sátira guardada',loading:'Preparando la sátira…',hide:'Ocultar sátira',retry:'Reintentar',later:'Reintentar más tarde',today:'Hoy no está disponible',done:'No disponible',fail:'La sátira no está disponible. El original sigue arriba.',exhausted:'La sátira no está disponible para esta noticia. El original sigue arriba.',budget:'El cupo de sátiras de hoy se agotó. El original sigue arriba.',busy:'Otra sátira está en camino. Prueba de nuevo en un momento.',rate:'Demasiadas solicitudes ahora mismo. Prueba de nuevo en un momento.',cooldownSoon:'La sátira todavía no está lista. Puedes reintentar en un momento. El original sigue arriba.',cooldownMinutes:'La sátira todavía no está lista. Puedes reintentar en unos # minutos. El original sigue arriba.',cooldownHour:'La sátira todavía no está lista. Puedes reintentar en una hora. El original sigue arriba.',cooldownHours:'La sátira todavía no está lista. Puedes reintentar en unas # horas. El original sigue arriba.',cooldownLater:'La sátira todavía no está lista. Reinténtalo más tarde. El original sigue arriba.',label:'Sátira de IA · comentario, no es una noticia.'},en:{ask:'Ask for a satire',saved:'Show the saved satire',loading:'Preparing the satire…',hide:'Hide satire',retry:'Try again',later:'Try again later',today:'Not available today',done:'Not available',fail:'Satire is unavailable. The original stays above.',exhausted:"Satire isn't available for this story. The original stays above.",budget:"Today's satire limit is used up. The original stays above.",busy:'Another satire is in progress. Try again in a moment.',rate:'Too many requests right now. Try again in a moment.',cooldownSoon:"Satire isn't ready yet. You can try again in a moment. The original stays above.",cooldownMinutes:"Satire isn't ready yet. You can try again in about # minutes. The original stays above.",cooldownHour:"Satire isn't ready yet. You can try again in about an hour. The original stays above.",cooldownHours:"Satire isn't ready yet. You can try again in about # hours. The original stays above.",cooldownLater:"Satire isn't ready yet. Try again later. The original stays above.",label:'AI satire · commentary, not reporting.'}};
  var held=new WeakMap();
  function langOf(button){return button.getAttribute('data-lighter-lang')==='en'?'en':'es';}
  function noteOf(button){return button.parentNode.querySelector('.lighter-note');}
@@ -337,6 +368,28 @@ export const lighterClientScript = `(function(){
   button.disabled=false; button.removeAttribute('aria-busy'); button.setAttribute('aria-expanded','false');
   button.textContent=copy.retry; button.setAttribute('data-mode','retry');
  }
+ function finish(button,note,label){
+  noteOf(button).textContent=note;
+  button.disabled=true; button.removeAttribute('aria-busy'); button.setAttribute('aria-expanded','false');
+  button.textContent=label; button.setAttribute('data-mode','done');
+ }
+ function cooldownNote(copy, seconds){
+  if(seconds<90) return copy.cooldownSoon;
+  if(seconds<3600) return copy.cooldownMinutes.replace('#', String(Math.max(2, Math.ceil(seconds/60))));
+  var hours=Math.ceil(seconds/3600);
+  if(hours===1) return copy.cooldownHour;
+  return copy.cooldownHours.replace('#', String(hours));
+ }
+ function waitOut(button, seconds){
+  var copy=labels[langOf(button)], action=button.getAttribute('data-action');
+  noteOf(button).textContent=cooldownNote(copy, seconds);
+  button.disabled=true; button.removeAttribute('aria-busy'); button.setAttribute('aria-expanded','false');
+  button.textContent=copy.later; button.setAttribute('data-mode','wait');
+  setTimeout(function(){
+   if(button.getAttribute('data-action')!==action || button.getAttribute('data-mode')!=='wait') return;
+   button.disabled=false; button.textContent=copy.retry; button.setAttribute('data-mode','retry');
+  }, seconds*1000);
+ }
  function ask(button, action, polls){
   var copy=labels[langOf(button)];
   button.disabled=true; button.setAttribute('aria-busy','true'); button.textContent=copy.loading;
@@ -344,10 +397,15 @@ export const lighterClientScript = `(function(){
   fetch('/api/lighter',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-PRNews-Action':'lighter'},body:JSON.stringify({url:button.getAttribute('data-lighter-url'),lang:langOf(button),action:action})}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,status:response.status,payload:payload};});}).then(function(result){
    clearTimeout(timer);
    if(button.getAttribute('data-action')!==action) return;
-   var payload=result.payload||{};
+   var payload=result.payload||{}, seconds=payload.retry_after;
    if(payload.status==='ready' && typeof payload.text==='string'){ held.set(button, payload.text); paint(button, payload.text); return; }
    if((payload.status==='pending' || result.status===202) && polls<4){ setTimeout(function(){ ask(button, action, polls+1); }, 2000); return; }
-   if(payload.status==='budget'){ fail(button,'budget'); return; }
+   if(payload.status==='cooldown'){
+    if(typeof seconds==='number' && isFinite(seconds) && seconds>=1 && seconds<=28800){ waitOut(button, Math.ceil(seconds)); return; }
+    finish(button, copy.cooldownLater, copy.later); return;
+   }
+   if(payload.status==='budget'){ finish(button, copy.budget, copy.today); return; }
+   if(payload.status==='exhausted' || payload.status==='ineligible'){ finish(button, copy.exhausted, copy.done); return; }
    if(payload.status==='busy' || payload.status==='pending'){ fail(button,'busy'); return; }
    if(payload.status==='rate'){ fail(button,'rate'); return; }
    fail(button,'fail');
@@ -361,7 +419,7 @@ export const lighterClientScript = `(function(){
  document.addEventListener('click', function(event){
   var target=event.target;
   var button=target&&target.closest?target.closest('.lighter-ask'):null;
-  if(!button) return;
+  if(!button || button.getAttribute('data-mode')==='done') return;
   var copy=labels[langOf(button)];
   if(button.getAttribute('data-mode')==='open'){
    noteOf(button).textContent='';
