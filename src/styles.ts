@@ -281,6 +281,24 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .lighter-stats{margin:28px 0}.lighter-stats p,.lighter-stats h3,.lighter-stats a{overflow-wrap:anywhere}.lighter-stats .take{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:8px 0}.lighter-stats summary{cursor:pointer;min-height:44px;padding:8px 0}
 @media(max-width:390px){.lighter-stats .source{flex-direction:column;align-items:flex-start;gap:6px}.lighter-stats{margin:20px 0}}
 
+/* Context glossary. This block is separate from .lighter and from .compare.
+   Comparison owns the report styles below; satire keeps .lighter-ask. */
+.explainer{font-size:.85rem;margin:6px 0 0;overflow-wrap:anywhere}
+.explainer summary{display:inline-flex;align-items:center;max-width:100%;min-height:44px;padding:5px 13px;text-align:left;white-space:normal;line-height:1.3;font:600 12px/1.3 var(--sans);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;cursor:pointer;list-style:none}
+.explainer summary::-webkit-details-marker{display:none}
+.explainer summary:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.explainer summary:hover{color:var(--ink);border-color:var(--muted);background:var(--soft)}
+.explainer-body{margin:.45rem 0 .2rem;padding:.65rem .75rem;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.explainer-banner,.explainer-checked,.explainer-more{margin:.2rem 0;color:var(--muted);font-size:.78rem;line-height:1.45}
+.explainer-entry{margin:.75rem 0 0}
+.explainer-entry h4{margin:0 0 .25rem;font:700 .95rem/1.3 var(--sans);color:var(--ink)}
+.explainer-entry p,.explainer-body p{display:block;overflow:visible;white-space:normal;-webkit-line-clamp:unset;margin:.3rem 0;color:var(--ink);font-size:.85rem;line-height:1.45}
+.explainer-banner,.explainer-checked,.explainer-more{color:var(--muted)}
+.explainer-sources{margin:.35rem 0 0;padding-left:1.1rem}
+.explainer-sources a{color:inherit}
+.card.brief .explainer summary,.card.mid .explainer summary{min-height:44px}
+@media(max-width:390px){.explainer summary{width:100%;box-sizing:border-box}}
+
 /* Supporting pages: sources, stats, hall of fame, archive, signup */
 .source{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding:20px 0}
 .source p{margin:4px 0;color:var(--muted);font-size:14px}
