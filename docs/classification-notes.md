@@ -87,6 +87,37 @@ editorial decision; no catch-all politics rule was added for them. These rules
 are heuristics, not a semantic model: publisher paths/categories can be imperfect,
 and multi-topic stories may still need manual editorial assignment.
 
+## Sports court, shooting, and defend
+
+Checked against production D1 on 2026-11-19 (`changed_db: false`). San Juan Daily Star
+“Pollitas defend home court; Manatí holds off Caguas to go up 2-0”
+(`https://www.sanjuandailystar.com/post/pollitas-defend-home-court-manat%C3%AD-holds-off-caguas-to-go-up-2-0/`)
+is stored as `deportes` / `category`. The feed category `Sports` wins at ingest.
+The public URL is `/post/…`, not `/sports/`. Render does not keep categories.
+`currentItem` calls `classify(url, [], title + " " + summary)` for every article
+except Reddit and `manual-import`.
+
+Before this change, that path matched only `court` inside “home court”, so the
+title alone was `policiales`. The stored summary also matches `bsnf`. Those two
+scores tie, and the first section with the high score wins, which was `policiales`.
+
+A game recap now returns `deportes` when the text has a bounded sports signal
+(home court, defend home court, defiende(n)/defendió/defendieron su cancha, a
+points-and-rebounds line, or a shooting-guard / three-point shooting phrase)
+and no legal-case or violence signal. Bare `shooting` stays violence. Bare
+`cancha` does not, because an assault can happen on a residential court. Bare
+`bsnf` stays a normal keyword, so a tie with politics is unchanged. A charge,
+arrest, tribunal, or “in court” still beats a box score, including when the
+person plays basketball. Publisher paths and feed categories stay ahead of this
+rule. `Sports` on a crime headline is still `deportes` at ingest and is
+reclassified from the text at render.
+
+Section pages, the front page, lighter stats, and any source comparison use
+that same `currentItem` result, then `primarySection`. `payload.section` is the
+ingest result and is not a second predicate. This story’s stored row already
+matches the corrected section, so no database rewrite is required. `scripts/repair-live.ts`
+rewrites every drifted payload and was not run.
+
 ## Validation
 
 Added 20 regression cases in `test/classification.test.ts`: bilingual topics,
