@@ -106,6 +106,8 @@ describe('sports court, shooting, and defend versus a legal court', () => {
   ['Three-point shooting wins it in sudden death overtime', 'deportes'],
   ['Shooting leaves two dead outside the arena', 'policiales'],
   ['Las Pollitas defendieron su cancha; Carter anotó 28 puntos y ocho rebotes', 'deportes'],
+  ['Las Pollitas defendieron su cancha en el primer juego', 'deportes'],
+  ['El equipo defendió su cancha ante Manatí', 'deportes'],
   ['Las Pollitas defienden su cancha en el juego 1 de la serie', 'deportes'],
   ['Shooting victim taken to hospital on the main road', 'policiales'],
   ['Shooting inside a home listed for sale', 'policiales'],
@@ -127,9 +129,11 @@ describe('sports court, shooting, and defend versus a legal court', () => {
   expect(classify('https://example.com/post/story/', [], 'The Margaritaville hotel brand is courting Ponce').section).not.toBe('policiales');
  });
 
- it('keeps publisher paths ahead of the game-recap rule', () => {
+ it('keeps publisher paths and categories ahead of the game-recap rule', () => {
   expect(classify('https://example.com/ley-y-orden/a/', [], pollitasText)).toEqual({ section: 'policiales', reason: 'url' });
   expect(classify('https://www.noticel.com/deportes/20261118/bsnf-las-pollitas/', [], 'Jugador acusado de asesinato')).toEqual({ section: 'deportes', reason: 'url' });
+  expect(classify(pollitasUrl, ['Business'], pollitasText)).toEqual({ section: 'negocios', reason: 'category' });
+  expect(classify('https://example.com/post/story/', [], 'Markets saw an economic rebound after the holiday').section).not.toBe('deportes');
  });
 
  it('still skips Reddit and manual imports when reclassifying', () => {

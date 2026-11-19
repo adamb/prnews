@@ -112,6 +112,13 @@ person plays basketball. Publisher paths and feed categories stay ahead of this
 rule. `Sports` on a crime headline is still `deportes` at ingest and is
 reclassified from the text at render.
 
+Integration review: accents are folded before matching, so the Spanish forms
+are `defiende`, `defienden`, `defendio`, and `defendieron`. The first pattern,
+`defiend(?:e|en|eron|o|io)`, did not match `defendieron` or `defendió`. A
+sentence that also had a points-and-rebounds line could still look correct.
+A `Business` category still wins over the recap text. No database rewrite and
+`scripts/repair-live.ts` was not run.
+
 Section pages, the front page, lighter stats, and any source comparison use
 that same `currentItem` result, then `primarySection`. `payload.section` is the
 ingest result and is not a second predicate. This story’s stored row already

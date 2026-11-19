@@ -39,7 +39,10 @@ const matches = (text: string, pattern: string) => new RegExp(`\\b(?:${pattern})
 const sportsShot = 'shooting guards?|(?:three|3)[- ]point shooting|field[- ]goal shooting|free[- ]throw shooting|shooting percentage|shooting pct';
 // Game recap signals. Bare "cancha" is not one: a stabbing can happen on a court.
 // Bare "bsnf" stays in the keyword list so a governor-at-the-game tie is unchanged.
-const gameRecap = 'home courts?|defend(?:s|ed|ing)? (?:their |its |the )?home court|defiend(?:e|en|eron|o|io) (?:su |la )?cancha|\\d+ points and (?:\\w+ )?rebounds?|(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) rebounds?|\\d+ puntos y (?:\\w+ )?rebotes|' + sportsShot;
+// Folded Spanish home-court verbs: defiende, defienden, defendio (defendió), defendieron.
+// defiend(?:e|en|eron|o|io) did not match defendieron or defendió.
+const defendCourt = 'defiende|defienden|defendio|defendieron';
+const gameRecap = 'home courts?|defend(?:s|ed|ing)? (?:their |its |the )?home court|(?:' + defendCourt + ') (?:su |la )?cancha|\\d+ points and (?:\\w+ )?rebounds?|(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) rebounds?|\\d+ puntos y (?:\\w+ )?rebotes|' + sportsShot;
 // Legal process and violence. These beat a box score when an athlete is the defendant.
 const legalCase = 'court orders?|in court|to court|federal court|supreme court|criminal court|district court|superior court|municipal court|court rulings?|court ruled|court hearings?|court cases?|court appearances?|tribunal\\w*|acusad[oa]|arrest\\w*|charged|sentenced|indict\\w*|arraign\\w*|convicted|murder\\w*|victim|victima|police|policias?|juez|juicio|conden\\w*|fiscalia|hit.and.run|tiroteo|asesin\\w*|feminicid\\w*';
 function sportsShooting(text: string): boolean {
