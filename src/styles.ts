@@ -187,7 +187,8 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 @media(min-width:760px){.card.side .excerpt{display:-webkit-box;-webkit-line-clamp:2}}
 
 /* Monogram-only cards (no usable thumbnail) take far less room than a photo would: a small tile beside
-   the headline on horizontal cards, a short banner on vertical ones. Photos keep their full ratios. */
+   the headline. Photos keep their full ratios. Leads and heroes are text-first too; a full-bleed
+   monogram is an empty block, not a picture. */
 .card.noimg .picture{aspect-ratio:5/2}
 .card.noimg .ph b{font-size:clamp(1rem,2.6vw,1.4rem)}
 .card.side.noimg,.card.mid.noimg,.card.tile.noimg{grid-template-columns:minmax(0,1fr) 64px}
@@ -250,7 +251,15 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 @media(min-width:640px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:1000px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.tiles>.lead{grid-column:span 2}}
 .tiles>.card.tile{padding-bottom:22px;border-bottom:1px solid var(--line)}
-.tiles>.card.lead .picture{aspect-ratio:16/9}
+.tiles>.card.lead:not(.noimg) .picture{aspect-ratio:16/9}
+/* .tiles > .card.lead .picture was 16/9 for every first card, including noimg, and it beat the
+   short monogram banner. An imageless section lead (and an imageless hero) is a headline with
+   the same small source mark as other text cards. The rule is not inside a min-width query, so
+   phones get it too. A real photo still uses 16/9 here and 3/2 or 16/9 on the front page. */
+.card.lead.noimg,.card.hero.noimg{display:grid;grid-template-columns:minmax(0,1fr) 64px;grid-template-areas:"body pic";align-items:start;gap:14px}
+.card.lead.noimg .picture,.card.hero.noimg .picture{grid-area:pic;aspect-ratio:1/1}
+.card.lead.noimg .card-body,.card.hero.noimg .card-body{grid-area:body}
+.card.lead.noimg .ph b,.card.hero.noimg .ph b{font-size:.8rem;letter-spacing:.03em}
 .page-head{border-top:3px solid var(--sec);padding-top:14px;margin:0 0 6px}
 .page-head .eyebrow{color:var(--sec)}
 .page-head .count-line{margin:0 0 14px;color:var(--muted);font-size:14px}

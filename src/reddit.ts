@@ -1,4 +1,4 @@
-import { canonical, plain, redditExcerpt, type Item } from './parse';
+import { canonical, plain, redditExcerpt, safeUrl, type Item } from './parse';
 import { classify, fold, type Section } from './sections';
 
 export const redditSource = 'reddit_puertorico';
@@ -28,6 +28,22 @@ export function redditTopic(title: string): Section | undefined {
  }
  return best;
 }
+/** Hosts the old Atom `media:thumbnail` already carried. A text post sends thumbnail
+ * "self" or "default" and has no preview; it stays imageless. Nothing here is fetched. */
+const redditImageHosts = new Set(['i.redd.it', 'preview.redd.it', 'external-preview.redd.it']);
+export function redditImage(post: { url?: unknown; thumbnail?: unknown; preview?: { images?: Array<{ source?: { url?: unknown } }> } }): string {
+ const preview = post.preview?.images?.[0]?.source?.url;
+ for (const raw of [preview, post.thumbnail, post.url]) {
+  if (typeof raw !== 'string') continue;
+  const safe = safeUrl(raw);
+  if (!safe) continue;
+  let host = '', path = '';
+  try { const u = new URL(safe); host = u.hostname.toLowerCase(); path = u.pathname; if (u.protocol !== 'https:') continue; } catch { continue; }
+  if (!redditImageHosts.has(host) || /\.(svg|gifv|mp4)$/i.test(path)) continue;
+  return safe;
+ }
+ return '';
+}
 export function inSection(item: Item, section: string): boolean {
  if(item.source!==redditSource) return item.section===section;
  return section==='comunidad' || redditTopic(item.title)===section;
@@ -43,6 +59,6 @@ export function parseArctic(text: string, now: number): Item[] {
   if(!title||!Number.isFinite(time)||time>now||time<now-14*86400000) return [];
   if(typeof post.permalink!=='string'||!new RegExp(`^/r/puertorico/comments/${post.id}/`,'i').test(post.permalink)) return [];
   const url=canonical(post.permalink,'https://www.reddit.com');
-  return [{url,source:redditSource,title,summary:redditExcerpt(typeof post.selftext==='string'?post.selftext:''),image:'',time,observed:false,section:'comunidad',reason:'community'}];
+  return [{url,source:redditSource,title,summary:redditExcerpt(typeof post.selftext==='string'?post.selftext:''),image:redditImage(post),time,observed:false,section:'comunidad',reason:'community'}];
  });
 }
