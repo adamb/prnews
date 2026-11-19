@@ -240,4 +240,325 @@ describe('comparison page', () => {
     expect(html).toContain('<td>0</td>');
     expect(html).not.toContain('archive_revisions');
   });
+
+  it('keeps the Counts and Percentage labels readable when that metric is selected', () => {
+    const report = buildComparison([
+      item({ url: 'https://www.elnuevodia.com/dep/', source: 'endi', section: 'deportes', reason: 'manual-import' }),
+      item({ url: 'https://www.elnuevodia.com/pol/', source: 'endi', section: 'politica', reason: 'manual-import' }),
+    ], [endiOk], {}, NOW);
+    const en = renderComparison(report, 'en');
+    const es = renderComparison(report, 'es');
+    expect(modeLabels(en)).toEqual(['Counts', 'Percentage']);
+    expect(modeLabels(es)).toEqual(['Conteos', 'Porcentaje']);
+    expect(en).not.toContain('Share of that outlet');
+    expect(es).not.toContain('Porcentaje del medio');
+    expect(en).toContain('own mix, not its size against the others');
+    expect(en).toContain('Rounded percentages may not total 100');
+    expect(es).toContain('la mezcla de ese medio');
+    expect(es).toContain('puede no sumar 100');
+    expect(en).toContain('data-pct="50"');
+    expect(en).toContain('>50%</span>');
+    expect(en).toContain('>100%</span>');
+    const clickAt = en.indexOf("btn.addEventListener('click'");
+    const click = en.slice(clickAt, en.indexOf('compare-chart', clickAt));
+    expect(click).toContain("setAttribute('aria-checked'");
+    expect(click).not.toContain('textContent');
+    // The old checked rule lost to this generic button rule, so color became --bg on a panel background.
+    expect(specOf('main button:not(.lighter-ask):not(.ticker-pause)')).toEqual([0, 2, 2]);
+    expect(specOf('.compare-mode button[aria-checked="true"]')).toEqual([0, 2, 1]);
+
+    const states = [
+      ['unselected', false, false, false, false, 'var(--ink)', 'var(--panel)'],
+      ['unselected hover', false, true, false, false, 'var(--ink)', 'var(--panel)'],
+      ['unselected focus', false, false, true, false, 'var(--ink)', 'var(--panel)'],
+      ['unselected active', false, false, false, true, 'var(--ink)', 'var(--panel)'],
+      ['selected', true, false, false, false, 'var(--bg)', 'var(--ink)'],
+      ['selected hover', true, true, false, false, 'var(--bg)', 'var(--ink)'],
+      ['selected focus', true, false, true, false, 'var(--bg)', 'var(--ink)'],
+      ['selected active', true, false, false, true, 'var(--bg)', 'var(--ink)'],
+    ] as const;
+    for (const [name, checked, hover, focus, active, color, background] of states) {
+      const paint = togglePaint({ checked, hover, focus, active });
+      expect({ state: name, color: squash(paint.color), background: squash(paint.background) }).toEqual({ state: name, color, background });
+      for (const theme of ['light', 'dark'] as const) {
+        const tokens = themeTokens(theme);
+        const fg = resolveColor(paint.color, tokens);
+        const bg = resolveColor(paint.background, tokens);
+        const ratio = contrast(fg, bg);
+        expect({ state: name, theme, fg, bg, ratio: Math.round(ratio * 100) / 100 >= 4.5 }).toEqual({
+          state: name, theme, fg, bg, ratio: true,
+        });
+      }
+    }
+  });
 });
+
+function modeLabels(html: string): string[] {
+  const start = html.indexOf('class="compare-mode"');
+  const group = html.slice(start, html.indexOf('</div>', start));
+  return [...group.matchAll(/<button\b[^>]*>([^<]*)<\/button>/g)].map(match => match[1]);
+}
+
+type Spec = [number, number, number];
+type Compound = {
+  tag: string;
+  id: string;
+  classes: string[];
+  attrs: { name: string; value?: string }[];
+  pseudos: string[];
+  nots: Compound[];
+  pseudoElement: boolean;
+};
+type Part = { comb: '' | ' ' | '>' | '+' | '~'; compound: Compound };
+type El = { tag: string; id: string; classes: string[]; attrs: Record<string, string>; pseudos: Set<string> };
+type Decl = { value: string; important: boolean; spec: Spec; index: number };
+type CssRule = { parts: Part[]; decls: Record<string, { value: string; important: boolean }>; spec: Spec; index: number };
+
+function squash(value: string): string {
+  return value.replace(/\s+/g, '');
+}
+
+function specOf(selector: string): Spec {
+  return specificity(tokenize(selector));
+}
+
+function themeTokens(theme: 'light' | 'dark'): Record<string, string> {
+  const block = css.match(/@supports \(color:light-dark\(#000,#fff\)\)\{:root\{([^}]+)\}/)?.[1];
+  if (!block) throw new Error('missing light-dark tokens');
+  const tokens: Record<string, string> = {};
+  for (const name of ['--bg', '--panel', '--ink']) {
+    const found = block.match(new RegExp(`${name}:light-dark\\((#[0-9a-fA-F]{3,8}),(#[0-9a-fA-F]{3,8})\\)`));
+    if (!found) throw new Error(`missing ${name}`);
+    tokens[name] = theme === 'light' ? found[1] : found[2];
+  }
+  return tokens;
+}
+
+function resolveColor(value: string, tokens: Record<string, string>): string {
+  const match = squash(value).match(/^var\((--[\w-]+)\)$/);
+  if (!match || !tokens[match[1]]) throw new Error(`unresolved color ${value}`);
+  return tokens[match[1]];
+}
+
+function contrast(foreground: string, background: string): number {
+  const lum = (hex: string) => {
+    const raw = hex.slice(1);
+    const full = raw.length === 3 ? raw.split('').map(ch => ch + ch).join('') : raw;
+    const channel = (n: number) => {
+      const s = n / 255;
+      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    const r = channel(parseInt(full.slice(0, 2), 16));
+    const g = channel(parseInt(full.slice(2, 4), 16));
+    const b = channel(parseInt(full.slice(4, 6), 16));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [hi, lo] = [lum(foreground), lum(background)].sort((a, b) => b - a);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function togglePaint(state: { checked: boolean; hover: boolean; focus: boolean; active: boolean }): { color: string; background: string } {
+  const button: El = {
+    tag: 'button',
+    id: '',
+    classes: [],
+    attrs: { type: 'button', role: 'radio', 'aria-checked': state.checked ? 'true' : 'false', 'data-mode': state.checked ? 'pct' : 'count' },
+    pseudos: new Set([state.hover ? 'hover' : '', state.focus ? 'focus-visible' : '', state.active ? 'active' : ''].filter(Boolean)),
+  };
+  const ancestors: El[] = [
+    { tag: 'div', id: '', classes: ['compare-mode'], attrs: { role: 'radiogroup' }, pseudos: new Set() },
+    { tag: 'div', id: '', classes: ['compare-head'], attrs: {}, pseudos: new Set() },
+    { tag: 'section', id: '', classes: [], attrs: { 'aria-labelledby': 'compare-topics' }, pseudos: new Set() },
+    { tag: 'div', id: '', classes: ['compare'], attrs: { 'data-mode': state.checked ? 'pct' : 'count' }, pseudos: new Set() },
+    { tag: 'main', id: 'contenido', classes: [], attrs: {}, pseudos: new Set() },
+    { tag: 'body', id: '', classes: [], attrs: {}, pseudos: new Set() },
+    { tag: 'html', id: '', classes: [], attrs: {}, pseudos: new Set() },
+  ];
+  const rules = parseCss(css).filter(rule => matches(rule.parts, button, ancestors));
+  const color = winner(rules, 'color');
+  const background = winner(rules, 'background');
+  if (!color || !background) throw new Error(`toggle paint missing color or background (${rules.length} matching rules)`);
+  return { color: color.value, background: background.value };
+}
+
+function winner(rules: CssRule[], prop: string): Decl | undefined {
+  let best: Decl | undefined;
+  for (const rule of rules) {
+    const decl = rule.decls[prop];
+    if (!decl) continue;
+    const next = { ...decl, spec: rule.spec, index: rule.index };
+    if (!best || beats(next, best)) best = next;
+  }
+  return best;
+}
+
+function beats(next: Decl, prev: Decl): boolean {
+  if (next.important !== prev.important) return next.important;
+  for (let i = 0; i < 3; i++) if (next.spec[i] !== prev.spec[i]) return next.spec[i] > prev.spec[i];
+  return next.index >= prev.index;
+}
+
+function parseCss(source: string): CssRule[] {
+  const text = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules: CssRule[] = [];
+  let index = 0;
+  const walk = (body: string) => {
+    let i = 0;
+    while (i < body.length) {
+      while (i < body.length && /\s/.test(body[i])) i++;
+      if (i >= body.length) break;
+      const open = body.indexOf('{', i);
+      if (open < 0) break;
+      const selector = body.slice(i, open).trim();
+      let depth = 1;
+      let j = open + 1;
+      while (j < body.length && depth) {
+        if (body[j] === '{') depth++;
+        else if (body[j] === '}') depth--;
+        j++;
+      }
+      const inner = body.slice(open + 1, j - 1);
+      if (selector.startsWith('@')) {
+        if (/^@(media|supports)\b/.test(selector)) walk(inner);
+      } else if (selector) {
+        const decls: CssRule['decls'] = {};
+        for (const part of inner.split(';')) {
+          const colon = part.indexOf(':');
+          if (colon < 0) continue;
+          const prop = part.slice(0, colon).trim().toLowerCase();
+          let value = part.slice(colon + 1).trim();
+          const important = /!important\s*$/.test(value);
+          if (important) value = value.replace(/!important\s*$/, '').trim();
+          if (prop) decls[prop] = { value, important };
+        }
+        for (const one of splitSelectors(selector)) {
+          const parts = tokenize(one);
+          rules.push({ parts, decls, spec: specificity(parts), index });
+        }
+        index++;
+      }
+      i = j;
+    }
+  };
+  walk(text);
+  return rules;
+}
+
+function splitSelectors(selector: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < selector.length; i++) {
+    const ch = selector[i];
+    if (ch === '(' || ch === '[') depth++;
+    else if (ch === ')' || ch === ']') depth--;
+    else if (ch === ',' && depth === 0) {
+      out.push(selector.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(selector.slice(start));
+  return out.map(item => item.trim()).filter(Boolean);
+}
+
+function tokenize(selector: string): Part[] {
+  const parts: { comb: Part['comb']; raw: string }[] = [];
+  let buf = '';
+  let comb: Part['comb'] = '';
+  let depth = 0;
+  const push = () => {
+    if (buf.trim()) parts.push({ comb, raw: buf.trim() });
+    buf = '';
+  };
+  for (let i = 0; i < selector.length; i++) {
+    const ch = selector[i];
+    if (ch === '(' || ch === '[') depth++;
+    else if (ch === ')' || ch === ']') depth--;
+    if (depth === 0 && (ch === '>' || ch === '+' || ch === '~' || ch === ' ' || ch === '\n' || ch === '\t')) {
+      if (ch === ' ' || ch === '\n' || ch === '\t') {
+        if (buf.trim()) {
+          push();
+          comb = ' ';
+        }
+        continue;
+      }
+      push();
+      comb = ch;
+      continue;
+    }
+    buf += ch;
+  }
+  push();
+  return parts.map(part => ({ comb: part.comb, compound: parseCompound(part.raw) }));
+}
+
+function parseCompound(raw: string): Compound {
+  const compound: Compound = { tag: '', id: '', classes: [], attrs: [], pseudos: [], nots: [], pseudoElement: false };
+  const re = /::[-:\w]+|:not\(([^)]*)\)|:([-\w]+)|\.([-\w]+)|#([-\w]+)|\[([^\]]+)\]|([a-zA-Z][\w-]*)|\*/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(raw))) {
+    if (match.index !== last) throw new Error(`unparsed "${raw.slice(last, match.index)}" in "${raw}"`);
+    last = match.index + match[0].length;
+    if (match[0].startsWith('::')) compound.pseudoElement = true;
+    else if (match[0].startsWith(':not')) compound.nots.push(parseCompound(match[1]));
+    else if (match[2]) compound.pseudos.push(match[2]);
+    else if (match[3]) compound.classes.push(match[3]);
+    else if (match[4]) compound.id = match[4];
+    else if (match[5]) compound.attrs.push(parseAttr(match[5]));
+    else if (match[6]) compound.tag = match[6];
+  }
+  if (last !== raw.length) throw new Error(`unparsed tail "${raw.slice(last)}" in "${raw}"`);
+  return compound;
+}
+
+function parseAttr(raw: string): { name: string; value?: string } {
+  const eq = raw.indexOf('=');
+  if (eq < 0) return { name: raw.trim() };
+  let value = raw.slice(eq + 1).trim();
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+  return { name: raw.slice(0, eq).replace(/[~|^$*]$/, '').trim(), value };
+}
+
+function specificity(parts: Part[]): Spec {
+  const spec: Spec = [0, 0, 0];
+  const add = (compound: Compound) => {
+    if (compound.id) spec[0]++;
+    spec[1] += compound.classes.length + compound.attrs.length + compound.pseudos.length;
+    if (compound.tag) spec[2]++;
+    for (const not of compound.nots) add(not);
+  };
+  for (const part of parts) add(part.compound);
+  return spec;
+}
+
+function matches(parts: Part[], element: El, ancestors: El[]): boolean {
+  const rec = (partIndex: number, node: El, nodeAncestors: El[]): boolean => {
+    if (!matchesCompound(parts[partIndex].compound, node)) return false;
+    if (partIndex === 0) return true;
+    const comb = parts[partIndex].comb;
+    if (comb === '>') {
+      const parent = nodeAncestors[0];
+      return !!parent && rec(partIndex - 1, parent, nodeAncestors.slice(1));
+    }
+    if (comb !== ' ' && comb !== '') return false;
+    for (let i = 0; i < nodeAncestors.length; i++) {
+      if (rec(partIndex - 1, nodeAncestors[i], nodeAncestors.slice(i + 1))) return true;
+    }
+    return false;
+  };
+  return parts.length > 0 && rec(parts.length - 1, element, ancestors);
+}
+
+function matchesCompound(compound: Compound, element: El): boolean {
+  if (compound.pseudoElement) return false;
+  if (compound.tag && compound.tag !== element.tag) return false;
+  if (compound.id && compound.id !== element.id) return false;
+  if (!compound.classes.every(name => element.classes.includes(name))) return false;
+  for (const attr of compound.attrs) {
+    if (!(attr.name in element.attrs)) return false;
+    if (attr.value !== undefined && element.attrs[attr.name] !== attr.value) return false;
+  }
+  if (!compound.pseudos.every(name => element.pseudos.has(name))) return false;
+  return compound.nots.every(not => !matchesCompound(not, element));
+}
