@@ -85,3 +85,9 @@
 - Validation: 350 tests, typecheck, wrangler dry-run build; clean tree, pushed SHA verified equal to local HEAD and main unchanged before manual `wrangler deploy`.
 - Live checks: 200 for /, /?lang=en, /s/politica, /fuentes, /about, /archive, /feed, /api/live; font served as font/woff2 with immutable caching; English edition shows "Latest" and "Also in". Browser screenshot of production at 1440 px matched local review.
 - Rollback: `npx wrangler rollback` to the previous version (see `wrangler deployments list`).
+
+## 2026-11-19 — Compact monogram-only cards
+
+- Deployed source: 1f18f40 (branch redesign/ui, PR #7). Cloudflare Worker version: 44f543c8-1387-4560-b3c1-879ede9f1b30. Previous: 9289a2a3-9ae3-4d44-b883-62b068893b9c.
+- CSS/markup only: `noimg` class on cards without a usable thumbnail; small tile or short banner instead of a photo-sized block. No migrations or pipeline changes.
+- Validation: 350 tests, tsc; clean pushed tree before manual `wrangler deploy`; live 200 on /, /?lang=en, /s/politica with `noimg` cards present.
