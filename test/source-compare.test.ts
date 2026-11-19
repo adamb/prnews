@@ -103,6 +103,39 @@ describe('captured-article comparison', () => {
     expect(live.newsrooms.find(row => row.id === 'noticel')!.status).toBe('mixed');
   });
 
+  it('keeps days before Radio Isla and WALO were registered as dashes', () => {
+    const checked = { last_ok: NOW, error: null };
+    const report = buildComparison([
+      item({ url: 'https://radioisla.tv/backfill/', source: 'radioisla', time: Date.parse('2026-11-18T18:00:00Z'), title: 'Una nota del 18' }),
+    ], [endiOk, { source: 'radioisla', ...checked }, { source: 'walo', ...checked }], {}, NOW);
+    const cell = (id: string, key: string) => {
+      const row = report.newsrooms.find(entry => entry.id === id)!;
+      return row.days[report.days.findIndex(day => day.key === key)];
+    };
+    expect(report.days[0].key).toBe('2026-11-05');
+    expect(report.days.at(-1)!.key).toBe('2026-11-19');
+    expect(cell('radioisla', '2026-11-18')).toMatchObject({ count: 1, missing: false });
+    expect(cell('radioisla', '2026-11-05')).toMatchObject({ count: 0, missing: true });
+    expect(cell('radioisla', '2026-11-19')).toMatchObject({ count: 0, missing: false });
+    expect(cell('walo', '2026-11-05').missing).toBe(true);
+    expect(cell('walo', '2026-11-19')).toMatchObject({ count: 0, missing: false });
+    expect(cell('endi', '2026-11-05')).toMatchObject({ count: 0, missing: false });
+    expect(cell('nimb', '2026-11-19').missing).toBe(true);
+    const en = renderComparison(report, 'en');
+    expect(en).toContain('Radio Isla 1320');
+    expect(en).toContain('WALO 1240');
+    expect(en).toContain('before this feed was registered');
+    expect(en).toContain('November 19, 2026');
+    const radio = en.slice(en.indexOf('data-source="radioisla"'), en.indexOf('data-source="walo"'));
+    expect(radio).toContain('before this feed was registered, not a zero.');
+    expect(radio).toContain('0 captured articles');
+    const endi = en.slice(en.indexOf('data-source="endi"'), en.indexOf('data-source="', en.indexOf('data-source="endi"') + 1));
+    expect(endi).not.toContain('before this feed was registered');
+    const es = renderComparison(report, 'es');
+    expect(es).toContain('antes de registrar el feed, no es un cero.');
+    expect(es).toContain('19 de noviembre de 2026');
+  });
+
   it('does not read archive revisions when summing redirects', async () => {
     const sql = new DatabaseSync(':memory:');
     for (const file of ['migrations/0001_live.sql', 'migrations/0002_archive.sql', 'migrations/0003_search_clicks.sql', 'migrations/0008_click_totals.sql']) sql.exec(readFileSync(file, 'utf8'));
@@ -134,7 +167,7 @@ describe('comparison page', () => {
       item({ url: 'https://www.reddit.com/r/PuertoRico/comments/abc123/police_story/', source: 'reddit_puertorico', title: 'Police arrest downtown', summary: '', section: 'comunidad' as const, reason: 'community' }),
     ],
     translations: {},
-    feeds: [endiOk, { source: 'reddit_puertorico', last_ok: NOW, error: 'D1_ERROR: secret' }] as never,
+    feeds: [endiOk, { source: 'reddit_puertorico', last_ok: NOW, error: 'D1_ERROR: zz-feed-leak' }] as never,
     sourceClicks: { endi: 4 },
   };
 
@@ -149,7 +182,7 @@ describe('comparison page', () => {
       expect(html).toContain('data-mode="pct"');
       expect(html).toContain('<table class="compare-table"');
       expect(html).toContain('scope="row"');
-      expect(html).not.toContain('secret');
+      expect(html).not.toContain('zz-feed-leak');
       expect(html).not.toContain('D1_ERROR');
       expect(html).not.toContain('Casas en venta');
       expect(html).not.toContain('market share');
