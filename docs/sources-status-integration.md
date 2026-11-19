@@ -81,3 +81,18 @@ Wire-in for root: append `additionalSources` to `sources` and spread `additional
 
 ## Root integration corrections
 The deployed strip reports the latest valid earthquake (event time in AST), not a seven-day count. Failed source chips hide immediately even if last-good metadata remains. LUMA is explicitly a limited load-shedding layer, not a complete outage count. WAPA/WIPR/Claridad are registered in the main source map; El Post Antillano remains an unavailable-source note. Cache read/refresh is wired into homepage/ingestion.
+
+## Radio Isla 1320 and WALO 1240 (verified 2026-11-19)
+
+Public reads only, with `User-Agent: news.dev.pr/1.0 (+https://news.dev.pr/about)`. No article HTML was fetched. Saved bytes are `test/fixtures/radioisla.xml` and `test/fixtures/walo.xml`; provenance is in the matching `.headers` files. Both feeds are registered through `additionalSources` / `additionalFeedURLs`. They stay on the shared parser, the 300-character excerpt cap, Spanish-by-article detection, the bounded image queue, and the bounded translation queue. This change does not deploy.
+
+| Publisher | Registered feed | Capture |
+|---|---|---|
+| Radio Isla 1320 | `https://radioisla.tv/feed/` | 200 `application/rss+xml`, **25 items**, newest `Wed, 18 Nov 2026 20:30:11 +0000`, links on `radioisla.tv`. `robots.txt` disallows `/?s=`, `/page/*/?s=` and `/search/` only. |
+| WALO 1240 · Humacao | `https://waloradio.com/feed/` | 200 `application/rss+xml`, **10 items**, all dated 18 Nov 2026 (newest `19:59:36 +0000`). Eastern coverage includes Humacao, Yabucoa, Naguabo, Las Piedras and a Caguas police item. `robots.txt` is `User-Agent: *` / `Disallow:` (allow all). |
+
+Radio Isla items have no `enclosure`. The picture is the first `<img>` in `description` (every item has one). Every link carries `utm_*` query parameters, including a duplicated set; `canonical` strips `utm_*` and `fbclid`. `content:encoded` runs to about 5,500 characters of plain text. The parser still summarizes `description`. All 25 plain descriptions exceed 300 characters, and `summary()` keeps the 300-character cap. The channel element says `en-US`; the headlines are Spanish, so the source is not English. Per-article detection marks 24 of 25 items `es`. The Senado / New Fortress Energy headline stays undetected because "New" is an English function word; it keeps the Spanish source default and is not labeled English.
+
+WALO's main feed is the one registered. `https://waloradio.com/category/noticias/feed/` also returned 10 items, but 7 of them are different and the main feed's police item ("Arrestan a seis personas durante operativos antidrogas en tres residenciales de Caguas", category `Policiacas`) is absent there. The category document is smaller (55,321 bytes vs 61,387) even though the gateway repeated the same etag string. Descriptions have no `<img>` and there are no enclosures, so the shared parser stores an empty image. Four items have an `<img>` only inside `content:encoded`, which the parser does not read when `description` is present. Those missing images stay on the existing bounded `og:image` queue. Plain descriptions are 321–418 characters and encoded bodies run past 6,000, so the stored excerpt remains the capped description. The same `en-US` channel language is ignored in favor of the Spanish text.
+
+Not registered, and not re-probed in this change: TeleOnce (403 challenge), NotiUno (`/search` disallowed by robots), WKAQ (duplicates WAPA), Mega TV (not a Puerto Rico newsroom), CPI (explicitly excluded). None of those names were added to `unavailableSources`, because that list is shown on `/fuentes` as "no verified feed," which does not describe all five.

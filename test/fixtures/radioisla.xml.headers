@@ -1,0 +1,7 @@
+feed: https://radioisla.tv/feed/
+status: 200
+content-type: application/rss+xml; charset=UTF-8
+captured: 2026-11-19
+last-modified: Wed, 18 Nov 2026 20:30:11 GMT
+items: 25
+robots: https://radioisla.tv/robots.txt disallows /search/ and search query URLs only; /feed/ is allowed

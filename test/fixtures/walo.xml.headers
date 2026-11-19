@@ -1,0 +1,8 @@
+feed: https://waloradio.com/feed/
+status: 200
+content-type: application/rss+xml; charset=UTF-8
+captured: 2026-11-19
+last-modified: Wed, 18 Nov 2026 19:59:36 GMT
+items: 10
+robots: https://waloradio.com/robots.txt allows all (User-Agent: * / Disallow empty)
+not-used: https://waloradio.com/category/noticias/feed/ is a narrower 10-item category feed and drops police items that the main feed carries
