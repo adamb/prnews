@@ -184,6 +184,16 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 }
 @media(min-width:760px){.card.side .excerpt{display:-webkit-box;-webkit-line-clamp:2}}
 
+/* Monogram-only cards (no usable thumbnail) take far less room than a photo would: a small tile beside
+   the headline on horizontal cards, a short banner on vertical ones. Photos keep their full ratios. */
+.card.noimg .picture{aspect-ratio:5/2}
+.card.noimg .ph b{font-size:clamp(1rem,2.6vw,1.4rem)}
+.card.side.noimg,.card.mid.noimg,.card.tile.noimg{grid-template-columns:minmax(0,1fr) 64px}
+.card.side.noimg .picture,.card.mid.noimg .picture,.card.tile.noimg .picture{aspect-ratio:1/1}
+.card.side.noimg .ph b,.card.mid.noimg .ph b,.card.tile.noimg .ph b{font-size:.8rem;letter-spacing:.03em}
+@media(min-width:900px){.card.side.noimg{grid-template-columns:minmax(0,1fr) 72px}}
+@media(min-width:640px){.card.tile.noimg .picture{aspect-ratio:5/2}.card.tile.noimg .ph b{font-size:1.2rem}}
+@container (min-width:620px){.g-mid .card.mid.noimg .picture{aspect-ratio:5/2}.g-mid .card.mid.noimg .ph b{font-size:1.2rem;letter-spacing:.05em}}
 /* Front page: hero */
 .lede{display:grid;gap:22px;margin:18px 0 6px}
 .lede-side{display:grid;align-content:start}
@@ -250,7 +260,7 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .lighter-ask{display:inline-flex;align-items:center;max-width:100%;min-height:34px;margin:2px 0 0;padding:5px 13px;text-align:left;white-space:normal;line-height:1.3;font:600 12px/1.3 var(--sans);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;cursor:pointer;transition:color .2s,border-color .2s,background-color .2s}
 .lighter-ask:hover:not(:disabled){color:var(--ink);border-color:var(--muted);background:var(--soft)}
 .lighter-ask:disabled{cursor:default;opacity:.7}
-.card.brief .lighter-ask,.card.mid .lighter-ask{min-height:28px;padding:3px 0;border-color:transparent;font-size:11.5px}
+.card.brief .lighter-ask,.card.mid .lighter-ask{min-height:28px;padding:3px 0;border:0;font-size:11.5px}
 .card.brief .lighter-ask:hover:not(:disabled),.card.mid .lighter-ask:hover:not(:disabled){background:transparent;text-decoration:underline;text-underline-offset:3px}
 .lighter-note{margin:0 0 .4rem;overflow-wrap:anywhere}.lighter-note small{display:block;color:var(--muted)}
 /* The card excerpt clamp also matched this note, so the label, the break, and one satire line were
