@@ -96,3 +96,18 @@ Radio Isla items have no `enclosure`. The picture is the first `<img>` in `descr
 WALO's main feed is the one registered. `https://waloradio.com/category/noticias/feed/` also returned 10 items, but 7 of them are different and the main feed's police item ("Arrestan a seis personas durante operativos antidrogas en tres residenciales de Caguas", category `Policiacas`) is absent there. The category document is smaller (55,321 bytes vs 61,387) even though the gateway repeated the same etag string. Descriptions have no `<img>` and there are no enclosures, so the shared parser stores an empty image. Four items have an `<img>` only inside `content:encoded`, which the parser does not read when `description` is present. Those missing images stay on the existing bounded `og:image` queue. Plain descriptions are 321–418 characters and encoded bodies run past 6,000, so the stored excerpt remains the capped description. The same `en-US` channel language is ignored in favor of the Spanish text.
 
 Not registered, and not re-probed in this change: TeleOnce (403 challenge), NotiUno (`/search` disallowed by robots), WKAQ (duplicates WAPA), Mega TV (not a Puerto Rico newsroom), CPI (explicitly excluded). None of those names were added to `unavailableSources`, because that list is shown on `/fuentes` as "no verified feed," which does not describe all five.
+
+## News is my Business (rechecked 2026-11-19, not registered)
+
+Public reads only, with `User-Agent: news.dev.pr/1.0 (+https://news.dev.pr/about)`. No second user agent, and the Cloudflare challenge script was not run. Evidence is `test/fixtures/nimb-probe-2026-11-19.txt`. The HTML and sitemap fixtures are the shapes that were rejected; the live sitemap bodies were not retrieved.
+
+`https://newsismybusiness.com/robots.txt` returned **200** `text/plain` at 16:31:43 GMT. For `User-agent: *` it sets `Content-Signal: search=yes,ai-train=no,use=reference` and `Allow: /`, then disallows `/wp-admin/` except `admin-ajax.php`. The lines at the bottom are sitemaps, not article feeds:
+
+- `Sitemap: https://newsismybusiness.com/sitemap.xml` — **403** `text/html`, 1522 bytes, `cf-ray: a5d09b58bb74b398-MIA`. Title `Error 403 Forbidden`, script `/cdn-cgi/challenge-platform/scripts/jsd/main.js`. Not XML.
+- `Sitemap: https://newsismybusiness.com/sitemap.rss` — **403** `text/html`, 1522 bytes, `cf-ray: a5d09b5a0b54cc25-MIA`. Same challenge page. Not RSS.
+
+The homepage (`/`) at 16:32:34 GMT was also **403** HTML (`cf-ray: a5d09c94e8dd4ba4-MIA`) and contained no `rel=alternate` feed link. `https://newsismybusiness.com/feed/` at 16:32:50 GMT was **403** HTML (`cf-ray: a5d09cfb1c87a581-MIA`), the same challenge page.
+
+`feeds.nimb` stays `[]`. The source id, homepage, English default, and manual-import title repair are unchanged. A 200 HTML challenge or a sitemap document (`sitemapindex`, `urlset`, or an RSS channel titled `XML Sitemap`) is rejected before `parseFeed` and follows the existing failure backoff. NIMB stays out of the article-page image queue.
+
+Read-only production D1 on 2026-11-19 (`changed_db: false`, `rows_written: 0`): `articles` has **43** `nimb` rows, all `reason=manual-import`, `published_at` from 2026-11-05T20:48:00Z through 2026-11-13T09:06:00Z, `first_seen` 2026-11-14T20:47:36.687Z. `archive_revisions` has **67** rows and **49** distinct `nimb` URLs. `feed_state` still holds the retired URL `https://newsismybusiness.com/feed/` with `status=403`, `error=HTTP 403`, `failures=3`, `last_ok=null`, `item_count=0`, `last_checked=2026-11-14T22:15:08.614Z`, `next_check=2026-11-15T00:15:08.614Z` (2 hours, `retryDelay(3)`). The current source list does not request that URL. This change does not deploy and does not write D1.

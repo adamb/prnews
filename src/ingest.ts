@@ -12,7 +12,7 @@ export interface Env extends DigestEnv, AlertEnvLike { DB: D1Database; ARCHIVE?:
 type AlertEnvLike = import('./alerts').AlertEnv & { CONTACT_EMAIL?: string };
 export const feeds: Record<string,string[]> = {
  ...additionalFeedURLs,
- nimb:[], // Publisher blocks automated requests; retain manually imported links.
+ nimb:[], // Paused. 2026-11-19 robots.txt advertises sitemap.xml and sitemap.rss only; both, the homepage, and /feed/ returned HTTP 403 HTML. Not registered.
  elvocero:['https://www.elvocero.com/search/?f=rss&t=article&l=50&s=start_time&sd=desc'],
  reddit_puertorico:['https://www.reddit.com/r/PuertoRico/new/.rss?limit=25'],
  noticel:['https://noticel.com/feed/','https://noticel.com/feed/?paged=2'],
@@ -25,6 +25,27 @@ export const feeds: Record<string,string[]> = {
 };
 export interface FeedState {url:string;source:string;etag:string|null;modified:string|null;last_checked:number|null;last_ok:number|null;status:number;error:string|null;failures:number;next_check:number;item_count:number}
 export const retryDelay = (failures: number) => Math.min(4 * 3600000, 900000 * 2 ** Math.min(failures, 4));
+/** Reject an HTTP 200 body that is not an article feed. A Cloudflare challenge
+ * page and a sitemap index are not headlines. Callers still record the failure
+ * and back off; they do not insert rows. */
+function feedRoot(xml: string): string {
+ let rest = xml.trimStart();
+ if (rest.charCodeAt(0) === 0xfeff) rest = rest.slice(1).trimStart();
+ if (/^<\?xml\b/i.test(rest)) rest = rest.replace(/^<\?xml\b[^?]*\?>\s*/i, '');
+ while (rest.startsWith('<!--')) {
+  const end = rest.indexOf('-->');
+  if (end < 0) break;
+  rest = rest.slice(end + 3).trimStart();
+ }
+ return rest;
+}
+export function assertArticleFeed(xml: string, sourceId: string): void {
+ const root = feedRoot(xml);
+ if (/^<(?:!doctype html|html)(?:[\s>]|$)/i.test(root)) throw new Error(`HTML page is not an article feed: ${sourceId}`);
+ if (/^<(?:sitemapindex|urlset)\b/i.test(root)) throw new Error(`Sitemap is not an article feed: ${sourceId}`);
+ const title = /<title>\s*([^<]{0,120})\s*<\/title>/i.exec(root.slice(0, 2500))?.[1]?.trim() ?? '';
+ if (/^xml sitemap$/i.test(title)) throw new Error(`Sitemap is not an article feed: ${sourceId}`);
+}
 export function preserveObserved(item: Item, previous?: Item): Item {
  const next=previous && item.observed ? {...item,time:previous.time} : item;
  // An og:image recovered by the bounded enrichment queue must survive rescans: the
@@ -55,6 +76,7 @@ async function scanFeed(env: Env, source: typeof sources[number], url: string, n
   if(status!==304) {
    const xml=await response.text();
    if(xml.length>8_000_000) throw new Error('Feed exceeds size limit');
+   if(url!==arcticFeed) assertArticleFeed(xml, source.id);
    const parsed=url===arcticFeed ? parseArctic(xml,now) : parseFeed(xml,source,now);
    if(!parsed.length && url!==arcticFeed) throw new Error('Feed contained no usable articles');
    const previous=await env.DB.prepare('SELECT url,payload FROM articles WHERE source=?').bind(source.id).all<{url:string;payload:string}>();
