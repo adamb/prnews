@@ -1,6 +1,6 @@
 import { primarySection } from './sections';
 import { redditSource } from './reddit';
-import { safeUrl, type Item } from './parse';
+import { publisherPlaceholder, safeUrl, type Item } from './parse';
 
 /** Pure front-page composition: which stories lead, which fold into "también en", and how each
  * section's preview is laid out. It reads Items and returns Items — it never edits a headline,
@@ -131,6 +131,12 @@ export const STOCK_IMAGE_MIN_STORIES = 4;
  * for every story that keeps its image. */
 export function withoutStockImages(items: Item[]): Item[] {
  const users = new Map<string, Set<string>>();
- for (const item of items) if (item.image) { let set = users.get(item.image); if (!set) users.set(item.image, set = new Set()); set.add(item.url); }
- return items.map(item => item.image && (users.get(item.image)?.size ?? 0) >= STOCK_IMAGE_MIN_STORIES ? { ...item, image: '' } : item);
+ for (const item of items) if (item.image && !publisherPlaceholder(item.image)) { let set = users.get(item.image); if (!set) users.set(item.image, set = new Set()); set.add(item.url); }
+ return items.map(item => {
+  if (!item.image) return item;
+  // One copy of a known publisher placeholder is still not a story photo. The
+  // four-story rule stays for everything else, including a real photo reused twice.
+  if (publisherPlaceholder(item.image) || (users.get(item.image)?.size ?? 0) >= STOCK_IMAGE_MIN_STORIES) return { ...item, image: '' };
+  return item;
+ });
 }
