@@ -59,7 +59,7 @@ export async function sitemapRoute(request: Request, env: SyndicationEnv, now: n
   const guarded = methodOr(request);
   if (guarded) return guarded;
   const rows = await env.DB.prepare('SELECT s.id, a.published_at FROM story_ids s JOIN articles a ON a.url=s.url WHERE a.published_at>=? ORDER BY a.published_at DESC LIMIT ?').bind(now-14*86400000,SITEMAP_LIMIT).all<{ id: number; published_at: number }>();
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/',...sections.map(([slug])=>'/s/'+slug),'/fuentes','/about','/archive','/signup'].flatMap(path=>[path,path+'?lang=en']).map(path=>`<url><loc>${xmlEscape(SITE_ORIGIN+path)}</loc></url>`).join('')}${rows.results.map(r => `<url><loc>${xmlEscape(storyPermalink(SITE_ORIGIN, r.id))}</loc><lastmod>${new Date(r.published_at).toISOString().slice(0, 10)}</lastmod></url>`).join('')}</urlset>`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/',...sections.map(([slug])=>'/s/'+slug),'/fuentes','/about','/archive','/signup','/comparar'].flatMap(path=>[path,path+'?lang=en']).map(path=>`<url><loc>${xmlEscape(SITE_ORIGIN+path)}</loc></url>`).join('')}${rows.results.map(r => `<url><loc>${xmlEscape(storyPermalink(SITE_ORIGIN, r.id))}</loc><lastmod>${new Date(r.published_at).toISOString().slice(0, 10)}</lastmod></url>`).join('')}</urlset>`;
   return respondXml(request, body, xmlHeaders('application/xml'));
 }
 

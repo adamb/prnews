@@ -1,7 +1,7 @@
 import { sections } from './sections';
 
 const origin = 'https://news.dev.pr';
-const paths = ['/', ...sections.map(([slug]) => `/s/${slug}`), '/fuentes', '/about', '/archive'];
+const paths = ['/', ...sections.map(([slug]) => `/s/${slug}`), '/fuentes', '/about', '/archive', '/comparar'];
 const xmlEscape = (value: string) => value.replace(/[&<>"']/g, c => ({
  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;',
 }[c]!));
