@@ -1,4 +1,5 @@
 import {key as lighterKey,valid as validLighter,articleEligible,lighterClientScript} from './lighter';
+import {explainerHtml} from './explainer';
 import type {LighterView, LedgerRow} from './lighter-stats';
 import { copyrightNotice } from './copyright';
 import { tone } from './stats';
@@ -117,6 +118,8 @@ export default {
   const marked=(text:string)=>live?.search?highlight(text,live.search.terms):escape(text);
   const community = item.source === 'reddit_puertorico';
   if(community && !item.summary) item.summary = t('No hay texto disponible; abre la conversación en Reddit para ver el contexto.', 'No post text is available; open the Reddit discussion for context.');
+  // Glossary disclosure, separate from satire. Matched only on this card's headline and excerpt.
+  const context = explainerHtml([original.title, original.summary, item.title, item.summary].filter(Boolean).join('\n'), lang);
   const contentLang = community && !item.translated ? '' : item.translated || isEnglishItem(item) ? 'en' : 'es';
   const label = community ? (item.translated ? 'Community discussion · Translated' : t('Discusión de la comunidad · Publicación original', 'Community discussion · Original post')) : item.translated ? 'Translated · Original in Spanish' : isEnglishItem(item) ? t('EN · En inglés', 'Original in English') : lang === 'en' ? 'Original in Spanish · Translation unavailable' : '';
   const name = sourceName(item.source);
@@ -125,7 +128,7 @@ export default {
   const heading = variant === 'hero' ? 'h2' : 'h3';
   const showExcerpt = item.summary && (community || ['hero', 'lead', 'tile', 'side'].includes(variant));
   const alsoLine = also.length ? `<p class="also"><span>${t('También en', 'Also in')}</span> ${also.map(other => `<a href="${escape(articleHref(other.url))}" hreflang="${isEnglishItem(other) ? 'en' : 'es'}" target="_blank" rel="noopener noreferrer">${escape(sourceName(other.source))}</a>`).join(', ')}</p>` : '';
-  return `<article class="card ${variant}${image ? '' : ' noimg'}">${picture}<div class="card-body"><div class="meta"><span class="src">${escape(name)}</span>${time(item)}</div><${heading} lang="${contentLang}"><a href="${escape(outbound)}" hreflang="${community ? '' : isEnglishItem(item) ? 'en' : 'es'}" target="_blank" rel="noopener noreferrer">${marked(item.title)}</a></${heading}>${showExcerpt ? `<p class="${community ? 'reddit-summary' : 'excerpt'}" lang="${contentLang}">${marked(item.summary)}</p>` : ''}${alsoLine}${label ? `<span class="language">${label}</span>` : ''}${lighter}</div></article>`;
+  return `<article class="card ${variant}${image ? '' : ' noimg'}">${picture}<div class="card-body"><div class="meta"><span class="src">${escape(name)}</span>${time(item)}</div><${heading} lang="${contentLang}"><a href="${escape(outbound)}" hreflang="${community ? '' : isEnglishItem(item) ? 'en' : 'es'}" target="_blank" rel="noopener noreferrer">${marked(item.title)}</a></${heading}>${showExcerpt ? `<p class="${community ? 'reddit-summary' : 'excerpt'}" lang="${contentLang}">${marked(item.summary)}</p>` : ''}${alsoLine}${label ? `<span class="language">${label}</span>` : ''}${context}${lighter}</div></article>`;
  }
  let clusterMemo: Cluster[] | undefined;
  /** Same-event folding of the stories this page is showing, computed once per request. */
