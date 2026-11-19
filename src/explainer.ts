@@ -463,7 +463,7 @@ const ENTRIES: Entry[] = [
     en: {
       title: 'LUMA',
       body: [
-        'The Public-Private Partnerships Authority lists LUMA as the operator of the electric transmission and distribution system under a 15-year operation-and-maintenance contract, with PREPA and the Authority as the public counterparts.',
+        'The Public-Private Partnerships Authority lists LUMA as the operator of the electric transmission and distribution system under a 15-year operation-and-maintenance contract, with PREPA (the Autoridad de Energía Eléctrica) and the Authority as the public counterparts.',
         'The same page describes contract disputes in the government’s words. This note does not adopt those allegations, does not describe today’s service, and does not make LUMA the PROMESA Board.',
       ],
     },
