@@ -129,10 +129,14 @@ describe('captured-article comparison', () => {
     const radio = en.slice(en.indexOf('data-source="radioisla"'), en.indexOf('data-source="walo"'));
     expect(radio).toContain('before this feed was registered, not a zero.');
     expect(radio).toContain('0 captured articles');
+    expect(en).toContain('An article the feed still lists, with an earlier date, counts on that earlier day.');
+    expect(en).not.toContain('Earlier days in this window are a dash');
     const endi = en.slice(en.indexOf('data-source="endi"'), en.indexOf('data-source="', en.indexOf('data-source="endi"') + 1));
     expect(endi).not.toContain('before this feed was registered');
     const es = renderComparison(report, 'es');
     expect(es).toContain('antes de registrar el feed, no es un cero.');
+    expect(es).toContain('Si el feed trae una nota con fecha anterior, ese día muestra el número, no un guion.');
+    expect(es).not.toContain('Los días anteriores en esta ventana son un guion');
     expect(es).toContain('19 de noviembre de 2026');
   });
 
