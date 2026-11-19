@@ -164,9 +164,10 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
-  // v29 drops v28 pages. v28 is the outlet report. v29 adds phrase themes, Radio Isla, WALO, and the context glossary.
+  // v30 drops v29 pages so the radio day note matches articles dated before registration.
+  // v29 added phrase themes, Radio Isla, WALO, and the context glossary.
   // The compact imageless-lead rules and lighter-2 stay. 60s TTL still applies. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v29') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v30') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
