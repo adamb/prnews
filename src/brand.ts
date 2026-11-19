@@ -16,6 +16,8 @@ const MARKS: Record<string, Mark> = {
  wapa: { code: 'WAPA', hue: 48 },
  wipr: { code: 'WIPR', hue: 140 },
  claridad: { code: 'CLA', hue: 330 },
+ radioisla: { code: 'RI', hue: 292 },
+ walo: { code: 'WALO', hue: 122 },
  reddit_puertorico: { code: 'r/PR', hue: 15 },
 };
 
