@@ -16,7 +16,7 @@ import {
 	unsubscribeToken, phraseMatches, phraseTokens, setPacingForTests, type AlertEnv,
 } from '../src/alerts';
 import renderer from '../src/render';
-import { alertsRoute } from '../src/alerts-http';
+import { alertsRoute, alertThemeBoot, alertThemeToggle, alertThemeBootHash, alertThemeToggleHash } from '../src/alerts-http';
 import { turnstileClientScript, turnstileClientScriptHash } from '../src/turnstile';
 import type { Item } from '../src/parse';
 
@@ -1258,7 +1258,7 @@ describe('signed-in alert account identity', () => {
 });
 
 describe('alerts home navigation', () => {
- it.each(['es', 'en'] as const)('renders localized branding across %s alert surfaces', async lang => {
+ it.each(['es', 'en'] as const)('renders the editorial masthead across %s alert surfaces', async lang => {
   const { DB } = database(); const env = baseEnv(DB);
   mockFetch(c => c.url.includes('siteverify') ? turnstileOk() : Response.json({ id: 'test-only' }));
   const { session } = await activated(env);
@@ -1272,15 +1272,54 @@ describe('alerts home navigation', () => {
    expect(response).toBeTruthy();
    expect(response!.headers.get('Cache-Control')).toBe('no-store');
    expect(response!.headers.get('Referrer-Policy')).toBe('no-referrer');
-   expect(response!.headers.get('Content-Security-Policy')).toContain("default-src 'none'");
+   const csp = response!.headers.get('Content-Security-Policy') ?? '';
+   expect(csp).toContain("default-src 'none'");
+   expect(csp).toContain(`'sha256-${alertThemeBootHash}'`);
+   expect(csp).toContain(`'sha256-${alertThemeToggleHash}'`);
+   expect(csp).toContain("font-src 'self'");
    const html = await response!.text();
-   expect(html).toContain(`<header class="alerts-header"><a class="home-link" href="${lang === 'en' ? '/?lang=en' : '/'}">`);
-   expect(html).toContain('<span class="brand">news<b>.dev.pr</b></span>');
-   expect(html).toContain(lang === 'en' ? 'Back to home' : 'Volver a portada');
-   expect(html).not.toMatch(/beacon.min.js|digest-footer/);
+   expect(html).toContain('<header class="wrap masthead">');
+   expect(html).toContain(`<a class="brand" href="/?lang=${lang}">news<b>.dev.pr</b></a>`);
+   expect(html).toContain(lang === 'en' ? 'Puerto Rico News' : 'Noticias de Puerto Rico');
+   expect(html).toContain('class="languages"');
+   expect(html).toContain('id="theme"');
+   expect(html).toContain('<main id="contenido" class="wrap"><div class="alerts-page">');
+   expect(html).toContain('<footer>');
+   expect(html).toContain(`href="https://news.dev.pr/?lang=${lang}"`);
+   expect(html).not.toMatch(/beacon\.min\.js|cloudflareinsights|\/api\/live|data-lighter-url|\/api\/lighter|data-cf-beacon/);
+   expect(html).not.toContain(session.secret);
    expect(html.match(/© /g)).toHaveLength(1);
    expect(html).toContain('Adam Beguelin');
   }
+ });
+ it.each(['es', 'en'] as const)('keeps guest and signed-in %s pages in the front-page measure at phone and desk widths', async lang => {
+  const { DB } = database(); const env = baseEnv(DB);
+  mockFetch(c => c.url.includes('siteverify') ? turnstileOk() : Response.json({ id: 'test-only' }));
+  const { session } = await activated(env, { email: 'owner@example.org', phrase: 'Act 60' });
+  const guest = await (await alertsRoute(get(`/alerts?lang=${lang}`), env))!.text();
+  const signed = await (await alertsRoute(get(`/alerts?lang=${lang}`, { Cookie: `alerts_session=${session.secret}` }), env))!.text();
+  expect(alertThemeBootHash).toBe(createHash('sha256').update(alertThemeBoot).digest('base64'));
+  expect(alertThemeToggleHash).toBe(createHash('sha256').update(alertThemeToggle).digest('base64'));
+  for (const html of [guest, signed]) {
+   expect(html).toContain('width=device-width');
+   expect(html).toContain('@media(max-width:390px)');
+   expect(html).toContain('@media(max-width:480px)');
+   expect(html).toContain('@media(min-width:900px)');
+   expect(html).toContain('.wrap{max-width:1240px');
+   expect(html).not.toContain('max-width:520px');
+   expect(html).toContain(`<script>${alertThemeBoot}</script>`);
+   expect(html).toContain(`<script>${alertThemeToggle}</script>`);
+   expect(html).not.toContain('beacon.min.js');
+   expect(html).not.toContain('data-lighter-url');
+   expect(html).not.toContain('/api/lighter');
+  }
+  expect(guest).toContain(lang === 'en' ? 'Email me a link' : 'Enviarme un enlace');
+  expect(guest).not.toContain('<p class="signed-in">');
+  expect(guest).not.toContain('owner@example.org');
+  expect(signed).toContain(`<p class="signed-in">${lang === 'en' ? 'Signed in as' : 'Sesión iniciada como'} <strong>owner@example.org</strong></p>`);
+  expect(signed).toContain('class="add-alert"');
+  expect(signed).toContain('class="account-actions"');
+  expect(signed).not.toContain(session.secret);
  });
 });
 
