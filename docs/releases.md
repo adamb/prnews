@@ -91,3 +91,9 @@
 - Deployed source: 1f18f40 (branch redesign/ui, PR #7). Cloudflare Worker version: 44f543c8-1387-4560-b3c1-879ede9f1b30. Previous: 9289a2a3-9ae3-4d44-b883-62b068893b9c.
 - CSS/markup only: `noimg` class on cards without a usable thumbnail; small tile or short banner instead of a photo-sized block. No migrations or pipeline changes.
 - Validation: 350 tests, tsc; clean pushed tree before manual `wrangler deploy`; live 200 on /, /?lang=en, /s/politica with `noimg` cards present.
+
+## 2026-11-19 — My alerts in the phone sections sheet
+
+- Deployed source: a4c54cb (branch redesign/ui, PR #7). Cloudflare Worker version: 1fb68051-8624-482e-a5d3-ad182506e34a. Previous: 44f543c8-1387-4560-b3c1-879ede9f1b30.
+- One link added to the sections sheet (hidden at 900px and up where the header link shows). No migrations or pipeline changes.
+- Validation: 351 tests, tsc; clean pushed tree before manual `wrangler deploy`; live 200 on / and /?lang=en with the link present.
