@@ -1,5 +1,15 @@
 # Releases
 
+## 2026-11-19 — Radio day note matches captured dates
+
+- Deployed source: 53c9f9b33f724b870525b28fba2c04c985d09766. `origin/main` merge is 758f882a113326b2598d19e15754e18b35721939 and `git diff` between those two commits was empty. This notes commit is later and was not deployed.
+- Cloudflare Worker version: 218baedf-5146-4bf4-8af3-bd2be8cfb1a6 (version created 2026-11-19 07:11:21 UTC, deployment created 2026-11-19 07:11:21 UTC, 100%). Previous version: c8dacf47-ca9f-49db-a499-36394d9d9e22. https://github.com/adamb/prnews/pull/14. Remote `main` matched the tested tree before `npx wrangler deploy`. OAuth session used; no token printed. No migration. No manual refresh, so this deploy made no translation call and no email. No `GET /click`. No account change.
+- HTML cache name is `prnews-html-v30`. On-demand cache stays `lighter-2`. R2 and D1 were not purged. The compact imageless-lead CSS was not changed. The glossary text was not changed.
+- The comparison note no longer says every day before November 19 is a dash. A day before that date with no captured article is a dash. An article the feed still lists, with an earlier date, counts on that earlier day. A zero from November 19 on is a day with no captured article.
+- The 07:00 UTC cron, on Worker c8dacf47, had already saved the feeds before this deploy. Read-only D1 (`changed_db` false, `rows_written` 0) showed Radio Isla 25 articles (November 17: 6, November 18: 19) and WALO 10 articles (November 18: 10). November 19 was 0 for both. `/fuentes` said both were available, last success 19/11/2026, 3:00:14 AST, 25 and 10 saved articles.
+- Public GET after this deploy, with no `GET /click`: `/comparar?lang=en` contains “An article the feed still lists, with an earlier date, counts on that earlier day.” and does not contain “Earlier days in this window are a dash”. `/comparar` contains “Si el feed trae una nota con fecha anterior, ese día muestra el número, no un guion.” Radio Isla tips: November 16 dash, November 17 six captured, November 18 nineteen captured, November 19 zero and partial. `/s/deportes?lang=en` still has “Pollitas defend home court; Manatí holds off Caguas to go up 2-0”. `/s/policiales?lang=en` does not. `/?lang=en` still has the compact imageless-lead rules. No phone or browser was used.
+- Validation on 53c9f9b, before deploy: `npm ci` reported 0 vulnerabilities. `npm test` was 35 files / 404 tests, then typecheck and a wrangler dry-run build (1155.88 KiB / gzip 358.06 KiB).
+
 ## 2026-11-19 — Radio feeds, sports recaps, phrase themes, and context glossary
 
 - Deployed source: c4aaae9ed7f7b2bdecff05eeceea407fcf8bc192. `origin/main` merge is eef76a34f607d882ab73e44436bff3c2eeaa2445 and `git diff` between those two commits was empty. This notes commit is later and was not deployed.
