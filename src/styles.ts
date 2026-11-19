@@ -337,9 +337,11 @@ footer a:hover{color:var(--ink)}
 .compare-head h2{margin:0}
 .compare-note{max-width:68ch;margin:8px 0 14px;color:var(--muted);font-size:14.5px;line-height:1.5}
 .compare-mode{display:flex;flex-wrap:wrap;gap:8px}
-.compare-mode button{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:600 13px/1 var(--sans);cursor:pointer}
-.compare-mode button[aria-checked="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.compare-mode button:focus-visible,.compare-chart:focus-visible,.compare-open:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+/* Checked text is --bg. This beats main button:not(.lighter-ask):not(.ticker-pause), which otherwise keeps the panel background and the label disappears. */
+main .compare .compare-mode button[type="button"]{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:600 13px/1 var(--sans);cursor:pointer}
+main .compare .compare-mode button[type="button"]:hover,main .compare .compare-mode button[type="button"]:focus-visible,main .compare .compare-mode button[type="button"]:active{background:var(--panel);color:var(--ink);border-color:var(--muted)}
+main .compare .compare-mode button[type="button"][aria-checked="true"],main .compare .compare-mode button[type="button"][aria-checked="true"]:hover,main .compare .compare-mode button[type="button"][aria-checked="true"]:focus-visible,main .compare .compare-mode button[type="button"][aria-checked="true"]:active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+main .compare .compare-mode button[type="button"]:focus-visible,.compare-chart:focus-visible,.compare-open:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .compare-heat-wrap,.compare-table-wrap{overflow-x:auto;margin:0 0 8px}
 .compare-heat,.compare-table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
 .compare-heat{border-spacing:4px;font-size:13px}
