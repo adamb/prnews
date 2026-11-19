@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { sources } from '../src/sources';
-import { parseFeed, canonical, summary, safeUrl } from '../src/parse';
+import { parseFeed, canonical, publisherPlaceholder, summary, safeUrl } from '../src/parse';
 import { classify } from '../src/sections';
 import worker from '../src/render';
 const seen = Date.parse('2026-11-14T04:30:00Z');
@@ -29,6 +29,16 @@ describe('saved feeds', () => {
  it('cleans NotiCel URLs and boilerplate', () => {
   for (const item of feed('noticel')) { expect(item.url).not.toContain('utm_'); expect(item.summary).not.toContain('The post'); }
  });
+});
+it('treats the Metro default card as no image and keeps a real Metro enclosure', () => {
+ const source = sources.find(s => s.id === 'metro')!;
+ const xml = `<?xml version="1.0"?><rss><channel><item><title>Sin foto propia</title><link>https://www.metro.pr/noticias/2026/11/14/sin-foto/</link><pubDate>Sat, 14 Nov 2026 01:00:00 +0000</pubDate><description>Texto</description><enclosure url="https://www.metro.pr/og-default.jpg" type="image/jpeg"/></item><item><title>Con foto</title><link>https://www.metro.pr/noticias/2026/11/14/con-foto/</link><pubDate>Sat, 14 Nov 2026 00:30:00 +0000</pubDate><description>Texto</description><enclosure url="https://www.metro.pr/api/image/LHDX6RI6KNHBBFXYUEMKVOMNWQ.jpg?w=640" type="image/jpeg"/></item></channel></rss>`;
+ const [logo, photo] = parseFeed(xml, source, seen);
+ expect(publisherPlaceholder('https://www.metro.pr/og-default.jpg?w=1200')).toBe(true);
+ expect(logo.image).toBe('');
+ expect(logo.title).toBe('Sin foto propia');
+ expect(photo.image).toBe('https://www.metro.pr/api/image/LHDX6RI6KNHBBFXYUEMKVOMNWQ.jpg?w=640');
+ expect(photo.title).toBe('Con foto');
 });
 it('normalizes URLs and rejects unsafe schemes', () => {
  expect(canonical('https://EXAMPLE.com/story?utm_source=rss&keep=1#x', 'https://example.com')).toBe('https://example.com/story/?keep=1');

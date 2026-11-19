@@ -6,7 +6,7 @@ import { enrichImages } from './image-enrich';
 import { translated, validTranslation, needsTranslation } from './i18n';
 import type { DigestEnv } from './digest';
 import { sources } from './sources';
-import { parseFeed, summary, type Item } from './parse';
+import { parseFeed, publisherPlaceholder, summary, type Item } from './parse';
 import type { Translation } from './i18n';
 export interface Env extends DigestEnv, AlertEnvLike { DB: D1Database; ARCHIVE?: R2Bucket; AI?: Ai; REFRESH_TOKEN?: string; /** Read-only token for the Web Analytics GraphQL reader (src/analytics.ts); optional, secret-bound. */ CF_ANALYTICS_TOKEN?: string }
 type AlertEnvLike = import('./alerts').AlertEnv & { CONTACT_EMAIL?: string };
@@ -29,8 +29,11 @@ export function preserveObserved(item: Item, previous?: Item): Item {
  const next=previous && item.observed ? {...item,time:previous.time} : item;
  // An og:image recovered by the bounded enrichment queue must survive rescans: the
  // publisher's feed still ships no image, so the stored image is carried forward
- // (any feed-provided image keeps winning on its own terms).
- const imaged=!next.image&&previous?.image?{...next,image:previous.image}:next;
+ // (any feed-provided image keeps winning on its own terms). A verified publisher
+ // placeholder is not a photo and must not stick, or block the real feed image.
+ const nextImage=publisherPlaceholder(next.image)?'':next.image;
+ const previousImage=previous?.image&&!publisherPlaceholder(previous.image)?previous.image:'';
+ const imaged=!nextImage&&previousImage?{...next,image:previousImage}:{...next,image:nextImage};
  return previous?.originalLanguage==='en'&&previous.title===item.title&&previous.summary===item.summary?{...imaged,originalLanguage:'en'}:imaged;
 }
 async function scanFeed(env: Env, source: typeof sources[number], url: string, now: number) {
@@ -39,8 +42,13 @@ async function scanFeed(env: Env, source: typeof sources[number], url: string, n
  let status = 0, retryAfter = 0;
  try {
   const headers: Record<string,string> = {'User-Agent':'news.dev.pr/1.0 (+https://news.dev.pr/about)'};
-  if (state?.etag) headers['If-None-Match']=state.etag;
-  if (state?.modified) headers['If-Modified-Since']=state.modified;
+  // Arctic Shift's search answers If-None-Match with HTTP 422
+  // {"error":"Timeout. Maybe slow down a bit"} (reproduced with the etag stored
+  // from the 2026-11-18 21:15Z success). Production has recorded HTTP 429 on this
+  // URL since that success, so the body has not been reparsed. A 304 would skip
+  // it too. The fetch is already hourly.
+  if (url!==arcticFeed && state?.etag) headers['If-None-Match']=state.etag;
+  if (url!==arcticFeed && state?.modified) headers['If-Modified-Since']=state.modified;
   const target=new URL(url);
   if(source.id==='sjds') target.searchParams.set('_refresh',String(Math.floor(now/900000)));
   let response=await fetch(target,{headers,signal:AbortSignal.timeout(10000)});
@@ -67,7 +75,9 @@ async function scanFeed(env: Env, source: typeof sources[number], url: string, n
     WHERE articles.payload<>excluded.payload`).bind(item.url,source.id,JSON.stringify(item),now,now,item.time));
    for(let i=0;i<statements.length;i+=50) await env.DB.batch(statements.slice(i,i+50));
   }
-  await env.DB.prepare(`INSERT INTO feed_state(url,source,etag,modified,last_checked,last_ok,status,error,failures,next_check,item_count) VALUES(?,?,?,?,?,?,?,NULL,0,?,?) ON CONFLICT(url) DO UPDATE SET etag=excluded.etag,modified=excluded.modified,last_checked=excluded.last_checked,last_ok=excluded.last_ok,status=excluded.status,error=NULL,failures=0,next_check=excluded.next_check,item_count=excluded.item_count`).bind(url,source.id,response.headers.get('etag')??state?.etag??null,response.headers.get('last-modified')??state?.modified??null,now,now,status,now+(source.id===redditSource?3600000:source.id==='elvocero'?1800000:840000),count).run();
+  const etag=url===arcticFeed?null:(response.headers.get('etag')??state?.etag??null);
+  const modified=url===arcticFeed?null:(response.headers.get('last-modified')??state?.modified??null);
+  await env.DB.prepare(`INSERT INTO feed_state(url,source,etag,modified,last_checked,last_ok,status,error,failures,next_check,item_count) VALUES(?,?,?,?,?,?,?,NULL,0,?,?) ON CONFLICT(url) DO UPDATE SET etag=excluded.etag,modified=excluded.modified,last_checked=excluded.last_checked,last_ok=excluded.last_ok,status=excluded.status,error=NULL,failures=0,next_check=excluded.next_check,item_count=excluded.item_count`).bind(url,source.id,etag,modified,now,now,status,now+(source.id===redditSource?3600000:source.id==='elvocero'?1800000:840000),count).run();
  } catch(error) {
   const failures=(state?.failures??0)+1;
   const message=error instanceof Error?error.message:String(error);
