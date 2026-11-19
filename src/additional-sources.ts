@@ -1,9 +1,10 @@
 /**
- * Additional Puerto Rico news feeds discovered and verified with real HTTP
- * fetches on 2026-11-14 (see docs/sources-status-integration.md). Nothing here
- * edits src/sources.ts or src/ingest.ts — the root checkout owns that wiring:
- * append `additionalSources` to `sources`, merge `additionalFeedURLs` into `feeds`,
- * and the existing refresh/parseFeed pipeline handles the rest unchanged.
+ * Additional Puerto Rico news feeds. WAPA, WIPR and Claridad were verified on
+ * 2026-11-14; Radio Isla 1320 and WALO 1240 on 2026-11-19 (see
+ * docs/sources-status-integration.md). `sources` and `ingest` already append
+ * `additionalSources` and merge `additionalFeedURLs`, so a new entry here is
+ * the registry change. Parsing, the 300-character excerpt cap, image recovery
+ * and translation stay on the shared pipeline.
  *
  * Only feeds that answered 200 with parseable items and their publisher's own
  * homepage are listed. Unreachable or hijacked domains are recorded in
@@ -16,6 +17,8 @@ export const additionalSources: Source[] = [
  { id: 'wapa', name: 'WAPA', homepage: 'https://wapa.tv', files: ['wapa.xml'] },
  { id: 'wipr', name: 'WIPR', homepage: 'https://wipr.pr', files: ['wipr.xml'] },
  { id: 'claridad', name: 'Claridad', homepage: 'https://claridadpuertorico.com', files: ['claridad.xml'] },
+ { id: 'radioisla', name: 'Radio Isla 1320', homepage: 'https://radioisla.tv', files: ['radioisla.xml'] },
+ { id: 'walo', name: 'WALO 1240 · Humacao', homepage: 'https://waloradio.com', files: ['walo.xml'] },
 ];
 
 /** feedURL map entries for src/ingest's `feeds` record (merge, don't replace). */
@@ -23,6 +26,9 @@ export const additionalFeedURLs: Record<string, string[]> = {
  wapa: ['https://wapa.tv/search/?f=rss&t=article&l=50&s=start_time&sd=desc'],
  wipr: ['https://wipr.pr/feed/'],
  claridad: ['https://claridadpuertorico.com/feed/'],
+ radioisla: ['https://radioisla.tv/feed/'],
+ // Main feed, not /category/noticias/feed/: the category feed drops police items.
+ walo: ['https://waloradio.com/feed/'],
 };
 
 export interface UnavailableSource { name: string; homepage: string; reason: string }

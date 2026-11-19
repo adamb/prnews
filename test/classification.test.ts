@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { currentItem } from '../src/current-item';
+import type { Item } from '../src/parse';
 import { classify, navigationSections, primarySection, sections } from '../src/sections';
 
 describe('bilingual classification', () => {
@@ -78,5 +80,66 @@ describe('bilingual classification', () => {
   expect(classify('https://example.com/entretenimiento/farandula/notas/boletos/', [], 'Pondrá a la venta más boletos').section).toBe('entretenimiento');
   expect(classify('https://example.com/opinion/a/', [], 'Columna sobre bienes raíces').section).toBe('opinion');
   expect(classify('https://example.com/a/', [], 'Nasdaq futures fall as AI stocks tumble').section).toBe('negocios');
+ });
+});
+
+describe('sports court, shooting, and defend versus a legal court', () => {
+ const pollitasUrl = 'https://www.sanjuandailystar.com/post/pollitas-defend-home-court-manat%C3%AD-holds-off-caguas-to-go-up-2-0/';
+ const pollitasTitle = 'Pollitas defend home court; Manatí holds off Caguas to go up 2-0';
+ const pollitasSummary = 'Quionche Carter had 28 points and eight rebounds to lead the Pollitas of Isabela to a 73-62 win over the Gigantes of Carolina in Game 1 of their best-of-five BSNF semifinal series. The Pollitas of Isabela defended their home court.';
+ const pollitasText = `${pollitasTitle} ${pollitasSummary}`;
+ const story = (title: string, summary = ''): Item => ({
+  url: pollitasUrl, source: 'sjds', title, summary, image: '', time: 1, observed: false, section: 'deportes', reason: 'category',
+ });
+
+ it('keeps the Sports category at ingest and sends the game recap to deportes on render', () => {
+  expect(classify(pollitasUrl, ['Sports'], pollitasText)).toEqual({ section: 'deportes', reason: 'category' });
+  expect(classify(pollitasUrl, [], pollitasTitle)).toEqual({ section: 'deportes', reason: 'keywords' });
+  expect(classify(pollitasUrl, [], pollitasText)).toEqual({ section: 'deportes', reason: 'keywords' });
+  expect(currentItem(story(pollitasTitle, pollitasSummary))).toMatchObject({ section: 'deportes', reason: 'keywords' });
+ });
+
+ it.each([
+  ['Shooting guard scores 28 in the home-court win', 'deportes'],
+  ["Carter's shooting leads the Pollitas with 28 points and eight rebounds", 'deportes'],
+  ['Three-point shooting carries Isabela to a 73-62 win', 'deportes'],
+  ['Three-point shooting wins it in sudden death overtime', 'deportes'],
+  ['Shooting leaves two dead outside the arena', 'policiales'],
+  ['Las Pollitas defendieron su cancha; Carter anotó 28 puntos y ocho rebotes', 'deportes'],
+  ['Las Pollitas defendieron su cancha en el primer juego', 'deportes'],
+  ['El equipo defendió su cancha ante Manatí', 'deportes'],
+  ['Las Pollitas defienden su cancha en el juego 1 de la serie', 'deportes'],
+  ['Shooting victim taken to hospital on the main road', 'policiales'],
+  ['Shooting inside a home listed for sale', 'policiales'],
+  ['Former BSN player arrested after a shooting near the arena', 'policiales'],
+  ['BSNF star appears in court on a fraud charge', 'policiales'],
+  ['Court sentences a former basketball player in a hit-and-run', 'policiales'],
+  ['Animal welfare group to seek court order requiring a government plan', 'policiales'],
+  ['The parties appeared at a status hearing in federal court', 'policiales'],
+  ['Supreme Court sanctions siblings for using artificial intelligence to defend themselves', 'policiales'],
+  ['Jugador de baloncesto acusado de tiroteo comparece ante el tribunal', 'policiales'],
+  ['El atleta defiende su caso en el tribunal', 'policiales'],
+  ['Tiroteo en la cancha del residencial deja a una mujer herida', 'policiales'],
+ ])('%s → %s', (text, section) => {
+  expect(classify('https://example.com/post/story/', [], text).section).toBe(section);
+ });
+
+ it('does not treat a residential court or the verb courting as sports or crime', () => {
+  expect(classify('https://example.com/post/story/', [], 'Una mujer fue apuñalada en la cancha del residencial').section).not.toBe('deportes');
+  expect(classify('https://example.com/post/story/', [], 'The Margaritaville hotel brand is courting Ponce').section).not.toBe('policiales');
+ });
+
+ it('keeps publisher paths and categories ahead of the game-recap rule', () => {
+  expect(classify('https://example.com/ley-y-orden/a/', [], pollitasText)).toEqual({ section: 'policiales', reason: 'url' });
+  expect(classify('https://www.noticel.com/deportes/20261118/bsnf-las-pollitas/', [], 'Jugador acusado de asesinato')).toEqual({ section: 'deportes', reason: 'url' });
+  expect(classify(pollitasUrl, ['Business'], pollitasText)).toEqual({ section: 'negocios', reason: 'category' });
+  expect(classify('https://example.com/post/story/', [], 'Markets saw an economic rebound after the holiday').section).not.toBe('deportes');
+ });
+
+ it('still skips Reddit and manual imports when reclassifying', () => {
+  const reddit = currentItem({ ...story('Pollitas defend home court'), source: 'reddit_puertorico', section: 'comunidad', reason: 'community' });
+  expect(reddit).toMatchObject({ section: 'comunidad', reason: 'community' });
+  const manual = currentItem({ ...story('Pollitas defend home court'), source: 'nimb', section: 'negocios', reason: 'manual-import' });
+  expect(manual).toMatchObject({ section: 'negocios', reason: 'manual-import' });
  });
 });

@@ -35,6 +35,23 @@ const keywords: Partial<Record<Section, string[]>> = {
  mundo: ['estados unidos', 'eeuu', 'united states', 'trump', 'iran', 'guerra', 'ucran\\w*', 'ukraine', 'gaza', 'israel', 'peru', 'bukele', 'haiti', 'pope', 'pontifice', 'papa leon', 'international', 'world'],
 };
 const matches = (text: string, pattern: string) => new RegExp(`\\b(?:${pattern})\\b`).test(text);
+// Shot-making language. Bare "shooting" stays a crime word.
+const sportsShot = 'shooting guards?|(?:three|3)[- ]point shooting|field[- ]goal shooting|free[- ]throw shooting|shooting percentage|shooting pct';
+// Game recap signals. Bare "cancha" is not one: a stabbing can happen on a court.
+// Bare "bsnf" stays in the keyword list so a governor-at-the-game tie is unchanged.
+// Folded Spanish home-court verbs: defiende, defienden, defendio (defendió), defendieron.
+// defiend(?:e|en|eron|o|io) did not match defendieron or defendió.
+const defendCourt = 'defiende|defienden|defendio|defendieron';
+const gameRecap = 'home courts?|defend(?:s|ed|ing)? (?:their |its |the )?home court|(?:' + defendCourt + ') (?:su |la )?cancha|\\d+ points and (?:\\w+ )?rebounds?|(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) rebounds?|\\d+ puntos y (?:\\w+ )?rebotes|' + sportsShot;
+// Legal process and violence. These beat a box score when an athlete is the defendant.
+const legalCase = 'court orders?|in court|to court|federal court|supreme court|criminal court|district court|superior court|municipal court|court rulings?|court ruled|court hearings?|court cases?|court appearances?|tribunal\\w*|acusad[oa]|arrest\\w*|charged|sentenced|indict\\w*|arraign\\w*|convicted|murder\\w*|victim|victima|police|policias?|juez|juicio|conden\\w*|fiscalia|hit.and.run|tiroteo|asesin\\w*|feminicid\\w*';
+function sportsShooting(text: string): boolean {
+ // "policies" is not "policia". "sudden death" is overtime, not a fatality.
+ const hard = 'victim|victima|killed|injur\\w*|wound\\w*|hospital|herid\\w*|muert\\w*|police|policias?|arrest\\w*|murder\\w*|charged|acusad[oa]|tiroteo|juez|tribunal\\w*';
+ if (matches(text, sportsShot) && !matches(text, hard)) return true;
+ if (matches(text, hard) || matches(text, 'dead|death')) return false;
+ return matches(text, 'shooting') && matches(text, '\\d+ points|\\d+ puntos') && matches(text, '(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) rebounds?|\\d+ rebotes|home courts?|bsnf|basketball|baloncesto');
+}
 export function classify(url: string, categories: string[], text: string): { section: Section; reason: string } {
  let path = '';
  try { path = fold(decodeURIComponent(new URL(url).pathname)); } catch { /* Text still works for invalid feed links. */ }
@@ -53,9 +70,13 @@ export function classify(url: string, categories: string[], text: string): { sec
  for (const category of categories) if (cats[fold(category).trim()]) return { section: cats[fold(category).trim()], reason: 'category' };
  const normalized = fold(text);
  // Events of violence and traffic injury beat incidental hospitals and roads.
- if (matches(normalized, 'tiroteo|shooting|asesin\\w*|feminicid\\w*|hieren de bala|hit.and.run|arrollad[oa]|atropell\\w*|agresion sexual|explotacion sexual|pornografia infantil|asalt\\w*|robo|motociclista.*accidente')) return { section: 'policiales', reason: 'keywords' };
+ // Bare "shooting" is violence. A shooting guard or a made basket is not.
+ if (matches(normalized, 'tiroteo|asesin\\w*|feminicid\\w*|hieren de bala|hit.and.run|arrollad[oa]|atropell\\w*|agresion sexual|explotacion sexual|pornografia infantil|asalt\\w*|robo|motociclista.*accidente')) return { section: 'policiales', reason: 'keywords' };
+ if (matches(normalized, 'shooting') && !sportsShooting(normalized)) return { section: 'policiales', reason: 'keywords' };
  // A software outage is a technology/business story, even when transport is affected.
  if (matches(normalized, 'microsoft|outlook|software outage|it outage|cloud outage')) return { section: 'negocios', reason: 'keywords' };
+ // "Home court" and a box score are sports. A legal court, charge, or arrest still wins.
+ if (matches(normalized, gameRecap) && !matches(normalized, legalCase)) return { section: 'deportes', reason: 'keywords' };
  // Specific property signals only. Bare casa/home/bank/venta/housing/alquiler also match fires, crime, and ordinary sales.
  // A fire in a listed home stays out of real estate; violence above already wins over a sale or rental.
  const propertySignal = 'bienes raices|inmobiliari\\w*|hipotec\\w*|mortgages?|zonificacion|zoning|real estate|realtors?|mercado de alquiler|rental markets?|new housing|affordable housing|public housing|housing (?:market|development|projects?|units|prices|inventory|starts|crisis|shortage|construction)|departamento de la vivienda|mercado de vivienda|desarrollo de vivienda|vivienda publica|vivienda asequible|viviendas? en venta|casas? en venta|propiedades? en venta|venta de (?:una |la )?(?:propiedad|vivienda|casa|residencia|mansion)|se vende (?:una |la )?(?:casa|propiedad|vivienda|residencia|mansion)|se vende por \\$?\\d+(?:\\.\\d+)? millones|(?:casas?|apartamentos?|propiedades?|viviendas?|locales?) en alquiler|se alquila (?:un |una |el |la )?(?:apartamento|casa|propiedad|vivienda|local|residencia)|alquiler(?:es)? de (?:viviendas?|apartamentos?|casas?|propiedades|locales)|(?:apartments?|houses?|homes?|propert(?:y|ies)|condos?) for rent|mansion(?:es)? costera|property (?:sales?|development|market)|propert(?:y|ies) sells for \\$?\\d+(?:\\.\\d+)? million|(?:homes?|houses?|mansions?|residences?) (?:sells|sold(?! out)|for sale)|desarrollo inmobiliario|desarrollo residencial|proyectos? residenciales?|mercado inmobiliario';

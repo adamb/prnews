@@ -2,6 +2,7 @@ import {lighterRoute,read as readLighter} from './lighter';
 import {attachStoryIds, lighterCacheReadable, readLighterLedger, readLighterQueue, readySnapshot, type LighterView} from './lighter-stats';
 import {sampleQueue,queueHistory} from './stats';
 import {clicksBySource} from './source-compare';
+import {attachThemeStoryIds, buildRecurringThemes, type ThemeReport} from './recurring-themes';
 import { searchArticles } from './search';
 import { clickRoute, topClicked, cleanupClicks, hallOfFame, cumulativeTop, totalClicks, type ClickEnv } from './trending';
 import { refreshWebAnalytics, webAnalyticsSnapshot } from './analytics';
@@ -163,9 +164,9 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
-  // v28 drops v27 pages. v27 is the compact imageless lead. v28 adds the outlet report.
-  // 60s response TTL still applies. On-demand keys stay lighter-2. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v28') : undefined;
+  // v29 drops v28 pages. v28 is the outlet report. v29 adds phrase themes, Radio Isla, WALO, and the context glossary.
+  // The compact imageless-lead rules and lighter-2 stay. 60s TTL still applies. This does not purge R2 or D1.
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v29') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
@@ -189,6 +190,12 @@ export default {
    const popular=url.pathname==='/stats'?await cumulativeTop(env).catch(()=>[]):[];
    const analytics=url.pathname==='/stats'?await webAnalyticsSnapshot(env).catch(()=>undefined):undefined;
    const sourceClicks=url.pathname==='/comparar'?await clicksBySource(env):undefined;
+   const pageNow=Date.now();
+   let recurringThemes:ThemeReport|undefined;
+   if(url.pathname==='/comparar'){
+    recurringThemes=buildRecurringThemes(items,pageNow);
+    await attachThemeStoryIds(env,recurringThemes);
+   }
    const lighter=await readLighter(env);
    let lighterView:LighterView|undefined;
    if(url.pathname==='/stats'){
@@ -196,7 +203,7 @@ export default {
     if(ready.available)await attachStoryIds(env,ready.examples);
     lighterView={ledger:await readLighterLedger(env),queue:await readLighterQueue(env,Date.now()),ready};
    }
-   const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,sourceClicks},digestConfigured(env));
+   const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,sourceClicks,now:pageNow,recurringThemes},digestConfigured(env));
    if(response.status === 200) {
     response.headers.set('Cache-Control','public, max-age=60');
     // CDN-Cache-Control pins the edge TTL too, in case a zone Cache Rule ever overrides it.
