@@ -12,6 +12,7 @@ import { digestRoute } from './digest-http';
 import { eligibleDigestCutoff, runDigest, configured as digestConfigured } from './digest';
 import renderer, { noticeText, detailText } from './render';
 import { faviconRoute } from './favicon';
+import { fontRoute } from './font';
 import { currentItem } from './current-item';
 import { serveArchiveImage, archiveImages } from './archive';
 import { discovery } from './discovery';
@@ -108,6 +109,9 @@ export default {
   // Site icon routes before the renderer: they work with or without D1, like /fallback.svg.
   const icon=faviconRoute(request);
   if(icon)return icon;
+  // Display font for the front end: static, so it never waits on D1 or the page cache.
+  const font=fontRoute(request);
+  if(font)return font;
   if(url.pathname==='/fallback.svg')return new Response(request.method==='HEAD'?null:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><rect width="640" height="360" fill="#e8eee6"/><g fill="none" stroke="#68736c" stroke-width="7"><rect x="234" y="90" width="172" height="180" rx="8"/><path d="M260 125h120M260 155h120M260 185h50M330 185h50M260 215h50M330 215h50M260 245h120"/></g></svg>`,{headers:{'Content-Type':'image/svg+xml','Cache-Control':'public, max-age=86400'}});
   if(url.pathname.startsWith('/archive/images/')) return serveArchiveImage(request,env);
   if(url.pathname==='/internal/refresh'||url.pathname==='/internal/archive') {

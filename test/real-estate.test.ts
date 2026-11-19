@@ -95,7 +95,9 @@ it('shows Real Estate in the More menu and on its own Spanish and English pages'
  expect(legacy).toContain('Mansión costera importada');
  expect(legacy).not.toContain('clasificadosonline.com');
  const home = await renderer.fetch(new Request('https://news.dev.pr/'), data).text();
- for (const title of [rio.title, bahiaTitle, business.title, manual.title]) expect(home.split('>' + title + '</a>').length - 1).toBe(1);
+ // Once per article inside <main>; the "Última hora" ticker above it intentionally repeats the newest.
+ const homeMain = home.slice(home.indexOf('<main'), home.indexOf('</main>'));
+ for (const title of [rio.title, bahiaTitle, business.title, manual.title]) expect(homeMain.split('>' + title + '</a>').length - 1).toBe(1);
  expect(home).toContain('Bienes raíces');
  expect(home).not.toContain('clasificadosonline.com');
 });

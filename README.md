@@ -97,9 +97,20 @@ One definition (`needsTranslation` in `src/i18n.ts`) is shared by the pending no
 
 Language is decided per article, not per source. Bilingual publishers like the San Juan Daily Star ship both languages, so `parseFeed` records a transparent per-article `originalLanguage:'es'` whenever title/summary carry demonstrably Spanish signals (Spanish-exclusive function words, Spanish morphology, Spanish diacritics; capitalized proper nouns and acronym bylines never count). Items with a per-article signal are labeled and queued accordingly; items without one keep their source's default (sjds/nimb English, everything else Spanish). Detection is conservative and never invents an English verdict.
 
+## Front end (editorial redesign)
+
+The public pages are server-rendered strings in `src/render.ts` with one inlined stylesheet, `src/styles.ts`; there is no client framework. Composition is pure and unit-tested in `src/frontpage.ts`; nothing here touches ingestion, translation, D1 or the click ledger.
+
+- **Front page:** "Última hora" ticker (newest newsroom stories, pausable, still under `prefers-reduced-motion`), a hero (the best-covered recent story that has a picture) with up to three side stories, a "Lo más leído" rail ranked 1-5 from the existing rolling-24h click data, then one section module per navigation section. Every section shows the same 1 large + 2 medium + 3 brief preview whatever its size, so "Otras y Opinión" has no extra weight; its header count matches the section page.
+- **Same event, shown once:** on the front page only, near-identical headlines from different newsrooms within 12 hours (at least four shared content words and 60% overlap) fold into one story with a "También en" link to the other newsroom's original. Headlines are never rewritten and the section pages list every story. Thresholds live in `src/frontpage.ts`.
+- **Images:** every thumbnail sits in a fixed aspect-ratio box with the source's monogram (`src/brand.ts`) underneath, so a missing or broken image leaves a tidy colored block and never shifts layout. A thumbnail used by four or more different stories is treated as a publisher stock graphic and replaced by the monogram (presentation only; stored data is unchanged).
+- **Time:** stories under a week old show "hace 12 min" / "12 min ago" (the absolute AST time is the tooltip). A 600-byte inline script refreshes them every minute; `src/reltime.ts` keeps the server and browser rules identical and a test enforces it.
+- **Type and theme:** headlines use Fraunces, one variable woff2 (latin subset, weight axis 600-800, ~32 KB) served by the Worker itself from `/fonts/fraunces-var.woff2` with immutable caching (`src/font.ts`; SIL Open Font License 1.1); UI text uses the system sans stack. Colors are tokens resolved with `light-dark()` from `color-scheme`, which follows the system theme unless the header toggle stored a choice; dark is the fallback palette. Section accents take only a hue from `src/brand.ts`; lightness is set per theme so accents, muted text and the monogram blocks all clear 4.5:1 on their backgrounds (checked with a WCAG contrast sweep; the one unused yellow hue near 60 would miss 4.5:1 in the light theme, so keep new section hues away from it).
+- **Navigation on phones:** the bar collapses to "Portada" plus one sections button that opens a full-width sheet; search collapses to an icon that expands over the header.
+
 ## Remaining work
 
-Homepage duplicate placement is prevented by canonical article URL. Bounded article-page image metadata lookups are implemented; regional filters are not. Articles without usable images use a small local newspaper illustration. El Vocero is enabled using its RSS search feed, checked every 30 minutes to respect its advertised interval; it uses the same translation and permanent-archive pipeline. See [SPEC.md](SPEC.md) for the broader roadmap.
+Homepage duplicate placement is prevented by canonical article URL. Bounded article-page image metadata lookups are implemented; regional filters are not. Articles without usable images show their source's monogram block (see Front end). El Vocero is enabled using its RSS search feed, checked every 30 minutes to respect its advertised interval; it uses the same translation and permanent-archive pipeline. See [SPEC.md](SPEC.md) for the broader roadmap.
 
 ## Reddit community
 

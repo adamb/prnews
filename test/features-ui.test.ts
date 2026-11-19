@@ -72,8 +72,12 @@ it('rejects malformed JSON subscription input with a truthful 400',async()=>{
 it('places every homepage article only once, including hero and trending',async()=>{
  const a=item('noticel','Primer titular'),b=item('nimb','Second headline'),reddit={...item('reddit_puertorico','Hospital discussion'),section:'comunidad' as const};
  const html=await renderer.fetch(new Request('https://news.dev.pr/'),{items:[a,b,reddit],translations:{},feeds:[],trending:[{item:a,clicks:4}]}).text();
- for(const title of [a.title,b.title,reddit.title])expect(html.split('>'+title+'</a>').length-1).toBe(1);
- expect(html).toContain('/fallback.svg');expect(html).not.toContain('this.closest');
+ // The "Última hora" ticker (outside <main>) deliberately repeats the newest headlines; everything
+ // inside <main> — hero, side stories, sections, rail — must still place each article once.
+ const main=html.slice(html.indexOf('<main'),html.indexOf('</main>'));
+ for(const title of [a.title,b.title,reddit.title])expect(main.split('>'+title+'</a>').length-1).toBe(1);
+ // Stories without a thumbnail get the source's monogram block, never a broken or shifting image.
+ expect(main).toContain('class="ph"');expect(main).not.toContain('<img');expect(html).not.toContain('this.closest');
  expect(html).not.toContain('Feeds checked every 15 minutes');
 });
 it('shows the excerpt once per hero and story card, with no repeated Why-it-matters block, in both languages',async()=>{
@@ -104,9 +108,11 @@ it('shows the excerpt once per hero and story card, with no repeated Why-it-matt
 it('opens the More-sections menu in-flow at full width on narrow viewports instead of an offscreen popup',async()=>{
  const html=await renderer.fetch(new Request('https://news.dev.pr/'),{items:[],translations:{},feeds:[]}).text();
  expect(html).toContain('<details class="more-nav">');expect(html).toContain('<summary>Más secciones</summary>');
- expect(html).toContain('@media(max-width:768px){.more-nav[open]{flex:1 1 100%}');
- expect(html).toContain('.more-nav[open]>div{position:static;width:100%;max-width:none;box-shadow:none}');
- // Closed state keeps the established anchored dropdown on every width.
+ // Phones: the panel is a full-width sheet anchored to the sticky bar, not a right-aligned popup.
+ expect(html).toContain('@media(max-width:768px){');
+ expect(html).toContain('.more-nav{position:static}');
+ expect(html).toContain('.more-nav>div{left:0;right:0;width:auto;max-width:none;');
+ // Wider screens keep the anchored dropdown.
  expect(html).toContain('.more-nav>div{position:absolute;right:0;top:100%;width:260px');
 });
 
