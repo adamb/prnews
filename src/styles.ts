@@ -81,6 +81,8 @@ button{font:inherit;color:var(--ink)}
 .more-nav>div a:hover{background:var(--soft);text-decoration:none}
 .more-nav>div a[aria-current=page]{color:var(--accent)}
 .more-nav>div a.narrow-only{display:none}
+.more-nav>div a.alerts-sheet{color:var(--accent);font-weight:700}
+@media(min-width:900px){.more-nav>div a.alerts-sheet{display:none}}
 /* Narrow screens: the bar collapses to Portada plus one Sections trigger; every section lives in the
 full-width sheet that opens under the bar, so nothing wraps into a second line or runs off-screen. */
 @media(max-width:768px){

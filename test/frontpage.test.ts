@@ -226,6 +226,11 @@ describe('front page markup', () => {
   expect(html).toContain('>Español</a>');
   expect(html).toContain('A look at Puerto Rico');
  });
+ it('keeps alerts one tap away on phones through the sections sheet', async () => {
+  const html = await render('/?lang=en', []);
+  const sheet = html.slice(html.indexOf('<details class="more-nav">'), html.indexOf('</details>'));
+  expect(sheet).toContain('class="alerts-sheet" href="/alerts?lang=en">My alerts</a>');
+ });
  it('tells people when there is nothing to show instead of an empty page', async () => {
   expect(await render('/', [])).toContain('No hay noticias para mostrar');
  });
