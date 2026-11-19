@@ -181,6 +181,28 @@ it('resolves a relative og:image against the publisher page and keeps enrichment
  expect(feedWins.image).toBe('https://metro.pr/feedimg.jpg'); // a newly delivered feed image still outranks the recovered one
 });
 
+it('does not store Metro og-default.jpg and does not let that placeholder replace a real photo', async () => {
+ const DB = database(), now = Date.now();
+ const logo = 'https://www.metro.pr/og-default.jpg';
+ const photo = 'https://www.metro.pr/api/image/LHDX6RI6KNHBBFXYUEMKVOMNWQ.jpg?w=640';
+ const bare = item({ url: 'https://www.metro.pr/noticias/2026/11/19/los-jovenes-latinoamericanos-tienen-cada-vez-menos-hijos-y-se-alejan-del-matrimonio/', source: 'metro', title: 'Los jóvenes latinoamericanos tienen cada vez menos hijos y se alejan del matrimonio', summary: 'Un informe de la ONU atribuye la caída de la natalidad y del matrimonio formal a las dificultades económicas y al acceso limitado a la vivienda' });
+ await insert(DB, bare);
+ vi.stubGlobal('fetch', async () => new Response(`<html><head><meta property="og:image" content="${logo}"><meta property="og:image" content="${photo}"></head></html>`, { headers: { 'Content-Type': 'text/html' } }));
+ await enrichImages({ DB } as unknown as Env, now);
+ expect((await payloadOf(DB, bare.url)).image).toBe(photo);
+ const onlyLogo = item({ url: 'https://www.metro.pr/noticias/2026/11/19/solo-marca/', source: 'metro' });
+ await insert(DB, onlyLogo);
+ vi.stubGlobal('fetch', async () => new Response(`<html><head><meta property="og:image" content="${logo}"></head></html>`, { headers: { 'Content-Type': 'text/html' } }));
+ await enrichImages({ DB } as unknown as Env, now + 1);
+ expect((await payloadOf(DB, onlyLogo.url)).image).toBe('');
+ const kept = preserveObserved({ ...bare, image: logo }, { ...bare, image: photo });
+ expect(kept.image).toBe(photo);
+ expect(kept.title).toBe(bare.title);
+ expect(kept.summary).toBe(bare.summary);
+ const cleared = preserveObserved({ ...bare, image: logo }, { ...bare, image: logo });
+ expect(cleared.image).toBe('');
+});
+
 it('gives new visible stories and each source service despite an older alphabetical backlog', async () => {
  const DB=database(), now=Date.now();
  for(let i=0;i<30;i++) await insert(DB,item({url:`https://aaa.example/${i}`,source:'wapa',time:now-86400000}));

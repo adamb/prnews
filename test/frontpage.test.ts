@@ -103,6 +103,23 @@ describe('lead and section composition', () => {
   const revisions = Array.from({ length: 5 }, () => ({ ...four[0], title: 'Same url' }));
   expect(withoutStockImages(revisions).every(i => i.image === stock)).toBe(true);
  });
+ it('drops the Metro default card and keeps a real Metro photo', async () => {
+  const logo = 'https://www.metro.pr/og-default.jpg';
+  const photo = 'https://www.metro.pr/api/image/LHDX6RI6KNHBBFXYUEMKVOMNWQ.jpg?w=640';
+  const placeholder = story({ source: 'metro', section: 'negocios', title: 'Los jóvenes latinoamericanos tienen cada vez menos hijos y se alejan del matrimonio', summary: 'Un informe de la ONU atribuye la caída de la natalidad y del matrimonio formal a las dificultades económicas y al acceso limitado a la vivienda', image: logo });
+  const real = story({ source: 'metro', section: 'negocios', title: 'Sigue bajando el precio de la gasolina en Puerto Rico', image: photo });
+  const out = withoutStockImages([placeholder, real]);
+  expect(out[0].image).toBe('');
+  expect(out[1]).toBe(real);
+  const logoPage = await render('/s/negocios', [placeholder]);
+  expect(logoPage).toContain('class="card lead noimg"');
+  expect(logoPage).not.toContain('og-default.jpg');
+  expect(mainOf(logoPage).slice(mainOf(logoPage).indexOf('class="card lead'), mainOf(logoPage).indexOf('</article>'))).not.toContain('<img');
+  const photoPage = await render('/s/negocios', [real]);
+  expect(photoPage).toContain('class="card lead"');
+  expect(photoPage).not.toContain('class="card lead noimg"');
+  expect(photoPage).toContain('src="https://www.metro.pr/api/image/LHDX6RI6KNHBBFXYUEMKVOMNWQ.jpg?w=640"');
+ });
 });
 
 describe('relative time', () => {

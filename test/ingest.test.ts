@@ -102,6 +102,20 @@ it('uses Arctic Shift when Reddit RSS fails and deduplicates when RSS recovers',
  vi.stubGlobal('fetch',async(input:URL)=>input.hostname==='www.reddit.com'?new Response(xml):new Response('',{status:429}));
  await refresh(env);
  expect((await DB.prepare('SELECT COUNT(*) AS n FROM articles WHERE url=?').bind(item.url).first<any>()).n).toBe(1);
+ await DB.prepare('UPDATE feed_state SET etag=?, modified=? WHERE url=?').bind('W/"stale-arctic"', 'Wed, 18 Nov 2026 21:15:14 GMT', arcticFeed).run();
+ vi.spyOn(Date,'now').mockReturnValue(now+7200002);
+ const arcticCalls: {url: string; headers?: Record<string, string>}[] = [];
+ vi.stubGlobal('fetch', async (input: URL, init?: RequestInit) => {
+  const url = input.toString();
+  arcticCalls.push({url, headers: init?.headers as Record<string, string> | undefined});
+  if (url === arcticFeed) return Response.json({data: [post]}, {headers: {etag: 'W/"fresh"'}});
+  return new Response('', {status: 429});
+ });
+ await refresh(env);
+ const arctic = arcticCalls.find(call => call.url === arcticFeed);
+ expect(arctic?.headers?.['If-None-Match']).toBeUndefined();
+ expect(arctic?.headers?.['If-Modified-Since']).toBeUndefined();
+ expect((await DB.prepare('SELECT etag, modified FROM feed_state WHERE url=?').bind(arcticFeed).first<any>())).toEqual({etag: null, modified: null});
 });
 it.each(['wrapped','array'])('saves valid translation peers from %s responses when another headline is unchanged',async(shape)=>{
  const DB=database(),now=Date.now();

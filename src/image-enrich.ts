@@ -1,4 +1,5 @@
 import {imageUrl} from './archive';
+import {publisherPlaceholder} from './parse';
 import type {Env} from './ingest';
 import * as he from 'he';
 
@@ -144,7 +145,9 @@ export async function enrichImages(env: Env, now: number = Date.now()) {
       // the archive copy enforces. The payload update is atomic: it fills the image only
       // while it is still missing, raises an archive revision, and queues the R2 copy.
       const candidate = (() => { try { const u = new URL(raw, pageUrl); return ['http:', 'https:'].includes(u.protocol) && !/\.(svg|gifv|mp4)$/.test(u.pathname) ? u.href : ''; } catch { return ''; } })();
-      if (!candidate) continue;
+      // Metro's og-default.jpg is the green wordmark. Skip it and keep looking
+      // for a real og:image; if it is the only one, the story stays imageless.
+      if (!candidate || publisherPlaceholder(candidate)) continue;
       try {
        const store = await env.DB.prepare("UPDATE articles SET payload=json_set(payload,'$.image',?),updated_at=? WHERE url=? AND COALESCE(json_extract(payload,'$.image'),'')=''")
         .bind(imageUrl(candidate), now, row.url).run();

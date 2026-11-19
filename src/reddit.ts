@@ -28,21 +28,44 @@ export function redditTopic(title: string): Section | undefined {
  }
  return best;
 }
-/** Hosts the old Atom `media:thumbnail` already carried. A text post sends thumbnail
- * "self" or "default" and has no preview; it stays imageless. Nothing here is fetched. */
-const redditImageHosts = new Set(['i.redd.it', 'preview.redd.it', 'external-preview.redd.it']);
-export function redditImage(post: { url?: unknown; thumbnail?: unknown; preview?: { images?: Array<{ source?: { url?: unknown } }> } }): string {
- const preview = post.preview?.images?.[0]?.source?.url;
- for (const raw of [preview, post.thumbnail, post.url]) {
-  if (typeof raw !== 'string') continue;
-  const safe = safeUrl(raw);
-  if (!safe) continue;
-  let host = '', path = '';
-  try { const u = new URL(safe); host = u.hostname.toLowerCase(); path = u.pathname; if (u.protocol !== 'https:') continue; } catch { continue; }
-  if (!redditImageHosts.has(host) || /\.(svg|gifv|mp4)$/i.test(path)) continue;
+/** Hosts already present on the Arctic post. A text post sends thumbnail "self" or
+ * "default" and has no preview; it stays imageless. Nothing here is fetched.
+ * cf.preview.redd.it is the full-size preview CDN; preview.redd.it is often only the 140px thumb. */
+const redditImageHosts = new Set(['i.redd.it', 'preview.redd.it', 'cf.preview.redd.it', 'external-preview.redd.it']);
+type RedditMedia = { status?: unknown; e?: unknown; s?: { u?: unknown } };
+function redditImageUrl(raw: unknown): string {
+ if (typeof raw !== 'string') return '';
+ const safe = safeUrl(raw);
+ if (!safe) return '';
+ try {
+  const u = new URL(safe);
+  if (u.protocol !== 'https:' || !redditImageHosts.has(u.hostname.toLowerCase()) || /\.(svg|gifv|mp4)$/i.test(u.pathname)) return '';
   return safe;
+ } catch { return ''; }
+}
+function galleryOriginal(post: { media_metadata?: Record<string, RedditMedia> | null; gallery_data?: { items?: Array<{ media_id?: unknown }> } | null }): string {
+ const meta = post.media_metadata;
+ if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return '';
+ const order = Array.isArray(post.gallery_data?.items)
+  ? post.gallery_data.items.flatMap(item => typeof item?.media_id === 'string' ? [item.media_id] : [])
+  : Object.keys(meta);
+ for (const id of order) {
+  const entry = meta[id];
+  if (!entry || entry.status === 'failed' || entry.status === 'invalid' || entry.status === 'deleted' || entry.e === 'RedditVideo') continue;
+  const url = redditImageUrl(entry.s?.u);
+  if (url) return url;
  }
  return '';
+}
+export function redditImage(post: { url?: unknown; thumbnail?: unknown; preview?: { images?: Array<{ source?: { url?: unknown } }> }; media_metadata?: Record<string, RedditMedia> | null; gallery_data?: { items?: Array<{ media_id?: unknown }> } | null }): string {
+ const direct = redditImageUrl(post.url);
+ if (direct && new URL(direct).hostname === 'i.redd.it') return direct;
+ const preview = redditImageUrl(post.preview?.images?.[0]?.source?.url);
+ if (preview) return preview;
+ const gallery = galleryOriginal(post);
+ if (gallery) return gallery;
+ if (direct) return direct;
+ return redditImageUrl(post.thumbnail);
 }
 export function inSection(item: Item, section: string): boolean {
  if(item.source!==redditSource) return item.section===section;

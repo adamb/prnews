@@ -18,6 +18,17 @@ export function redditExcerpt(raw: string, html = false): string {
 export function safeUrl(value: string, base?: string): string {
  try { const u = new URL(he.decode(value), base); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch { return ''; }
 }
+/** Metro's Arc default social card, verified 2026-11-19: this exact file is the green
+ * METRO wordmark (1200×630 JPEG, 12384 bytes), not a photograph of the story.
+ * A real Metro photo lives under /api/image/ and must not match. */
+export function publisherPlaceholder(value: string): boolean {
+ const safe = safeUrl(value);
+ if (!safe) return false;
+ try {
+  const u = new URL(safe);
+  return u.protocol === 'https:' && u.hostname === 'www.metro.pr' && u.pathname === '/og-default.jpg';
+ } catch { return false; }
+}
 export function canonical(value: string, base: string): string {
  const safe = safeUrl(value, base); if (!safe) return '';
  const u = new URL(safe); u.hash = '';
@@ -98,7 +109,8 @@ export function parseFeed(xml: string, source: Source, seen: number): Item[] {
   let dek = summary(str(source.id === 'telemundo' ? r.excerpt : r.description ?? r.summary ?? r['content:encoded']));
   if (source.id === 'reddit_puertorico') dek = redditExcerpt(str(r.content), true);
   const media = [...list(r['media:content']), ...list(r['media:thumbnail']), ...list(r.enclosure).filter(e => /^image\//.test(e['@_type'] ?? ''))];
-  const image = safeUrl(str(media.find(m => m['@_url'])?.['@_url'] ?? /<img[^>]+src=["']([^"']+)/i.exec(str(r.description ?? r['content:encoded']))?.[1] ?? ''));
+  const rawImage = safeUrl(str(media.find(m => m['@_url'])?.['@_url'] ?? /<img[^>]+src=["']([^"']+)/i.exec(str(r.description ?? r['content:encoded']))?.[1] ?? ''));
+  const image = publisherPlaceholder(rawImage) ? '' : rawImage;
   const date = dates[index];
   const observed = source.id === 'telemundo' || !Number.isFinite(date) || date > seen || dates.filter(d => d === date).length > 5;
   // Per-article language for demonstrably Spanish text (community posts keep their own bilingual flow).
