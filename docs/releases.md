@@ -76,3 +76,12 @@
 - Public es/en alerts and home fetches verified navigation, locale and copyright; alerts retain no-store, no-referrer, CSP and no analytics/signup footer. About es/en measurements verified with a fresh release query key because an existing cached page initially retained older copy.
 - Authenticated management/result/retry rendering verified with local fixtures and mocked mail only. No live sessions accessed or mail sent. Mobile sizing and keyboard focus implemented in CSS; no browser/390px visual inspection requested or performed.
 - Earlier sequential deployments during additional user requests: c2a86f06f0966f4fb7cc84e57a8b70c0af55d565 / 5c2b704e-9499-4f66-b5e8-38c822dfb9ce; d0608abed1f53dfa987cc9daeeee8ce180d3aca2 / 43024b76-9404-4235-9537-eb5e0e3b0812.
+
+## 2026-11-19 — Editorial front-end redesign
+
+- Deployed source: a18ae08675f9612adbf1b54ded5c3ea02c2bb872 (branch redesign/ui, PR #7; not yet merged to main at deploy time).
+- Cloudflare Worker version: 9289a2a3-9ae3-4d44-b883-62b068893b9c.
+- Front end only: ticker, hero, per-section 1+2+3 modules, ranked most-read rail, relative timestamps, monogram image fallback, front-page same-event folding ("También en"), self-hosted Fraunces variable font at /fonts/fraunces-var.woff2. No migrations, no pipeline, translation, D1 or click-ledger changes.
+- Validation: 350 tests, typecheck, wrangler dry-run build; clean tree, pushed SHA verified equal to local HEAD and main unchanged before manual `wrangler deploy`.
+- Live checks: 200 for /, /?lang=en, /s/politica, /fuentes, /about, /archive, /feed, /api/live; font served as font/woff2 with immutable caching; English edition shows "Latest" and "Also in". Browser screenshot of production at 1440 px matched local review.
+- Rollback: `npx wrangler rollback` to the previous version (see `wrangler deployments list`).
