@@ -164,8 +164,31 @@ describe('front page markup', () => {
   expect(html).toContain('referrerpolicy="no-referrer"');
   expect(css).toMatch(/\.picture\{[^}]*aspect-ratio:3\/2/);
   expect(css).toMatch(/\.card\.hero \.picture\{aspect-ratio:16\/9\}/);
+  // The section-page lead ratio must not apply to an imageless card. It is more specific
+  // than the shared monogram rule and was the 16/9 block on phones.
+  expect(css).toContain('.tiles>.card.lead:not(.noimg) .picture{aspect-ratio:16/9}');
+  expect(css).not.toContain('.tiles>.card.lead .picture{aspect-ratio:16/9}');
+  expect(css).toContain('.card.lead.noimg,.card.hero.noimg{display:grid;grid-template-columns:minmax(0,1fr) 64px;grid-template-areas:"body pic"');
   // Only the first, above-the-fold image loads eagerly.
   expect(html.match(/loading="lazy"/g)?.length ?? 0).toBe(html.match(/<img /g)!.length - html.match(/fetchpriority="high"/g)!.length);
+ });
+ it('lays an imageless section lead out as text, and keeps a real lead photo', async () => {
+  const bare = story({ source: 'sjds', title: 'Nasdaq futures rise without a photo', section: 'negocios' });
+  const photo = story({ source: 'sjds', title: 'A different business story with a photograph', section: 'negocios', image: 'https://img.example/real.jpg' });
+  const imageless = await render('/s/negocios?lang=en', [bare, photo]);
+  const lead = imageless.slice(imageless.indexOf('<article'), imageless.indexOf('</article>'));
+  expect(lead).toContain('class="card lead noimg"');
+  expect(lead).toContain('<b>SJDS</b>');
+  expect(lead).not.toContain('<img');
+  expect(imageless).toContain('src="https://img.example/real.jpg"');
+  const pictured = await render('/s/negocios?lang=en', [photo, bare]);
+  expect(pictured).toContain('class="card lead"');
+  expect(pictured).not.toContain('class="card lead noimg"');
+  expect(pictured).toContain('src="https://img.example/real.jpg"');
+  // The compact grid is not inside a min-width query, so a phone uses it too.
+  const ruleAt = css.indexOf('.card.lead.noimg,.card.hero.noimg{display:grid');
+  expect(ruleAt).toBeGreaterThan(css.indexOf('.tiles>.card.lead:not(.noimg) .picture{aspect-ratio:16/9}'));
+  expect(css.slice(css.lastIndexOf('}', ruleAt), ruleAt)).not.toContain('@media');
  });
  it('gives every section the same preview size, so "Otras y Opinión" earns no extra weight', async () => {
   const big = Array.from({ length: 60 }, (_, i) => story({ source: ['endi', 'metro', 'wapa'][i % 3], title: `Asunto de otras cosas numero ${i} ${i * 11}`, section: 'otras', time: now - (i + 10) * MIN }));
