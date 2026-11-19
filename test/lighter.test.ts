@@ -53,7 +53,7 @@ it('renders optional escaped edition-specific disclosure with originals and mobi
   expect(html).toContain(lang==='es'?'Ver la sátira guardada':'Show the saved satire');
   expect(html).not.toContain(text);
   expect(html).toContain(story.title);expect(html).toContain(encodeURIComponent(story.url));expect(html).toContain('min-height:44px');
-  expect(html).toContain('max-width:390px');expect(html).toContain('--bg:#141c18');
+  expect(html).toContain('max-width:390px');expect(html).toContain('--bg:#0e1311');
   expect(html).toContain('textContent');expect(html).not.toContain('innerHTML');
   const fallback=await renderer.fetch(new Request('https://news.dev.pr/?lang='+lang),{...data,lighter:{}}).text();
   expect(fallback).toContain(lang==='es'?'Pedir una sátira':'Ask for a satire');

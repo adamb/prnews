@@ -116,7 +116,7 @@ it('renders localized ledger, cache state, and story links without the old call 
   const html=await renderer.fetch(new Request('https://news.dev.pr/stats?lang='+lang),{items:[],translations:{},feeds:[],lighterView:view()}).text();
   expect(html).toContain('id="lighter-stats"');
   expect(html).toContain('max-width:390px');
-  expect(html).toContain('--bg:#141c18');
+  expect(html).toContain('--bg:#0e1311');
   const lighter=html.slice(html.indexOf('id="lighter-stats"'),html.indexOf('id="clics"'));
   expect(lighter).not.toContain('180');
   expect(lighter).not.toContain('15 minutes');
