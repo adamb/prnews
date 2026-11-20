@@ -7,7 +7,7 @@ import { searchArticles } from './search';
 import { clickRoute, topClicked, cleanupClicks, hallOfFame, cumulativeTop, totalClicks, type ClickEnv } from './trending';
 import { refreshWebAnalytics, webAnalyticsSnapshot } from './analytics';
 import { syndicationRoute, storyLookup } from './syndication';
-import { alertsRoute } from './alerts-http';
+import { alertsRoute, alertsActiveRoute } from './alerts-http';
 import { runAlertSweep, confirmedAlertAccountCounts, type AlertEnv } from './alerts';
 import { turnstileRenderConfigured } from './turnstile';
 import { digestRoute } from './digest-http';
@@ -51,6 +51,10 @@ export default {
   try {
   const alerts=env.DB?await alertsRoute(request,env as unknown as AlertEnv):undefined;
   if(alerts)return alerts;
+  // Boolean-only alert-account status for the reading-page invitation: no-store, never cached,
+  // and the only account-derived byte it can answer is {active:true|false}.
+  const alertsActive=env.DB?await alertsActiveRoute(request,env as unknown as AlertEnv):undefined;
+  if(alertsActive)return alertsActive;
   const digest=await digestRoute(request,env);
   if(digest)return digest;
   // Public signup needs server-side Turnstile (secret + site key + hostname allowlist);
@@ -169,12 +173,13 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
+  // v37 drops v36 pages that lack the keyword-alert invitation on reading routes.
   // v36 drops v35 pages whose share script cannot attach an open satire line.
   // v35 drops v34 pages that lack hreflang and canonical, and filtered pages that
   // were still indexable. v34 dropped v33 pages whose source names are not links
   // and that have no active-source chip. Compact imageless-lead rules and lighter-2
   // stay. 60s TTL still applies. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v36') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v37') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);

@@ -346,6 +346,24 @@ footer a:hover{color:var(--ink)}
 .digest-footer{padding-bottom:20px}.digest-footer>div{width:100%;max-width:650px}
 .digest-footer h2{font-size:1.15rem}.digest-footer p{font-size:14px;margin:6px 0 0}
 
+/* Keyword-alert invitation: a small dismissible card, never a modal. The server ships it hidden
+   on reading routes; the inline script reveals it after a reading delay. Phones get one
+   full-width bar over the safe-area bottom; desktop a small card at bottom right. The wrapper
+   passes clicks through, so only the card intercepts the page beneath it. */
+.invite{position:fixed;z-index:40;inset-inline:0;bottom:0;display:flex;justify-content:center;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px));pointer-events:none}
+.invite[hidden]{display:none}
+.invite-card{pointer-events:auto;position:relative;width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;box-shadow:var(--shadow);padding:14px 16px 16px;animation:invite-in .28s ease}
+.invite-close{position:absolute;top:6px;right:6px;display:grid;place-items:center;width:36px;height:36px;min-height:36px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer}
+.invite-close:hover{color:var(--ink);background:var(--soft)}
+.invite-title{margin:0 42px 4px 0;font:700 1.05rem/1.3 var(--serif);letter-spacing:-.01em;text-wrap:balance}
+.invite-body{margin:0 0 12px;color:var(--muted);font-size:.85rem;line-height:1.5}
+.invite-cta{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 18px;border-radius:999px;background:var(--ink);color:var(--bg);font-weight:700}
+.invite-cta:hover{text-decoration:none}
+.invite-cta:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+@media(min-width:900px){.invite{justify-content:flex-end;padding:0 28px 24px}.invite-card{width:auto;max-width:340px}}
+@media(max-width:390px){.invite-cta{width:100%}}
+@keyframes invite-in{from{opacity:0;transform:translateY(10px)}}
+
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;scroll-behavior:auto!important}.card:hover .picture>img{transform:none}}
 
 /* Outlet report. Source hue is --h on the row; --row is the ink used for rules and bars.

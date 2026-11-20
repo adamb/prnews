@@ -276,3 +276,50 @@ operator" and do not name the notice recipient.
 Migration `0013_owner_signup_notice.sql` copies the outbox so kind `owner` is allowed and
 adds the notice table. It does not delete accounts or rewrite mail history. Apply it before
 the worker that inserts kind `owner`. Re-applying copies the current outbox and keeps every row.
+
+## Reading-page invitation for keyword alerts (November 20, 2026)
+
+`src/invitation.ts` renders a small, dismissible, never-modal invitation on the public
+reading routes only (`/`, `/s/…`, `/story`, `/search`, `/archive`, status 200). Utility
+pages, `/signup`, every `/alerts*` page and every non-200 response are excluded. The HTML
+cache name moved to `prnews-html-v37` because page HTML changed.
+
+Five bilingual variants ship together in the page, all server-hidden: your company, your
+name, your favorite artist, your town (`tu pueblo`), and a favorite topic. Spanish is
+Puerto Rican Spanish; each body states the truthful batched delivery ("máximo un correo
+por hora" / "at most one email per hour") and never promises instant delivery. The shared
+CTA is "Crear mis alertas" / "Create my alerts" and links to `/alerts` preserving the
+viewed edition's `lang`; the close button carries a localized label. The card is a
+fixed bottom card (full-width on phones, bottom-right on desktop), never covers reading
+content, never takes focus, and Escape also closes it.
+
+The client script does the only personalization, entirely in the browser:
+
+- One invitation per America/Puerto_Rico calendar day (AST, UTC-4 all year — no DST, so a
+  fixed offset is exact). Showing, closing or following the CTA suppresses every variant
+  for the rest of that same AST day across all public pages. There is no midnight timer:
+  the day is evaluated per visit (at display-decision time), so nothing re-opens while
+  someone is reading.
+- Deterministic round-robin: the shown variant index persists in the same local record
+  and advances only on an actual display — never on plain page loads or on suppressed
+  checks — so the next eligible visit on a later day offers the next variant (wrapping
+  around). The record key is edition-independent, so switching Español/English never
+  resets dismissal or rotation.
+- A signed-in browser that already has active alerts is suppressed by
+  `GET /api/alerts-active` (`src/alerts-http.ts`): the endpoint reads the existing session
+  cookie and answers exactly `{"active":true|false}` — never an email, a phrase, or
+  session material — always `Cache-Control: no-store` and `Referrer-Policy: no-referrer`,
+  so it can never enter the shared HTML cache or the edge, and it sets no cookie. It is
+  queried once per eligible display attempt, not per card. A signed-out visitor who
+  created alerts elsewhere cannot be recognized; nothing claims otherwise.
+- Storage is probed (localStorage, then sessionStorage); with both blocked the invitation
+  never appears rather than nagging per page. A failed status check stays quiet and the
+  invitation shows anyway. No new cookies, no visitor identity, no analytics; the Cloudflare
+  beacon is unchanged.
+
+Tests live in `test/invitation.test.ts`: bilingual variant copy and lang-preserving
+links, route eligibility and exclusions, the AST day boundary, same-day suppression,
+close/CTA dismissal, deterministic round-robin with wraparound, index preservation under
+account-active suppression, edition-switch continuity, quiet storage failures, the
+boolean endpoint's one-bit answers (no email/phrase, no-store, 405 on mutations), and
+shared-HTML isolation (a session cookie changes nothing in the cached page).
