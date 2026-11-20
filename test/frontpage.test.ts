@@ -265,6 +265,30 @@ describe('front page markup', () => {
   expect(html).toContain('href="/s/politica?lang=en&amp;source=endi"');
   expect(html).toContain('>Español</a>');
   expect(html).toContain('A look at Puerto Rico');
+  expect(html).toContain('>Apply</button>');
+  const chip = mainOf(html).slice(mainOf(html).indexOf('class="source-chip"'));
+  expect(chip).toContain('Showing only: <strong>El Nuevo Día</strong>');
+  expect(chip).toContain('href="/?lang=en">Clear filter</a>');
+  // An untranslated Spanish source has nothing to show on the English edition.
+  expect(html).toContain('No stories to show with these filters.');
+  expect(mainOf(html)).not.toContain('Filtered story here');
+ });
+ it('limits the homepage, ticker and rail to the selected source', async () => {
+  const kept = story({ source: 'sjds', title: 'Daily Star dispatch', time: now - MIN });
+  const other = story({ source: 'metro', title: 'Otra redacción', time: now - 2 * MIN });
+  const html = await render('/?source=sjds&lang=en', [kept, other], { trending: [{ item: other, clicks: 8 }, { item: kept, clicks: 3 }] });
+  const main = mainOf(html);
+  expect(main).toContain('Daily Star dispatch');
+  expect(main).not.toContain('Otra redacción');
+  expect(html).not.toContain('Otra redacción');
+  expect(main).toContain('<span class="src"><a href="/?source=sjds&amp;lang=en">San Juan Daily Star</a></span>');
+  expect(main).toContain('class="rail"');
+  expect(main).toContain(`/click?url=${encodeURIComponent(kept.url)}`);
+  const srcHrefs = [...main.matchAll(/<span class="src"><a href="([^"]+)">/g)].map(match => match[1]);
+  expect(srcHrefs.every(href => href === '/?source=sjds&amp;lang=en')).toBe(true);
+  const ticker = html.slice(html.indexOf('class="ticker"'), html.indexOf('<main'));
+  expect(ticker).toContain('Daily Star dispatch');
+  expect(ticker).not.toContain('/?source=');
  });
  it('keeps alerts one tap away on phones through the sections sheet', async () => {
   const html = await render('/?lang=en', []);
