@@ -45,8 +45,8 @@ button{font:inherit;color:var(--ink)}
 .languages a:hover{text-decoration:none;color:var(--ink)}.languages a[aria-current=true]:hover{color:var(--bg)}
 .mast-tools button,.search-open{display:inline-grid;place-items:center;height:36px;min-width:36px;padding:0 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);cursor:pointer;font-size:12px;font-weight:700;transition:border-color .2s,background-color .2s}
 .mast-tools button:hover,.search-open:hover{border-color:var(--muted)}
-#theme{display:inline-flex;align-items:center;gap:7px}
-#theme .t-text{display:none}
+#theme{width:40px;height:40px;min-width:40px;min-height:40px;padding:0;flex:0 0 40px}
+#theme:focus-visible{border-radius:999px}
 .header-search{margin:0}
 .header-search>div{display:flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden}
 .header-search input{width:0;min-width:0;flex:1;border:0;background:transparent;color:var(--ink);padding:9px 4px 9px 16px;font:inherit;font-size:14px}
@@ -62,7 +62,7 @@ button{font:inherit;color:var(--ink)}
 .search-open{display:inline-grid}
 }
 @media(min-width:700px) and (max-width:899px){.header-search>div{left:28px;right:28px}}
-@media(min-width:900px){.search-open{display:none}.header-search{width:260px;position:relative}.header-search input{width:100%}.mast-tools{gap:10px}.mast-tools .alerts-link{display:inline-block}.tagline{display:block}#theme .t-text{display:inline}#theme{padding:0 14px}}
+@media(min-width:900px){.search-open{display:none}.header-search{width:260px;position:relative}.header-search input{width:100%}.mast-tools{gap:10px}.mast-tools .alerts-link{display:inline-block}.tagline{display:block}}
 
 /* Section navigation */
 .nav{position:sticky;top:0;z-index:20;background:var(--bg);border-block:1px solid var(--line)}
@@ -96,6 +96,10 @@ full-width sheet that opens under the bar, so nothing wraps into a second line o
 @media(max-width:480px){.tabs{gap:0 16px}.tabs a{font-size:12.5px}.masthead{gap:8px}.brand{font-size:1.5rem}.mast-tools{gap:4px}.languages{padding:2px;font-size:11.5px}.languages a{padding:5px 7px}.mast-tools button,.search-open{min-width:34px;height:34px;padding:0 8px}}
 
 @media(max-width:360px){.wrap{padding:0 14px}.masthead{gap:4px}.brand{font-size:1.3rem}.mast-tools{gap:3px}.languages{font-size:11px}.languages a{padding:5px 5px}.mast-tools button,.search-open{min-width:30px;height:30px;padding:0 6px}.header-search>div{left:14px;right:14px}}
+/* The 40px theme button is the tallest masthead control. Below 360px the .wrap shorthand clears the masthead's block padding, so put enough back for the focus ring. At 320px and 361–364px the row is already full; a slightly smaller logo gap keeps the button on screen. */
+@media(max-width:360px){.masthead{padding-block:8px}}
+@media(max-width:321px){.masthead{gap:2px}}
+@media(min-width:361px) and (max-width:364px){.masthead{gap:4px}}
 
 /* Última hora ticker */
 .ticker{border-bottom:1px solid var(--line);background:var(--panel);font-size:13px}
@@ -164,7 +168,7 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .card h2 a:hover,.card h3 a:hover{text-decoration:none}
 .card:hover h2 a,.card:hover h3 a,.card h2 a:focus-visible,.card h3 a:focus-visible{background-size:100% 1px}
 .excerpt,.reddit-summary{margin:0;color:var(--muted);font-size:.95rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.reddit-summary{display:block;white-space:nowrap;text-overflow:ellipsis}
+.reddit-summary{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .language{font-size:11px;color:var(--muted)}
 .also{margin:0;font-size:12px;color:var(--muted)}
 .also span{font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:11px;margin-right:4px}
@@ -240,6 +244,8 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .sec-head .more:hover{text-decoration:underline}
 .sec-grid{display:grid;gap:20px;grid-template-areas:"lead" "mid" "brief"}
 .g-lead{grid-area:lead}.g-mid{grid-area:mid;display:grid;gap:18px;align-content:start}.g-brief{grid-area:brief;display:grid;gap:12px;align-content:start}
+/* A nowrap Reddit excerpt's min-content is the full line. These grid items must be allowed to shrink so the ellipsis clips inside the column instead of widening the page. */
+.sec-grid>*,.g-lead,.g-mid,.lede>*,.tiles>*{min-width:0}
 .g-mid:empty,.g-brief:empty{display:none}
 @container (min-width:620px){
 .sec-grid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);column-gap:28px;grid-template-areas:"lead mid" "brief brief"}

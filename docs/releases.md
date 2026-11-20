@@ -207,3 +207,10 @@
 - PR #31 (source name on each card links to that source's stories, "Showing only … · Clear filter" chip, "See its stories →" on /fuentes), deployed from dec9d323b05ffab6d09f558329c748a234ab9602. Cloudflare Worker version: 3e15105c-5b83-4132-82ea-d62a5f508520. Previous: bd3df842-e37f-4c96-9af4-60960d3506c2. HTML cache prnews-html-v34. 459 tests, typecheck, dry-run build. Live check: filter chip, source links and 16 /fuentes links present.
 - PR #32 (satire no longer invents an institution: prompt change plus `valid()` rejects a line naming government/agency/ministry/officials/etc. that the headline and excerpt do not), deployed from e2c812bfc527c2c8167a0bce82147e32d7a857f5. Cloudflare Worker version: 42927b40-10fd-468d-ab09-0fb5d584ba7e. Previous: 3e15105c-5b83-4132-82ea-d62a5f508520. `lighter-2` cache key unchanged. 460 tests, typecheck, dry-run build. Read-only check before release: 15 of 71 stored satires fail the new rule and are hidden on read; nothing was deleted.
 - No migrations, pipeline or translation changes in either release.
+
+## 2026-11-20 — Satire guard relaxed; icon-only theme button
+
+- PR #34 (generic stand-ins such as bureaucrats/officials/authorities allowed again in satire; an invented government/agency/ministry/department/committee/board/State is still rejected; prompt adjusted; `lighter-2` unchanged) and PR #33 (theme toggle shows only its icon, 40 px target, aria-label plus title), deployed from 87d4e0bcc69472015aae32209a399d7c63f41617. Cloudflare Worker version: fd0b81d6-1c43-47d7-94c0-cfcc064cda58. Previous: 42927b40-10fd-468d-ab09-0fb5d584ba7e.
+- Read-only check against production before release: 8 of 71 stored satires fail the guard (down from 15); the two National Day of Indignation lines pass. Nothing deleted.
+- 460 tests, typecheck, dry-run build. No migrations or pipeline changes.
+- Known issue found after deploy (pre-existing, not from these PRs): at 320–360 px the homepage can scroll sideways by up to ~58 px when a Reddit "Comunidad" lead appears, because `.reddit-summary{white-space:nowrap}` widens its grid column. Fix pending.
