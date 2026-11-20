@@ -1,0 +1,6 @@
+feed: https://periodicoeloriental.com/?feed=rss2
+status: 200
+content-type: application/rss+xml; charset=UTF-8
+captured: 2026-11-20
+items: 10
+robots: https://periodicoeloriental.com/robots.txt returns the homepage HTML (no rules); default-allow applies. The /feed/-style paths serve the homepage too; ?feed=rss2 is the one address returning the real RSS (rechecked 2026-11-20).

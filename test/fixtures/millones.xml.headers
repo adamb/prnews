@@ -1,0 +1,6 @@
+feed: https://www.9millones.com/story/rss.xml
+status: 200
+content-type: application/rss+xml; charset=utf-8
+captured: 2026-11-20
+items: 100
+robots: https://www.9millones.com/robots.txt contains only a Sitemap line; no disallows. The feed is Webflow's public collection RSS for /story/, not a sitemap.

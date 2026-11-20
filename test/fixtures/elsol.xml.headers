@@ -1,0 +1,6 @@
+feed: https://periodicoelsolpr.com/feed/
+status: 200
+content-type: application/rss+xml; charset=UTF-8
+captured: 2026-11-20
+items: 10
+robots: https://periodicoelsolpr.com/robots.txt allows /feed/

@@ -19,6 +19,17 @@ const MARKS: Record<string, Mark> = {
  radioisla: { code: 'RI', hue: 292 },
  walo: { code: 'WALO', hue: 122 },
  reddit_puertorico: { code: 'r/PR', hue: 15 },
+ vision: { code: 'VIS', hue: 208 },
+ lacalle: { code: 'LC', hue: 172 },
+ elsol: { code: 'SOL', hue: 24 },
+ esnoticia: { code: 'ESN', hue: 258 },
+ eloriental: { code: 'EO', hue: 88 },
+ laesquina: { code: 'LE', hue: 316 },
+ millones: { code: '9M', hue: 154 },
+ eyboricua: { code: '¡E!', hue: 335 },
+ pasquines: { code: 'PAS', hue: 232 },
+ wkaq: { code: 'WKAQ', hue: 105 },
+ presencia: { code: 'PRE', hue: 272 },
 };
 
 /** Two-to-five character mark and a stable hue (0-359) for a source. */
