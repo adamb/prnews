@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {key,valid,sensitive,CAP} from '../src/lighter';
+import {key,valid,rejection,sensitive,CAP} from '../src/lighter';
 import type {Item} from '../src/parse';
 const item={url:'https://example.com/a',title:'Traffic delays',summary:'The agency reports traffic delays.'} as Item;
 it('separates content, URL and editions',()=>{
@@ -50,6 +50,27 @@ it('rejects an invented institution and keeps a joke aimed at the situation',()=
  expect(valid('El comité admiró su propia audiencia y citó otra.',protest,'es')).toBe(false);
  expect(valid('La junta archivó el mismo formulario otra vez esta mañana.',protest,'es')).toBe(false);
  expect(valid('El Estado anunció otro formulario antes de la protesta.',protest,'es')).toBe(false);
+ const ddec={url:'https://www.elnuevodia.com/negocios/economia/notas/me-tomo-por-sorpresa-secretario-del-ddec-reacciona-a-los-senalamientos-de-la-junta-fiscal/',title:'“Me tomó por sorpresa”: Secretario del DDEC reacciona a los señalamientos de la Junta Fiscal',summary:'Carlos Ríos Pierluisi insistió en la independencia fiscal de la Compañía de Turismo y anticipó que buscará aclarar los señalamientos del organismo federal'} as Item;
+ // The real temperature-0 Workers AI answer for this story (November 20, 2026):
+ // a generic person, not a named institution, so the guard must allow it.
+ expect(valid('A government official is surprised, which is apparently news.',ddec,'en')).toBe(true);
+ expect(valid('A government spokesperson is surprised, which is apparently news.',ddec,'en')).toBe(true);
+ expect(valid('Un funcionario del gobierno se sorprende, lo que al parecer es noticia.',ddec,'es')).toBe(true);
+ // The institution noun itself, in either language, is still checked.
+ expect(valid('The government is surprised, which is apparently news.',ddec,'en')).toBe(false);
+ expect(valid('El gobierno se sorprendió, lo que al parecer es noticia.',ddec,'es')).toBe(false);
+ expect(valid('A government agency is surprised, which is apparently news.',ddec,'en')).toBe(false);
+ expect(valid('The Department of Economic Development is surprised, which is apparently news.',ddec,'en')).toBe(false);
+});
+it('reports which rule rejected a line',()=>{
+ const board={url:'https://example.com/board',title:'La Junta exige transparencia',summary:'La Junta de Supervisión Fiscal pidió los documentos.'} as Item;
+ expect(rejection('The board filed the same demand twice this morning.',board,'en')).toBe(null);
+ expect(rejection('The ministry scheduled another hearing about the same letter.',board,'en')).toBe('institution');
+ expect(rejection('La Junta insiste en otra audiencia para admirar su formulario.',board,'en')).toBe('language');
+ expect(rejection('Traffic delayed for 99 hours.',item)).toBe('numbers');
+ expect(rejection('The agency said "traffic is a lifestyle."',item)).toBe('quotes');
+ expect(rejection('Do not worry, you are safe.',item)).toBe('shape');
+ expect(rejection(42,item)).toBe('shape');
 });
 it('withholds recognized sensitive topics in both languages',()=>{
  for(const text of ['Two dead after outage','Heridos en accidente','Health hazard','Emergencia por huracán','Police investigate murder'])expect(sensitive(text)).toBe(true);

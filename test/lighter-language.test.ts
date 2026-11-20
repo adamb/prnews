@@ -27,7 +27,7 @@ const quoted = 'The agency said "delay is policy" today and filed it.';
 
 function database(): D1Database {
  const sqlite = new DatabaseSync(':memory:');
- for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql']) sqlite.exec(readFileSync(file,'utf8'));
+ for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql','migrations/0015_lighter_reason.sql']) sqlite.exec(readFileSync(file,'utf8'));
  sqlite.exec('CREATE TABLE IF NOT EXISTS story_ids (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL UNIQUE)');
  const prepare = (query: string) => {
   let args: any[] = [];
@@ -113,14 +113,14 @@ it('rejects a Spanish sentence for an English view of a Spanish article and does
  const failed = await post(env, {url:spanishStory.url, lang:'en', action:'11111111-1111-4111-8111-111111111111'}, now);
  expect(failed?.status).toBe(200);
  const failedBody = await failed?.json();
- expect(failedBody).toEqual({status:'cooldown', retry_after:3600});
+ expect(failedBody).toEqual({status:'cooldown', retry_after:120});
  expect(JSON.stringify(failedBody)).not.toContain('ahora ofrece');
  expect(run).toHaveBeenCalledTimes(1);
  const row = await DB.prepare('SELECT text, attempts FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string|null;attempts:number}>();
  expect(row?.text).toBeNull();
  expect(row?.attempts).toBe(1);
  const again = await post(env, {url:spanishStory.url, lang:'en', action:'22222222-2222-4222-8222-222222222222'}, now + 1000);
- expect(await again?.json()).toEqual({status:'cooldown', retry_after:3599});
+ expect(await again?.json()).toEqual({status:'cooldown', retry_after:119});
  expect(run).toHaveBeenCalledTimes(1);
  const totals = await DB.prepare("SELECT failures, generations, attempts FROM lighter_stats WHERE scope='en'").first<{failures:number;generations:number;attempts:number}>();
  expect(totals).toEqual({failures:1, generations:0, attempts:1});
@@ -133,7 +133,7 @@ it('rejects an English sentence for a Spanish view of an English article', async
  const env = {DB, AI:{run}} as unknown as Env;
  const now = Date.UTC(2026, 10, 17, 18, 10, 0);
  const failed = await post(env, {url:englishStory.url, lang:'es', action:'33333333-3333-4333-8333-333333333333'}, now);
- expect(await failed?.json()).toEqual({status:'cooldown', retry_after:3600});
+ expect(await failed?.json()).toEqual({status:'cooldown', retry_after:120});
  expect(run).toHaveBeenCalledTimes(1);
  const saved = await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(englishStory,'es')).first<{text:string|null}>();
  expect(saved?.text).toBeNull();
