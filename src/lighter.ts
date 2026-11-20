@@ -17,11 +17,21 @@ export const CANDIDATE_LIMIT=60;
  */
 export const DAILY_MODEL_CALLS=1000;
 export const MAX_OUTPUT_TOKENS=180;
-export const MAX_CONCURRENT=2;
 export const REQUEST_TIMEOUT_MS=12_000;
 export const LEASE_MS=20_000;
-/** New explicit button presses per UTC minute, across everyone. Not a per-person limit. */
-export const ACTION_RATE_PER_MINUTE=60;
+/**
+ * The shared Workers AI binding also serves other site work (for example the
+ * translation queue), and Cloudflare caps text generation per account at 300
+ * requests/minute or the daily neuron allocation. When the provider answers 429
+ * the binding throws a documented error (internal code 3036 account limit or
+ * 3040 capacity) — not a Response — so no header is available. The call never
+ * ran, so the attempt claim, the daily slot, and the attempts stat are given
+ * back, and a bounded wait is attached to the cache cell instead of the 1 h/2 h
+ * backoff. The provider's Retry-After is honored when the error carries it;
+ * otherwise this default applies. No automatic retry loop is attempted.
+ */
+export const PROVIDER_THROTTLE_DEFAULT_SECONDS=120;
+const PROVIDER_THROTTLE_MAX_SECONDS=3600;
 const ACTION_TTL_MS=48*3600*1000;
 const PENDING_WINDOW_MS=60_000;
 const ACTION_ID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -171,12 +181,6 @@ async function addStats(env:Env, lang:Edition, delta:{interactions?:number;cache
  if(typeof env.DB.batch==='function')await env.DB.batch(statements);
  else for(const statement of statements)await statement.run();
 }
-async function allowRate(env:Env, now:number){
- const bucket=Math.floor(now/60000);
- await env.DB.prepare('DELETE FROM lighter_rate WHERE bucket<?').bind(bucket-2).run();
- const result=await env.DB.prepare('INSERT INTO lighter_rate(bucket, hits) VALUES(?,1) ON CONFLICT(bucket) DO UPDATE SET hits=hits+1 WHERE hits<?').bind(bucket, ACTION_RATE_PER_MINUTE).run();
- return changed(result);
-}
 async function claimKey(env:Env, cacheKey:string, now:number){
  await env.DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,NULL,0,0) ON CONFLICT(key) DO NOTHING').bind(cacheKey).run();
  const lease=now+LEASE_MS;
@@ -194,16 +198,24 @@ async function reserveBudget(env:Env, now:number){
 async function releaseBudget(env:Env, day:string){
  if(day)await env.DB.prepare('UPDATE lighter_budget SET calls=calls-1 WHERE day=? AND calls>0').bind(day).run();
 }
-async function reserveSlot(env:Env, now:number){
- const until=now+LEASE_MS;
- for(let id=1;id<=MAX_CONCURRENT;id++){
-  const result=await env.DB.prepare('UPDATE lighter_inflight SET until_ms=? WHERE id=? AND until_ms<=?').bind(until, id, now).run();
-  if(changed(result))return {id, until};
- }
- return null;
-}
-async function releaseSlot(env:Env, slot:{id:number;until:number}|null){
- if(slot)await env.DB.prepare('UPDATE lighter_inflight SET until_ms=0 WHERE id=? AND until_ms=?').bind(slot.id, slot.until).run();
+/** Flatten a thrown binding error to text. The throttle is identified by the
+ * documented internal codes (3036 account limit, 3040 capacity), by 429, or by
+ * rate-limit/quota wording, never by a response header. */
+const errorText=(error:unknown)=>{
+ if(typeof error==='string')return error;
+ if(error instanceof Error)return String(error.message)+' '+String(error.stack??'');
+ if(error&&typeof error==='object'){try{return JSON.stringify(error);}catch{}}
+ return String(error);
+};
+/** Seconds to wait before the next press on this cache cell, or null when the
+ * error is not a provider throttle. No value above PROVIDER_THROTTLE_MAX_SECONDS. */
+export function providerThrottleSeconds(error:unknown):number|null {
+ const text=errorText(error);
+ if(!/\b(?:3036|3040)\b|\b429\b|rate[ _-]?limit|too many requests|quota|capacity temporarily|neurons?\b/i.test(text))return null;
+ const carried=/"?retry[ _-]?after"?\s*[:=]\s*"?([0-9]{1,5})"?/i.exec(text);
+ const seconds=carried?Number(carried[1]):PROVIDER_THROTTLE_DEFAULT_SECONDS;
+ if(Number.isFinite(seconds)&&seconds>0)return Math.min(PROVIDER_THROTTLE_MAX_SECONDS, Math.max(1, Math.ceil(seconds)));
+ return Math.min(PROVIDER_THROTTLE_MAX_SECONDS, PROVIDER_THROTTLE_DEFAULT_SECONDS);
 }
 /** Public wait, in seconds. The longest designed cooldown is 2 hours; the third attempt is exhausted instead. */
 function retryAfter(until:number, now:number){
@@ -292,7 +304,6 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
    const replay=hold(hit.row, now);
    return replay?holdResponse(replay):json({status:'unavailable'});
   }
-  if(!(await allowRate(env, now)))return json({status:'rate'},429);
   const inserted=await env.DB.prepare('INSERT INTO lighter_actions(action_id, created_at) VALUES(?,?) ON CONFLICT(action_id) DO NOTHING').bind(action, now).run();
   if(!changed(inserted)){
    const hit=await cachedText(env, item, lang);
@@ -323,17 +334,11 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
    return reason?holdResponse(reason):json({status:'unavailable'});
   }
   let day='';
-  let slot:{id:number;until:number}|null=null;
   let called=false;
   let recorded=false;
-  // A timed-out call may still be running in this isolate. Keep its inflight lease until it expires
-  // instead of freeing the slot while that call is outstanding.
-  let holdSlot=false;
   try{
    day=await reserveBudget(env, now);
    if(!day){await rollbackClaim(env, cacheKey, lease);return json({status:'budget'},429);}
-   slot=await reserveSlot(env, now);
-   if(!slot){await releaseBudget(env, day);day='';await rollbackClaim(env, cacheKey, lease);return json({status:'busy'},429);}
    let phase:'model'|'decode'|'save'='model';
    const backoffAt=now+3600000*2**Math.max(0,hit.row?.attempts??0);
    try{
@@ -357,7 +362,23 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
     return failedAttempt(hit.row?.attempts??0, backoffAt, now);
    }catch(error){
     if(called&&!recorded){
-     holdSlot=error instanceof Error&&error.message==='timeout';
+     const throttle=phase==='model'?providerThrottleSeconds(error):null;
+     if(throttle!==null){
+      // The provider refused the call before it ran (Cloudflare 429: code 3036
+      // account limit or 3040 capacity/rejectIfBusy). The call never happened,
+      // so return the daily slot, the attempt claim, and the attempts stat, and
+      // set a bounded wait on the cache cell instead of the 1 h/2 h backoff.
+      // The press keeps its interaction count; no failure is recorded. The
+      // browser disables the button for the returned bounded wait on its own.
+      await rollbackClaim(env, cacheKey, lease).catch(()=>{});
+      await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(now+throttle*1000, cacheKey).run().catch(()=>{});
+      if(day){await releaseBudget(env, day).catch(()=>{});day='';}
+      await addStats(env, lang, {attempts:-1}, now).catch(()=>{});
+      console.info('lighter_result',{lang,status:'provider_throttled'});
+      return json({status:'busy',retry_after:throttle},429);
+     }
+     // A timed-out call may still be running in this isolate. Its budget and
+     // attempt are kept, matching the previous behavior for a real model call.
      await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(backoffAt, cacheKey).run().catch(()=>{});
      await addStats(env, lang, {failures:1}, now).catch(()=>{});
      console.info('lighter_result',{lang,status:phase+'_error'});
@@ -368,8 +389,6 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
     await rollbackClaim(env, cacheKey, lease).catch(()=>{});
     console.info('lighter_result',{lang,status:phase+'_error'});
     return json({status:'unavailable'},503);
-   }finally{
-    if(!holdSlot)await releaseSlot(env, slot);
    }
   }catch{
    if(!called){
@@ -384,7 +403,7 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
 }
 
 export const lighterClientScript = `(function(){
- var labels={es:{show:'Mostrar sátira',loading:'Preparando la sátira…',hide:'Ocultar sátira',retry:'Reintentar',later:'Reintentar más tarde',today:'Hoy no está disponible',done:'No disponible',fail:'La sátira no está disponible. El original sigue arriba.',exhausted:'La sátira no está disponible para esta noticia. El original sigue arriba.',budget:'El cupo de sátiras de hoy se agotó. El original sigue arriba.',busy:'Otra sátira está en camino. Prueba de nuevo en un momento.',rate:'Demasiadas solicitudes ahora mismo. Prueba de nuevo en un momento.',cooldownSoon:'La sátira todavía no está lista. Puedes reintentar en un momento. El original sigue arriba.',cooldownMinutes:'La sátira todavía no está lista. Puedes reintentar en unos # minutos. El original sigue arriba.',cooldownHour:'La sátira todavía no está lista. Puedes reintentar en una hora. El original sigue arriba.',cooldownHours:'La sátira todavía no está lista. Puedes reintentar en unas # horas. El original sigue arriba.',cooldownLater:'La sátira todavía no está lista. Reinténtalo más tarde. El original sigue arriba.',label:'Sátira de IA · comentario, no es una noticia.'},en:{show:'Show satire',loading:'Preparing the satire…',hide:'Hide satire',retry:'Try again',later:'Try again later',today:'Not available today',done:'Not available',fail:'Satire is unavailable. The original stays above.',exhausted:"Satire isn't available for this story. The original stays above.",budget:"Today's satire limit is used up. The original stays above.",busy:'Another satire is in progress. Try again in a moment.',rate:'Too many requests right now. Try again in a moment.',cooldownSoon:"Satire isn't ready yet. You can try again in a moment. The original stays above.",cooldownMinutes:"Satire isn't ready yet. You can try again in about # minutes. The original stays above.",cooldownHour:"Satire isn't ready yet. You can try again in about an hour. The original stays above.",cooldownHours:"Satire isn't ready yet. You can try again in about # hours. The original stays above.",cooldownLater:"Satire isn't ready yet. Try again later. The original stays above.",label:'AI satire · commentary, not reporting.'}};
+ var labels={es:{show:'Mostrar sátira',loading:'Preparando la sátira…',hide:'Ocultar sátira',retry:'Reintentar',later:'Reintentar más tarde',today:'Hoy no está disponible',done:'No disponible',fail:'La sátira no está disponible. El original sigue arriba.',exhausted:'La sátira no está disponible para esta noticia. El original sigue arriba.',budget:'El cupo de sátiras de hoy se agotó. El original sigue arriba.',busy:'El generador de sátiras está ocupado. Prueba de nuevo en un momento. El original sigue arriba.',cooldownSoon:'La sátira todavía no está lista. Puedes reintentar en un momento. El original sigue arriba.',cooldownMinutes:'La sátira todavía no está lista. Puedes reintentar en unos # minutos. El original sigue arriba.',cooldownHour:'La sátira todavía no está lista. Puedes reintentar en una hora. El original sigue arriba.',cooldownHours:'La sátira todavía no está lista. Puedes reintentar en unas # horas. El original sigue arriba.',cooldownLater:'La sátira todavía no está lista. Reinténtalo más tarde. El original sigue arriba.',label:'Sátira de IA · comentario, no es una noticia.'},en:{show:'Show satire',loading:'Preparing the satire…',hide:'Hide satire',retry:'Try again',later:'Try again later',today:'Not available today',done:'Not available',fail:'Satire is unavailable. The original stays above.',exhausted:"Satire isn't available for this story. The original stays above.",budget:"Today's satire limit is used up. The original stays above.",busy:'The satire generator is busy. Try again in a moment. The original stays above.',cooldownSoon:"Satire isn't ready yet. You can try again in a moment. The original stays above.",cooldownMinutes:"Satire isn't ready yet. You can try again in about # minutes. The original stays above.",cooldownHour:"Satire isn't ready yet. You can try again in about an hour. The original stays above.",cooldownHours:"Satire isn't ready yet. You can try again in about # hours. The original stays above.",cooldownLater:"Satire isn't ready yet. Try again later. The original stays above.",label:'AI satire · commentary, not reporting.'}};
  var held=new WeakMap();
  function langOf(button){return button.getAttribute('data-lighter-lang')==='en'?'en':'es';}
  function noteOf(button){return button.parentNode.querySelector('.lighter-note');}
@@ -441,8 +460,11 @@ export const lighterClientScript = `(function(){
    }
    if(payload.status==='budget'){ finish(button, copy.budget, copy.today); return; }
    if(payload.status==='exhausted' || payload.status==='ineligible'){ finish(button, copy.exhausted, copy.done); return; }
-   if(payload.status==='busy' || payload.status==='pending'){ fail(button,'busy'); return; }
-   if(payload.status==='rate'){ fail(button,'rate'); return; }
+   if(payload.status==='busy'){
+    if(typeof seconds==='number' && isFinite(seconds) && seconds>=1 && seconds<=3600){ waitOut(button, Math.ceil(seconds)); return; }
+    fail(button,'busy'); return;
+   }
+   if(payload.status==='pending'){ fail(button,'busy'); return; }
    fail(button,'fail');
   }).catch(function(){
    clearTimeout(timer);

@@ -2,7 +2,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import {expect, it, vi} from 'vitest';
 import worker from '../src/index';
-import {ACTION_RATE_PER_MINUTE, DAILY_MODEL_CALLS, MAX_OUTPUT_TOKENS, VERSION, articleEligible, cacheSkips, key, lighterRoute, satirePrompt, valid} from '../src/lighter';
+import {DAILY_MODEL_CALLS, MAX_OUTPUT_TOKENS, VERSION, articleEligible, cacheSkips, key, lighterRoute, providerThrottleSeconds, satirePrompt, valid} from '../src/lighter';
 import {currentItem} from '../src/current-item';
 import {readySnapshot} from '../src/lighter-stats';
 import type {Env} from '../src/ingest';
@@ -211,24 +211,26 @@ it('rejects a missing Origin, a cross-site fetch, and a SQL-shaped URL without a
  expect(html).not.toContain('title">Delays <script>');
 });
 
-it('stops at 60 new presses in one UTC minute and at three attempts', async () => {
+it('serves more than 60 presses in one UTC minute with no per-minute refusal and still stops at three attempts', async () => {
  const DB = database();
- const published = 1_700_000_000_000;
- await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(item.url, item.source, JSON.stringify(item), published, published, published).run();
- await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(item,'en'), satire, 1, 0).run();
- const run = vi.fn();
+ const published = Date.UTC(2026, 10, 17, 14, 0, 0);
+ const run = vi.fn(async () => ({response: JSON.stringify({text: satire})}));
  const env = {DB, AI:{run}} as unknown as Env;
  const now = Date.UTC(2026, 10, 17, 15, 0, 0);
- for (let i = 1; i <= ACTION_RATE_PER_MINUTE; i++) {
-  const response = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:item.url, lang:'en', action:`00000000-0000-4000-8000-${String(i).padStart(12,'0')}`})}), env, now);
+ // 65 distinct presses in the same minute, each a real model call: the old
+ // global 60-new-presses-per-minute rule refused the 61st. There is no
+ // per-minute or per-concurrency ceiling now, only the daily 1000 ceiling.
+ for (let i = 1; i <= 65; i++) {
+  const story = {...item, url:`https://example.com/burst-${i}`};
+  await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(story.url, story.source, JSON.stringify(story), published, published, published).run();
+  const response = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:story.url, lang:'en', action:`00000000-0000-4000-8000-${String(i).padStart(12,'0')}`})}), env, now);
   expect(response?.status).toBe(200);
+  expect(await response?.json()).toEqual({status:'ready', text: satire});
  }
- const limited = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:item.url, lang:'en', action:'00000000-0000-4000-8000-000000000061'})}), env, now);
- expect(limited?.status).toBe(429);
- expect(await limited?.json()).toEqual({status:'rate'});
- expect(run).not.toHaveBeenCalled();
- const rated = (await totals(DB)).results.find(row => row.scope==='all');
- expect(rated).toMatchObject({interactions:ACTION_RATE_PER_MINUTE, cache_hits:ACTION_RATE_PER_MINUTE, attempts:0, generations:0});
+ expect(run).toHaveBeenCalledTimes(65);
+ expect(await DB.prepare('SELECT calls FROM lighter_budget WHERE day=?').bind('2026-11-17').first<{calls:number}>()).toEqual({calls:65});
+ const served = (await totals(DB)).results.find(row => row.scope==='all');
+ expect(served).toMatchObject({interactions:65, cache_hits:0, attempts:65, generations:65, failures:0});
  const fresh = database();
  await fresh.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(item.url, item.source, JSON.stringify(item), published, published, published).run();
  const failing = vi.fn(async () => { throw new Error('model down'); });
@@ -248,18 +250,55 @@ it('stops at 60 new presses in one UTC minute and at three attempts', async () =
  expect(spent?.calls).toBe(3);
 });
 
-it('refuses a third in-flight call and rolls the daily slot back', async () => {
+it('calls the model despite legacy in-flight rows and gives back everything a provider throttle consumed', async () => {
  const DB = database();
  const now = Date.UTC(2026, 10, 17, 16, 0, 0);
  await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(item.url, item.source, JSON.stringify(item), now, now, now).run();
  await DB.prepare('UPDATE lighter_inflight SET until_ms=?').bind(now + 60_000).run();
- const run = vi.fn();
- const response = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:item.url, lang:'en', action})}), {DB, AI:{run}} as unknown as Env, now);
+ const throttled = vi.fn(async () => {
+  throw new Error('AI APIError: {"sourceUrl":""},"error":{"code":3040,"message":"Capacity temporarily exceeded, please try again."},"httpStatusCode":429,"retry-after":90}');
+ });
+ const response = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:item.url, lang:'en', action})}), {DB, AI:{run: throttled}} as unknown as Env, now);
+ // The two-in-flight ceiling is gone: the legacy lease rows cannot refuse a press.
  expect(response?.status).toBe(429);
- expect(await response?.json()).toEqual({status:'busy'});
- expect(run).not.toHaveBeenCalled();
+ expect(await response?.json()).toEqual({status:'busy', retry_after:90});
+ expect(throttled).toHaveBeenCalledTimes(1);
+ // The provider refused the call, so the daily counter, the attempt claim, and
+ // the attempts/failures stats are all released for this press.
  expect(await DB.prepare('SELECT calls FROM lighter_budget').first<{calls:number}>()).toEqual({calls:0});
- expect(await DB.prepare('SELECT attempts, text FROM lighter_cache WHERE key=?').bind(key(item,'en')).first()).toMatchObject({attempts:0, text:null});
+ expect(await DB.prepare('SELECT attempts, text, next_try FROM lighter_cache WHERE key=?').bind(key(item,'en')).first()).toEqual({attempts:0, text:null, next_try:now + 90_000});
+ const all = (await totals(DB)).results.find(row => row.scope==='all');
+ expect(all).toMatchObject({interactions:1, cache_hits:0, attempts:0, generations:0, failures:0});
+ // A second press while the bounded wait still runs is a cooldown, not a model call.
+ const held = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:item.url, lang:'en', action:'99999999-9999-4999-8999-999999999999'})}), {DB, AI:{run: throttled}} as unknown as Env, now);
+ expect(held?.status).toBe(200);
+ expect(await held?.json()).toEqual({status:'cooldown', retry_after:90});
+ expect(throttled).toHaveBeenCalledTimes(1);
+ // The released budget still serves a later press on a fresh cache cell in the same minute.
+});
+
+it('uses a bounded default wait for a throttle without Retry-After and never mislabels it budget', async () => {
+ const DB = database();
+ const now = Date.UTC(2026, 10, 17, 16, 30, 0);
+ await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(item.url, item.source, JSON.stringify(item), now, now, now).run();
+ const throttled = vi.fn(async () => {
+  throw new Error('Code 3036: You have used up your daily free allocation of 10,000 neurons. Please upgrade to Cloudflare\'s Workers Paid plan if you would like to continue usage.');
+ });
+ const response = await lighterRoute(new Request('https://news.dev.pr/api/lighter', {method:'POST', headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter'}, body:JSON.stringify({url:item.url, lang:'es', action})}), {DB, AI:{run: throttled}} as unknown as Env, now);
+ expect(response?.status).toBe(429);
+ expect(await response?.json()).toEqual({status:'busy', retry_after:120});
+ const row = await DB.prepare('SELECT attempts, text, next_try FROM lighter_cache WHERE key=?').bind(key(item,'es')).first<{attempts:number; text:string|null; next_try:number}>();
+ expect(row).toEqual({attempts:0, text:null, next_try:now + 120_000});
+});
+
+it('classifies provider throttle errors by their documented shapes without a header', () => {
+ expect(providerThrottleSeconds(new Error('AI APIError: 429: something failed'))).toBe(120);
+ expect(providerThrottleSeconds(new Error('{"error":{"code":3036,"message":"quota"},"retry-after":45}'))).toBe(45);
+ expect(providerThrottleSeconds(new Error('{"code":3040,"message":"Capacity temporarily exceeded, please try again."}'))).toBe(120);
+ expect(providerThrottleSeconds(new Error('{"code":3040,"retry_after":99999}'))).toBe(3600);
+ expect(providerThrottleSeconds(new Error('model down'))).toBe(null);
+ expect(providerThrottleSeconds(new Error('timeout'))).toBe(null);
+ expect(providerThrottleSeconds({code:3036, message:'Account limited', 'retry-after':10})).toBe(10);
 });
 
 it('caches the repaired headline the card uses and does not invent old generations', async () => {
