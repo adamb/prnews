@@ -10,10 +10,12 @@ export const CAP=2;
 export const CANDIDATE_LIMIT=60;
 /**
  * Live satire spend. POST /api/lighter is the only path that calls the model in production.
- * 24 calls per UTC day, 180 output tokens each: at most 4,320 output tokens a day.
+ * 1000 calls per UTC day, 180 output tokens each: at most 180,000 output tokens a day.
+ * Raised from 24 to 1000 on the operator's explicit authorization in 2026-11-20; the
+ * UTC-day accounting and the existing counter were kept, never reset.
  * This is a call ceiling, not a dollar quote. Page views, GET, and HEAD do not spend it.
  */
-export const DAILY_MODEL_CALLS=24;
+export const DAILY_MODEL_CALLS=1000;
 export const MAX_OUTPUT_TOKENS=180;
 export const MAX_CONCURRENT=2;
 export const REQUEST_TIMEOUT_MS=12_000;
