@@ -2,10 +2,12 @@
  *
  * Curated entries only. Matching is deterministic and uses the headline and
  * excerpt already on the card. It does not fetch the article, call a model,
- * or write a ledger. A closed <details> control is rendered only when an
- * entry matches. Sources were checked on VERIFIED_ON.
+ * or write a ledger. A closed <details> control labeled "Contexto"/"Context"
+ * renders only when an entry matches. Each entry is about two sentences and
+ * links the public source it relies on. Sources were checked on VERIFIED_ON;
+ * statute PDFs and the PIP party site carry the 2026-11-19 check.
  */
-export const VERIFIED_ON = '2026-11-19';
+export const VERIFIED_ON = '2026-11-20';
 export const MAX_MATCHES = 3;
 
 export type ExplainerLang = 'es' | 'en';
@@ -36,9 +38,6 @@ const word = (inner: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${inner})(?![\
 const has = (value: string) => new RegExp(value, 'iu');
 const acronym = (value: string) => new RegExp(`(?<![\\p{L}\\p{N}])${value}(?![\\p{L}\\p{N}])`, 'u');
 
-const MEMBERSHIP_ES = 'Un titular que nombra a una persona y a un partido no prueba que esa persona milite en él. Esta nota no asigna afiliación.';
-const MEMBERSHIP_EN = 'A headline that names a person and a party does not prove membership. This note assigns nobody to a party.';
-
 const CEE_BALLOT = 'https://www.ceepur.org/EleccionesGenerales2024/docs/papeletas/Legislativa/Modelo_111leg_ADJUNTAS_17.pdf';
 const CEE_GUIDE = 'https://ww2.ceepur.org/sites/ComisionEE/es-pr/Documents/Gu%C3%ADa%20de%20orientaci%C3%B3n%20estad%C3%ADstica%20-%20Elecciones%20Generales%202024.pdf';
 const CEE_PD = 'https://ww2.ceepur.org/sites/ComisionEE/es-pr/Certificaciones/Inscripci%C3%B3n%20como%20partido%20pol%C3%ADtico%20de%20la%20agrupaci%C3%B3n%20de%20ciudadanos%20conocida%20como%20Proyecto%20Dignidad%20(PD).pdf';
@@ -50,7 +49,7 @@ const LEGISLATURE = 'https://poderjudicial.pr/constitucion/articulo-iii/';
 const INCENTIVES = 'https://bvirtualogp.pr.gov/ogp/Bvirtual/LeyesOrganicas/PDF/60-2019.pdf';
 const P3 = 'https://www.p3.pr.gov/active-partnerships';
 
-const ENTRIES: Entry[] = [
+export const ENTRIES: Entry[] = [
   {
     id: 'fomb',
     priority: 10,
@@ -68,15 +67,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Junta de Supervisión y Administración Financiera',
       body: [
-        'La ley federal PROMESA (Ley Pública 114-187, 30 de junio de 2016) creó la Financial Oversight and Management Board para Puerto Rico. En español la Junta se llama Junta de Supervisión y Administración Financiera para Puerto Rico. Su página dice que la forman siete miembros nombrados por el presidente de Estados Unidos y un miembro ex officio designado por el gobernador.',
-        '“Junta de Control Fiscal” y “Junta de Supervisión Fiscal” son nombres de uso público para esa misma Junta, no un segundo organismo. No es una comisión del Senado o de la Cámara, no es la Junta de Planificación y no es la junta de directores de una empresa. Esta nota no dice quiénes son los miembros hoy ni a qué partido pertenece un funcionario.',
+        'La ley federal PROMESA (Ley Pública 114-187, 30 de junio de 2016) creó la Financial Oversight and Management Board, en español Junta de Supervisión y Administración Financiera para Puerto Rico, con siete miembros nombrados por el presidente de Estados Unidos y un miembro ex oficio designado por el gobernador.',
+        '“Junta de Control Fiscal” y “Junta de Supervisión Fiscal” son nombres públicos de esa misma Junta; no es la Junta de Planificación ni una comisión del Senado o de la Cámara.',
       ],
     },
     en: {
       title: 'Financial Oversight and Management Board',
       body: [
-        'The federal statute PROMESA (Public Law 114-187, June 30, 2016) established the Financial Oversight and Management Board for Puerto Rico. The Board’s Spanish name is Junta de Supervisión y Administración Financiera para Puerto Rico. Its own page says it has seven members appointed by the President of the United States and one ex officio member designated by the Governor of Puerto Rico.',
-        '“Junta de Control Fiscal” and “Junta de Supervisión Fiscal” are public names for that same Board, not a second institution. It is not a committee of the Puerto Rico Senate or House, not the Planning Board (Junta de Planificación), and not a company’s board of directors. This note does not name current members or assign an official to a party.',
+        'The federal PROMESA statute (Public Law 114-187, June 30, 2016) created the Financial Oversight and Management Board — Junta de Supervisión y Administración Financiera para Puerto Rico, in Spanish — with seven members appointed by the President of the United States and one ex officio member designated by the Governor.',
+        '“Junta de Control Fiscal” and “Junta de Supervisión Fiscal” are public names for that same Board; it is not the Planning Board and not a committee of the Senate or House.',
       ],
     },
     sources: [
@@ -99,15 +98,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: '“Comité de supervisión” no es el nombre de la Junta',
       body: [
-        '“Oversight committee”, “comité de supervisión” y “comisión de supervisión” no son el nombre legal de la Junta de Supervisión y Administración Financiera. Una comisión del Senado o de la Cámara de Puerto Rico es un órgano interno de esa cámara. El Congreso de Estados Unidos también tiene comités.',
-        'El titular y el extracto de esta tarjeta no bastan para decidir de qué organismo se habla. Si también nombran a PROMESA o a la Junta, esa entrada va aparte.',
+        '“Oversight committee” y “comité de supervisión” no son el nombre legal de la Junta de Supervisión y Administración Financiera; una comisión de supervisión suele ser un órgano interno del Senado, de la Cámara o del propio Congreso de Estados Unidos.',
+        'Si el texto también nombra a PROMESA o a la Junta, esa entrada aparece aparte.',
       ],
     },
     en: {
       title: '“Oversight committee” is not the Board’s name',
       body: [
-        '“Oversight committee,” “comité de supervisión,” and “comisión de supervisión” are not the statutory name of the Financial Oversight and Management Board. A committee of the Puerto Rico Senate or House is an internal body of that chamber. The United States Congress has committees too.',
-        'The headline and excerpt on this card do not decide which body is meant. If they also name PROMESA or the Board, that entry is separate.',
+        '“Oversight committee” and “comité de supervisión” are not the statutory name of the Financial Oversight and Management Board; an oversight committee is usually an internal body of the Puerto Rico Senate, House, or the U.S. Congress itself.',
+        'When the text also names PROMESA or the Board, that entry appears separately.',
       ],
     },
     sources: [
@@ -124,15 +123,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Junta de Planificación',
       body: [
-        'La Junta de Planificación no es la Junta de Supervisión y Administración Financiera. El nombre oficial en español de la junta creada por PROMESA es Junta de Supervisión y Administración Financiera para Puerto Rico.',
-        'Esta nota solo evita confundir los nombres. No describe un permiso ni un mapa, y no cita aquí una ley orgánica de la Junta de Planificación.',
+        'La Junta de Planificación es un organismo del Gobierno de Puerto Rico, distinto de la Junta de Supervisión y Administración Financiera que creó la ley federal PROMESA.',
+        'El nombre legal en español del organismo federal es Junta de Supervisión y Administración Financiera para Puerto Rico.',
       ],
     },
     en: {
       title: 'Planning Board',
       body: [
-        'The Planning Board (Junta de Planificación) is not the Financial Oversight and Management Board. The Board created by PROMESA uses the Spanish name Junta de Supervisión y Administración Financiera para Puerto Rico.',
-        'This note only keeps the names apart. It does not describe a permit or a map, and it does not cite an organic statute for the Planning Board.',
+        'The Junta de Planificación (Planning Board) is a Puerto Rico government body, distinct from the Financial Oversight and Management Board created by the federal PROMESA statute.',
+        'The federal Board’s legal Spanish name is Junta de Supervisión y Administración Financiera para Puerto Rico.',
       ],
     },
     sources: [
@@ -161,15 +160,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Asamblea Legislativa',
       body: [
-        'El Artículo III de la Constitución de Puerto Rico dice que el poder legislativo lo ejerce una Asamblea Legislativa de dos cámaras, el Senado y la Cámara de Representantes, elegidas por voto directo. El mismo artículo fija 27 senadores y 51 representantes, salvo el aumento previsto en su Sección 7.',
-        'Una comisión de esas cámaras no es la Junta federal de PROMESA. “Senado” a veces se refiere al Senado de Estados Unidos; si el texto lo dice, esta nota no se usa.',
+        'El Artículo III de la Constitución de Puerto Rico pone el poder legislativo en una Asamblea Legislativa de dos cámaras —el Senado y la Cámara de Representantes— elegidas por voto directo, con 27 senadores y 51 representantes, salvo el aumento que permite su Sección 7.',
+        'Una comisión de esas cámaras es un órgano interno suyo y no es la Junta federal de PROMESA.',
       ],
     },
     en: {
       title: 'Legislative Assembly',
       body: [
-        'Article III of the Constitution of Puerto Rico vests legislative power in a Legislative Assembly of two houses, the Senate and the House of Representatives, elected by direct vote. The same article sets 27 senators and 51 representatives, unless Section 7 increases that number.',
-        'A committee of those houses is not the federal Board created by PROMESA. “Senate” sometimes means the United States Senate; when the text says so, this note stays off.',
+        'Article III of the Constitution of Puerto Rico vests legislative power in a Legislative Assembly of two houses — the Senate and the House of Representatives — elected by direct vote, with 27 senators and 51 representatives unless Section 7 adds members.',
+        'A committee of those houses is an internal body and is not the federal Board created by PROMESA.',
       ],
     },
     sources: [
@@ -183,15 +182,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Partido Nuevo Progresista (PNP)',
       body: [
-        'El PNP aparece como columna de partido en la papeleta modelo de la Comisión Estatal de Elecciones para las elecciones generales del 5 de noviembre de 2024. En su página “Estadidad”, el partido presenta la estadidad como el estatus que quiere adelantar. Eso es una declaración del partido, no una descripción de la ley vigente.',
-        MEMBERSHIP_ES,
+        'El Partido Nuevo Progresista (PNP) aparece como columna de partido en la papeleta modelo de la Comisión Estatal de Elecciones para las elecciones generales del 5 de noviembre de 2024.',
+        'En su página “Estadidad” el partido presenta la estadidad como el estatus que quiere adelantar; es su declaración, no una descripción de la ley vigente.',
       ],
     },
     en: {
       title: 'New Progressive Party (PNP)',
       body: [
-        'The PNP is a party column on the State Elections Commission’s model ballot for the November 5, 2024 general election. On its “Estadidad” page, the party presents statehood as the status it wants to advance. That is the party’s statement, not a description of current law.',
-        MEMBERSHIP_EN,
+        'The New Progressive Party (PNP) is a party column on the State Elections Commission’s model ballot for the November 5, 2024 general election.',
+        'On its “Estadidad” page the party presents statehood as the status it wants to advance; that is the party’s statement, not a description of current law.',
       ],
     },
     sources: [
@@ -206,15 +205,13 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Partido Popular Democrático (PPD)',
       body: [
-        'El PPD aparece como columna de partido en la papeleta modelo de la Comisión Estatal de Elecciones para las elecciones generales del 5 de noviembre de 2024. Este glosario no resume una plataforma de estatus del PPD porque no usa un documento del partido para eso.',
-        MEMBERSHIP_ES,
+        'El Partido Popular Democrático (PPD) aparece como columna de partido en la papeleta modelo de la Comisión Estatal de Elecciones para las elecciones generales del 5 de noviembre de 2024.',
       ],
     },
     en: {
       title: 'Popular Democratic Party (PPD)',
       body: [
-        'The PPD is a party column on the State Elections Commission’s model ballot for the November 5, 2024 general election. This glossary does not summarize a PPD status platform, because no party document was used for one.',
-        MEMBERSHIP_EN,
+        'The Popular Democratic Party (PPD) is a party column on the State Elections Commission’s model ballot for the November 5, 2024 general election.',
       ],
     },
     sources: [
@@ -228,15 +225,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Partido Independentista Puertorriqueño (PIP)',
       body: [
-        'El sitio del PIP dice que el partido se fundó el 20 de octubre de 1946 para luchar por la independencia de Puerto Rico y la justicia social. Esa es la versión del partido. La papeleta modelo de la CEE para 2024 también incluye el nombre.',
-        MEMBERSHIP_ES,
+        'El Partido Independentista Puertorriqueño (PIP) aparece como columna de partido en la papeleta modelo de la Comisión Estatal de Elecciones para las elecciones generales de 2024.',
+        'Su sitio dice que el partido se fundó el 20 de octubre de 1946 para luchar por la independencia de Puerto Rico y la justicia social; es la versión del propio partido.',
       ],
     },
     en: {
       title: 'Puerto Rican Independence Party (PIP)',
       body: [
-        'The PIP’s site says the party was founded on October 20, 1946, to seek the independence of Puerto Rico and social justice. That is the party’s account. The CEE’s 2024 model ballot also carries the name.',
-        MEMBERSHIP_EN,
+        'The Puerto Rican Independence Party (PIP) is a party column on the State Elections Commission’s model ballot for the 2024 general election.',
+        'The party’s own site says it was founded on October 20, 1946, to seek the independence of Puerto Rico and social justice.',
       ],
     },
     sources: [
@@ -251,15 +248,13 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Movimiento Victoria Ciudadana (MVC)',
       body: [
-        'El MVC aparece como partido en la papeleta modelo de la CEE para las elecciones generales de 2024 y en la guía estadística de esa elección. Este glosario no describe su plataforma.',
-        MEMBERSHIP_ES,
+        'El Movimiento Victoria Ciudadana (MVC) aparece como partido en la papeleta modelo de la Comisión Estatal de Elecciones para las elecciones generales de 2024 y en la guía estadística de esa elección.',
       ],
     },
     en: {
       title: 'Movimiento Victoria Ciudadana (MVC)',
       body: [
-        'The MVC appears as a party on the CEE’s 2024 model ballot and in that election’s statistical guide. This glossary does not describe its platform.',
-        MEMBERSHIP_EN,
+        'The Movimiento Victoria Ciudadana (MVC) appears as a party on the State Elections Commission’s model ballot for the 2024 general election and in that election’s statistical guide.',
       ],
     },
     sources: [
@@ -274,15 +269,13 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Proyecto Dignidad',
       body: [
-        'La Comisión Estatal de Elecciones certificó a Proyecto Dignidad como partido por petición el 22 de enero de 2020. La papeleta modelo de 2024 todavía lo lista. Este glosario no describe su plataforma. Las letras “PD” solas no activan esta nota.',
-        MEMBERSHIP_ES,
+        'La Comisión Estatal de Elecciones certificó a Proyecto Dignidad como partido por petición el 22 de enero de 2020, y la papeleta modelo de 2024 todavía lo lista.',
       ],
     },
     en: {
       title: 'Proyecto Dignidad',
       body: [
-        'The State Elections Commission certified Proyecto Dignidad as a petition party on January 22, 2020. The 2024 model ballot still lists it. This glossary does not describe its platform. The letters “PD” alone do not open this note.',
-        MEMBERSHIP_EN,
+        'The State Elections Commission certified Proyecto Dignidad as a petition party on January 22, 2020, and the 2024 model ballot still lists it.',
       ],
     },
     sources: [
@@ -299,15 +292,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Comisión Estatal de Elecciones',
       body: [
-        'La Comisión Estatal de Elecciones (CEE) es el organismo que administra las elecciones de Puerto Rico y certifica partidos. Los documentos de 2020 y 2024 citados en este glosario son de la Comisión.',
-        'Esta nota no da resultados ni dice quién ganó.',
+        'La Comisión Estatal de Elecciones (CEE) es el organismo que administra las elecciones de Puerto Rico y certifica a los partidos.',
+        'Los documentos electorales citados en estas notas son de la Comisión.',
       ],
     },
     en: {
       title: 'State Elections Commission',
       body: [
-        'The Comisión Estatal de Elecciones (CEE) administers Puerto Rico elections and certifies parties. The 2020 and 2024 documents cited in this glossary are Commission documents.',
-        'This note does not report results or say who won.',
+        'The Comisión Estatal de Elecciones (CEE) administers Puerto Rico elections and certifies parties.',
+        'The election documents cited in these notes are Commission documents.',
       ],
     },
     sources: [
@@ -328,15 +321,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Estado Libre Asociado',
       body: [
-        'La Ley Pública 447, del 3 de julio de 1952, aprobó la constitución del Commonwealth of Puerto Rico, adoptada por el electorado el 3 de marzo de 1952. En español ese nombre constitucional es Estado Libre Asociado.',
-        'Los partidos discrepan sobre si esa relación debe seguir, convertirse en estadidad o convertirse en independencia. Esta nota no elige bando y no dice qué concluye la noticia.',
+        'La Ley Pública 447, del 3 de julio de 1952, aprobó la constitución del Commonwealth of Puerto Rico —Estado Libre Asociado, en español—, adoptada por el electorado el 3 de marzo de 1952.',
+        'Los partidos discrepan sobre si esa relación debe continuar, convertirse en estadidad o en independencia.',
       ],
     },
     en: {
       title: 'Commonwealth / Estado Libre Asociado',
       body: [
-        'Public Law 447, July 3, 1952, approved the constitution of the Commonwealth of Puerto Rico, which voters had adopted on March 3, 1952. In Spanish that constitutional name is Estado Libre Asociado.',
-        'Parties disagree about whether this relationship should remain, become statehood, or become independence. This note does not take a side and does not say what the story concludes.',
+        'Public Law 447, July 3, 1952, approved the constitution of the Commonwealth of Puerto Rico — Estado Libre Asociado in Spanish — which voters had adopted on March 3, 1952.',
+        'Parties disagree on whether that relationship should remain, become statehood, or become independence.',
       ],
     },
     sources: [
@@ -353,15 +346,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Estadidad',
       body: [
-        'Estadidad, en este contexto, significa la propuesta de que Puerto Rico sea un estado de Estados Unidos. Es una posición política, no una descripción de la ley vigente. La constitución aprobada en 1952 es la del Estado Libre Asociado.',
-        'Esta nota no dice quién apoya la estadidad, salvo cuando otra entrada cita un documento de un partido, y no dice qué resulta de un plebiscito.',
+        'Estadidad es la propuesta de que Puerto Rico sea un estado de Estados Unidos; es una posición política, no una descripción de la ley vigente.',
+        'La constitución vigente es la del Estado Libre Asociado aprobada en 1952.',
       ],
     },
     en: {
       title: 'Statehood',
       body: [
-        'Statehood, in this context, means the proposal that Puerto Rico become a U.S. state. It is a political position, not a description of current law. The constitution approved in 1952 is the Commonwealth constitution.',
-        'This note does not say who supports statehood, except where another entry cites a party document, and it does not say what a plebiscite decided.',
+        'Statehood, in this context, is the proposal that Puerto Rico become a U.S. state; it is a political position, not a description of current law.',
+        'The constitution in force is the Commonwealth constitution approved in 1952.',
       ],
     },
     sources: [
@@ -382,15 +375,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Independencia',
       body: [
-        'En una noticia de estatus, independencia suele significar la propuesta de un Puerto Rico separado de Estados Unidos. También puede significar otra cosa, como independencia energética o judicial; en esos casos esta nota no aparece.',
-        'Es una posición política, no un hecho sobre el desenlace de la noticia. Esta nota no dice quién la apoya, salvo la entrada del PIP cuando el texto nombra a ese partido.',
+        'En una noticia de estatus, independencia suele significar la propuesta de un Puerto Rico separado de Estados Unidos, una posición política.',
+        'La palabra también sirve para la independencia energética, judicial o de la prensa; en esos casos esta nota no aparece.',
       ],
     },
     en: {
       title: 'Independence',
       body: [
-        'In a status story, independence usually means the proposal of a Puerto Rico separate from the United States. The word can mean something else, such as energy or judicial independence; those cases do not open this note.',
-        'It is a political position, not a finding about how the story comes out. This note does not say who supports it, except the PIP entry when the text names that party.',
+        'In a status story, independence usually means the proposal of a Puerto Rico separate from the United States, a political position.',
+        'The word also covers energy, judicial, or press independence; those cases do not open this note.',
       ],
     },
     sources: [
@@ -404,17 +397,20 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Comisionado residente',
       body: [
-        'La guía estadística de la CEE para 2024 trata al gobernador y al comisionado residente como cargos electivos para los que los partidos presentan peticiones de endoso. Esta nota no describe el voto de ese cargo en el Congreso, porque no cita aquí el estatuto federal, y no dice quién lo ocupa.',
+        'El estatuto federal 48 U.S.C. § 891 dispone que los electores calificados de Puerto Rico elijan un comisionado residente en Estados Unidos con un término de cuatro años que comienza el 3 de enero siguiente a la elección.',
+        'Un informe del Servicio de Investigación del Congreso resume sus derechos en la Cámara de Representantes: puede votar en comisiones y, bajo las reglas recientes de la Cámara, en el Committee of the Whole con revotación automática si su voto es decisivo, pero no puede votar en el pleno.',
       ],
     },
     en: {
       title: 'Resident Commissioner',
       body: [
-        'The CEE’s 2024 statistical guide treats the governor and the resident commissioner as elective offices for which parties file endorsement petitions. This note does not describe that office’s vote in Congress, because it does not cite the federal statute here, and it does not say who holds the office.',
+        'Federal statute 48 U.S.C. § 891 has the qualified electors of Puerto Rico choose a Resident Commissioner to the United States for a four-year term beginning the January 3 after the general election.',
+        'A Congressional Research Service report summarizes the office’s standing in the House of Representatives: it can vote in committee and, under recent House rules, in the Committee of the Whole with an automatic revote when its vote is decisive, but not on the House floor.',
       ],
     },
     sources: [
-      { es: 'CEE, guía estadística de las elecciones de 2024 (PDF)', en: 'CEE, 2024 statistical guide (PDF)', url: CEE_GUIDE },
+      { es: 'Oficina del Código de EE. UU., 48 U.S.C. § 891', en: 'U.S. House Code office, 48 U.S.C. § 891', url: 'https://uscode.house.gov/us/usc/119-118/t48/s891/' },
+      { es: 'CRS, derechos parlamentarios del comisionado residente (R40170)', en: 'CRS, parliamentary rights of the Resident Commissioner (R40170)', url: 'https://www.congress.gov/crs-product/R40170' },
     ],
   },
   {
@@ -434,15 +430,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Código de Incentivos (Ley 60-2019)',
       body: [
-        'La Ley Núm. 60 de 1 de julio de 2019 es el Código de Incentivos de Puerto Rico. La Oficina de Gerencia y Presupuesto publica una compilación revisada el 16 de julio de 2026 que indica que la ley está enmendada. Esta nota no lista tasas ni dice quién cualifica.',
-        'Hay otras leyes número 60. Por eso la nota solo sale si el texto apunta a este código.',
+        'La Ley Núm. 60 de 1 de julio de 2019 es el Código de Incentivos de Puerto Rico; la Oficina de Gerencia y Presupuesto publica la compilación de la ley enmendada.',
+        'Hay otras leyes número 60, así que la nota solo sale cuando el texto apunta a este código.',
       ],
     },
     en: {
       title: 'Incentives Code (Act 60-2019)',
       body: [
-        'Act No. 60 of July 1, 2019, is the Puerto Rico Incentives Code. The Office of Management and Budget publishes a compilation revised July 16, 2026, and marked as amended. This note does not list rates or say who qualifies.',
-        'Other statutes are also numbered 60. The note appears only when the text points to this code.',
+        'Act No. 60 of July 1, 2019, is the Puerto Rico Incentives Code; the Office of Management and Budget publishes the compiled, amended statute.',
+        'Other statutes are also numbered 60, so the note appears only when the text points to this code.',
       ],
     },
     sources: [
@@ -456,15 +452,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'LUMA',
       body: [
-        'La Autoridad de Alianzas Público-Privadas lista a LUMA como operador del sistema de transmisión y distribución eléctrica, en un contrato de operación y mantenimiento por 15 años, con la AEE (PREPA) y la Autoridad como contrapartes públicas.',
-        'La misma página describe pleitos sobre ese contrato, en palabras del gobierno. Esta nota no adopta esas alegaciones, no describe el servicio de hoy y no convierte a LUMA en la Junta de PROMESA.',
+        'La Autoridad de Alianzas Público-Privadas lista a LUMA como operador del sistema de transmisión y distribución eléctrica bajo un contrato de operación y mantenimiento de 15 años, con la AEE (PREPA) y la Autoridad como contrapartes públicas.',
+        'La misma página registra los pleitos en curso sobre ese contrato, en palabras del propio gobierno.',
       ],
     },
     en: {
       title: 'LUMA',
       body: [
-        'The Public-Private Partnerships Authority lists LUMA as the operator of the electric transmission and distribution system under a 15-year operation-and-maintenance contract, with PREPA (the Autoridad de Energía Eléctrica) and the Authority as the public counterparts.',
-        'The same page describes contract disputes in the government’s words. This note does not adopt those allegations, does not describe today’s service, and does not make LUMA the PROMESA Board.',
+        'The Public-Private Partnerships Authority lists LUMA as operator of the electric transmission and distribution system under a 15-year operation-and-maintenance contract, with PREPA (the Autoridad de Energía Eléctrica) and the Authority as the public counterparts.',
+        'The same page records the pending lawsuits over that contract, in the government’s own words.',
       ],
     },
     sources: [
@@ -481,15 +477,13 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'AEE (PREPA)',
       body: [
-        'Cuando la tarjeta nombra a la AEE o a PREPA y no nombra a LUMA, se refiere a la Autoridad de Energía Eléctrica, la contraparte pública que la Autoridad de Alianzas identifica en el contrato de transmisión y distribución.',
-        'No es LUMA y no es la Junta de PROMESA. Esta nota no explica generación, tarifas ni la causa de una avería.',
+        'La AEE —Autoridad de Energía Eléctrica, PREPA en inglés— es la utilidad eléctrica pública de Puerto Rico y la contraparte pública del contrato de transmisión y distribución que opera LUMA, según la Autoridad de Alianzas.',
       ],
     },
     en: {
       title: 'PREPA (AEE)',
       body: [
-        'When the card names PREPA or the Autoridad de Energía Eléctrica and does not name LUMA, it is the public power authority that the Partnerships Authority lists on the transmission-and-distribution contract.',
-        'It is not LUMA and it is not the PROMESA Board. This note does not explain generation, rates, or the cause of an outage.',
+        'PREPA — the Autoridad de Energía Eléctrica, AEE in Spanish — is Puerto Rico’s public electric utility and the public counterpart on the transmission-and-distribution contract that LUMA operates, per the Partnerships Authority.',
       ],
     },
     sources: [
@@ -506,15 +500,15 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Autoridad de Acueductos y Alcantarillados',
       body: [
-        'La AAA es la corporación pública cuyo portal describe el servicio de agua y alcantarillado de Puerto Rico. Las letras AAA también nombran otras cosas, entre ellas ligas de béisbol, así que hacen falta el nombre completo o palabras de servicio de agua.',
-        'No es la utilidad eléctrica y no es la Junta de PROMESA.',
+        'La Autoridad de Acueductos y Alcantarillados (AAA) es la corporación pública a cargo del servicio de agua y alcantarillado de Puerto Rico.',
+        'Las letras AAA también nombran otras cosas —ligas de béisbol, entre ellas—, así que la nota exige el nombre completo o palabras de agua.',
       ],
     },
     en: {
       title: 'Aqueduct and Sewer Authority',
       body: [
-        'The AAA is the public corporation whose site describes Puerto Rico water and sewer service. The letters AAA also name other things, including baseball leagues, so the full name or water-service wording is required.',
-        'It is not the electric utility and it is not the PROMESA Board.',
+        'The Autoridad de Acueductos y Alcantarillados (AAA) is the public corporation in charge of Puerto Rico’s water and sewer service.',
+        'The letters AAA also name other things, baseball leagues among them, so the note requires the full name or water-service wording.',
       ],
     },
     sources: [
@@ -530,19 +524,159 @@ const ENTRIES: Entry[] = [
     es: {
       title: 'Departamento de Hacienda',
       body: [
-        'El Departamento de Hacienda es el departamento de tesoro de Puerto Rico. Su sitio es hacienda.pr.gov. La palabra “hacienda” sola puede ser una finca o un apellido, así que esta nota exige el nombre del departamento.',
-        'No explica una planilla y no es el Departamento del Tesoro de Estados Unidos salvo que el texto lo diga.',
+        'El Departamento de Hacienda es el tesoro del Gobierno de Puerto Rico; su portal oficial es hacienda.pr.gov.',
+        'La palabra “hacienda” sola puede ser una finca o un apellido, así que la nota exige el nombre del departamento.',
       ],
     },
     en: {
       title: 'Puerto Rico Treasury Department',
       body: [
-        'Departamento de Hacienda is the Puerto Rico Treasury Department. Its site is hacienda.pr.gov. The word “hacienda” alone can be an estate or a surname, so this note requires the department’s name.',
-        'It does not explain a tax return, and it is not the United States Treasury unless the text says so.',
+        'The Departamento de Hacienda is the Puerto Rico Treasury Department; its official site is hacienda.pr.gov.',
+        'The word “hacienda” alone can be an estate or a surname, so the note requires the department’s name.',
       ],
     },
     sources: [
       { es: 'Departamento de Hacienda', en: 'Puerto Rico Treasury Department', url: 'https://hacienda.pr.gov/' },
+    ],
+  },
+  {
+    id: 'ddec',
+    priority: 200,
+    acronyms: [acronym('DDEC')],
+    any: [
+      has('departamento de desarrollo economico'),
+      has('department of economic development and commerce'),
+      has('desarrollo economico y comercio'),
+    ],
+    weak: [has('desarrollo economico'), has('economic development')],
+    context: [has('secretario'), has('secretary'), has('comercio'), has('commerce'), has('departamento'), has('department'), has('ddec')],
+    es: {
+      title: 'DDEC (Desarrollo Económico y Comercio)',
+      body: [
+        'El DDEC es el Departamento de Desarrollo Económico y Comercio del Gobierno de Puerto Rico; el directorio oficial del Gobierno dice que lo creó el Plan de Reorganización Núm. 4 de 1994, enmendado por la Ley Núm. 51 de 1994.',
+        'Su propia página describe su misión como impulsar el crecimiento económico con política pública, atracción de inversión y desarrollo del ecosistema empresarial.',
+      ],
+    },
+    en: {
+      title: 'DDEC (Economic Development and Commerce)',
+      body: [
+        'DDEC is Puerto Rico’s Department of Economic Development and Commerce; the government’s official directory says it was created by Reorganization Plan No. 4 of 1994, as amended by Act No. 51 of 1994.',
+        'Its own page describes its mission as promoting economic growth through public policy, attracting investment, and developing the business ecosystem.',
+      ],
+    },
+    sources: [
+      { es: 'PR.gov, directorio de agencias, DDEC', en: 'PR.gov, agency directory, DDEC', url: 'https://pr.gov/directorio-de-agencias/departamento-de-desarrollo-economico-y-comercio-ddec-4' },
+      { es: 'DDEC, Oficina del Secretario', en: 'DDEC, Office of the Secretary', url: 'https://www.desarrollo.pr.gov/oficina-del-secretario' },
+    ],
+  },
+  {
+    id: 'nfe',
+    priority: 210,
+    acronyms: [acronym('NFE')],
+    any: [has('new fortress'), has('nfenergia'), has('nfe energia')],
+    es: {
+      title: 'New Fortress Energy (NFE)',
+      body: [
+        'New Fortress Energy (NFE) es una empresa de energía cotizada en el NASDAQ que, mediante su subsidiaria NFEnergía, vende gas natural a la Autoridad de Energía Eléctrica para sus plantas, según anuncios de la propia empresa.',
+        'La Comisión Federal de Energía (FERC) describe la instalación de NFEnergía en el puerto de San Juan —la San Juan Micro-Fuel Handling Facility— como una terminal de importación y regasificación de gas natural licuado que surte gas a la planta de San Juan.',
+      ],
+    },
+    en: {
+      title: 'New Fortress Energy (NFE)',
+      body: [
+        'New Fortress Energy (NFE) is a NASDAQ-listed energy company whose Puerto Rico subsidiary NFEnergía sells natural gas to the Puerto Rico Electric Power Authority for its plants, per the company’s own announcements.',
+        'The Federal Energy Regulatory Commission describes NFEnergía’s Port of San Juan facility — the San Juan Micro-Fuel Handling Facility — as an LNG import and regasification facility supplying natural gas to the San Juan Power Plant.',
+      ],
+    },
+    sources: [
+      { es: 'New Fortress Energy, contrato con PREPA (anuncio de la empresa)', en: 'New Fortress Energy, contract with PREPA (company release)', url: 'https://ir.newfortressenergy.com/news-releases/news-release-details/new-fortress-energy-signs-contract-supply-natural-gas-san-juan/' },
+      { es: 'FERC, proyecto de GNL en San Juan', en: 'FERC, San Juan LNG project', url: 'https://www.ferc.gov/san-juan-lng-project' },
+    ],
+  },
+  {
+    id: 'distrito-tmobile',
+    priority: 220,
+    any: [has('distrito t-?mobile'), has('t-?mobile distrito'), has('t-?mobile district')],
+    weak: [word('distrito')],
+    context: [has('t-?mobile')],
+    es: {
+      title: 'Distrito T-Mobile',
+      body: [
+        'El Distrito T-Mobile es un complejo privado de entretenimiento, gastronomía y hospedería en el Distrito de Convenciones de San Juan, inaugurado oficialmente en agosto de 2021.',
+        'Su página aclara que T-Mobile no es el dueño ni el operador: lo desarrolló y construyó la empresa local PRISA Group, con T-Mobile como patrocinador principal.',
+      ],
+    },
+    en: {
+      title: 'Distrito T-Mobile',
+      body: [
+        'Distrito T-Mobile is a private dining, entertainment, and hospitality complex in San Juan’s Convention District that officially opened in August 2021.',
+        'Its own page clarifies that T-Mobile is not the owner or operator: it was developed and built by the local company PRISA Group, with T-Mobile as its main sponsor.',
+      ],
+    },
+    sources: [
+      { es: 'Distrito T-Mobile, preguntas frecuentes', en: 'Distrito T-Mobile, frequently asked questions', url: 'https://www.distritot-mobile.com/faq' },
+    ],
+  },
+  {
+    id: 'coquito',
+    priority: 230,
+    any: [],
+    weak: [word('coquito'), word('coquitos'), has('coquitaz')],
+    context: [
+      has('navid'), has('christmas'), has('pascu'), has('coco'), has('coconut'),
+      word('ron'), word('rum'), has('bebida'), has('drink'), has('tradicion'), has('tradition'),
+      has('receta'), has('recipe'), has('tembleque'), has('concurso'), has('festival'),
+      has('feria'), has('leche'), has('milk'), has('brindis'), has('botella'),
+    ],
+    es: {
+      title: 'Coquito',
+      body: [
+        'El coquito es la bebida navideña puertorriqueña de coco y ron, con leche condensada y evaporada; el léxico del español de Puerto Rico que recoge la UPR lo define como “bebida hecha a base de coco y alcohol”.',
+        'Su origen no está documentado con exactitud; la BBC recoge que lo más probable es que surgiera hacia los años cincuenta, con la llegada de las leches enlatadas.',
+      ],
+    },
+    en: {
+      title: 'Coquito',
+      body: [
+        'Coquito is Puerto Rico’s Christmas coconut-and-rum drink made with condensed and evaporated milk; the University of Puerto Rico’s record of island Spanish defines it as a coconut-and-alcohol beverage.',
+        'Its exact origin is undocumented; the BBC reports it most likely emerged around the 1950s, with the arrival of canned milks.',
+      ],
+    },
+    sources: [
+      { es: 'Diálogo UPR, léxico navideño en Puerto Rico', en: 'Diálogo UPR, Puerto Rico Christmas lexicon', url: 'https://dialogo.upr.edu/lexico-navideno-en-puerto-rico/' },
+      { es: 'BBC, la bebida navideña favorita de Puerto Rico', en: 'BBC, Coquito: Puerto Rico’s favourite holiday drink', url: 'https://www.bbc.com/travel/article/20241205-coquito-puerto-ricos-favourite-holiday-drink' },
+    ],
+  },
+  {
+    id: 'taino',
+    priority: 240,
+    any: [word('tainos'), has('pueblo taino'), has('indigena tain'), has('taino ind')],
+    weak: [word('taino'), word('taina'), word('tainas')],
+    context: [
+      has('indigen'), has('indian'), has('indios'), word('indio'), has('arqueolog'), has('archaeolog'),
+      has('petroglif'), has('cacique'), has('cueva'), has('cave'), has('vasija'), has('yacimiento'),
+      has('museo'), has('heritage'), has('historia'), has('history'), has('cultura'), has('culture'),
+      has('casabe'), has('areito'), has('canoa'), has('canoe'), has('hamaca'), has('hammock'),
+      has('conquist'), has('colonial'), has('prehispan'), has('borinquen'), has('boriken'),
+      has('descenden'), has('ancestr'), has('raices'), has('identidad'), has('identity'),
+    ],
+    es: {
+      title: 'Taíno',
+      body: [
+        '“Taíno” designa a los pueblos de habla arawak de las Antillas Mayores —Puerto Rico entre ellas— y a sus descendientes; la colonización europea tras el encuentro de 1492 devastó su civilización y diezmó su población.',
+        'El Instituto Smithsoniano subraya que nunca se extinguieron: registros históricos, tradiciones regionales y un movimiento contemporáneo de descendientes reafirman la identidad indígena taína.',
+      ],
+    },
+    en: {
+      title: 'Taíno',
+      body: [
+        '“Taíno” refers to the Arawak-speaking peoples of the Greater Antilles — Puerto Rico among them — and their descendants; European colonization after the 1492 encounter devastated their civilization and decimated their population.',
+        'The Smithsonian stresses they never became extinct: historical records, regional traditions, and a contemporary movement of descendants reaffirm Taíno Indigenous identity.',
+      ],
+    },
+    sources: [
+      { es: 'Smithsonian, legado indígena del Caribe (nota de prensa)', en: 'Smithsonian, Indigenous legacy of the Caribbean (news release)', url: 'https://www.si.edu/newsdesk/releases/indigenous-legacy-caribbean-featured-new-smithsonian-exhibition' },
+      { es: 'Smithsonian/NMAI, perseverancia taína (nota de prensa)', en: 'Smithsonian/NMAI, Taíno perseverance (news release)', url: 'https://www.si.edu/newsdesk/releases/ta-no-perseverance-subject-upcoming-new-york-city-exhibition-national-museum-american-india' },
     ],
   },
 ];
@@ -592,12 +726,12 @@ export function explainerHtml(text: string, lang: ExplainerLang): string {
   }).join('');
   const more = extra > 0 ? `<p class="explainer-more">${escape(t('Hay otras entradas del glosario en esta tarjeta. Se muestran tres.', 'This card matched more glossary entries. Three are shown.'))}</p>` : '';
   const banner = t(
-    'Contexto de un glosario revisado. Sale solo si el titular o el extracto de esta tarjeta menciona una entrada. No resume el artículo, no usa el texto completo y no asigna a nadie a un partido.',
-    'Context from a reviewed glossary. It appears only when this card’s headline or excerpt mentions an entry. It does not summarize the article, it does not use the full story, and it does not assign anyone to a party.',
+    'Antecedentes de un glosario revisado; cada entrada enlaza sus fuentes públicas.',
+    'Background from a reviewed glossary; each entry links its public sources.',
   );
   const checked = t(
-    'Fuentes públicas revisadas el 19 de noviembre de 2026. Esto es contexto, no el reportaje.',
-    'Public sources checked on November 19, 2026. This is background, not the reporting.',
+    'Fuentes públicas revisadas el 20 de noviembre de 2026; las que solo se publican como PDF y el sitio del partido PIP conservan la revisión del 19 de noviembre. Esto es contexto, no el reportaje.',
+    'Public sources reviewed on November 20, 2026; sources published only as PDFs and the PIP party site keep their November 19, 2026 review. This is background, not the reporting.',
   );
-  return `<details class="explainer" data-explainer="${escape(shown.map(entry => entry.id).join(','))}"><summary>${escape(t('Explicar el contexto', 'Explain the context'))}</summary><div class="explainer-body" lang="${lang}"><p class="explainer-banner">${escape(banner)}</p>${entries}${more}<p class="explainer-checked">${escape(checked)}</p></div></details>`;
+  return `<details class="explainer" data-explainer="${escape(shown.map(entry => entry.id).join(','))}"><summary>${escape(t('Contexto', 'Context'))}</summary><div class="explainer-body" lang="${lang}"><p class="explainer-banner">${escape(banner)}</p>${entries}${more}<p class="explainer-checked">${escape(checked)}</p></div></details>`;
 }

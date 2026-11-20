@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
 import {expect, it} from 'vitest';
-import {MAX_MATCHES, VERIFIED_ON, explainerCitations, explainerHtml, matchExplainer} from '../src/explainer';
+import {ENTRIES, MAX_MATCHES, VERIFIED_ON, explainerCitations, explainerHtml, matchExplainer} from '../src/explainer';
 import renderer from '../src/render';
 import type {Item} from '../src/parse';
 
@@ -18,6 +18,16 @@ const hosts = new Set([
   'www.p3.pr.gov',
   'www.acueductos.pr.gov',
   'hacienda.pr.gov',
+  'pr.gov',
+  'www.desarrollo.pr.gov',
+  'www.newfortressenergy.com',
+  'ir.newfortressenergy.com',
+  'www.ferc.gov',
+  'www.distritot-mobile.com',
+  'dialogo.upr.edu',
+  'www.bbc.com',
+  'www.si.edu',
+  'uscode.house.gov',
 ]);
 
 const panel = (html: string) => {
@@ -27,7 +37,7 @@ const panel = (html: string) => {
 };
 
 it('keeps a dated curated glossary and does not call a model', () => {
-  expect(VERIFIED_ON).toBe('2026-11-19');
+  expect(VERIFIED_ON).toBe('2026-11-20');
   expect(MAX_MATCHES).toBe(3);
   const source = readFileSync('src/explainer.ts', 'utf8');
   expect(source).not.toMatch(/\bfetch\s*\(/);
@@ -35,6 +45,36 @@ it('keeps a dated curated glossary and does not call a model', () => {
   expect(source).not.toMatch(/\/api\//);
   expect(source).not.toMatch(/AI\.run|workers-ai|@cf\/|env\.AI/);
   expect(explainerHtml('PROMESA certifica el plan.', 'es')).not.toBeInstanceOf(Promise);
+});
+
+it('keeps every entry concise with a source link', () => {
+  expect(ENTRIES.length).toBe(24);
+  for (const entry of ENTRIES) {
+    expect(entry.es.body.length).toBeGreaterThanOrEqual(1);
+    expect(entry.es.body.length).toBeLessThanOrEqual(2);
+    expect(entry.en.body.length).toBeLessThanOrEqual(2);
+    expect(entry.sources.length).toBeGreaterThan(0);
+    expect(entry.es.title.length).toBeLessThanOrEqual(60);
+    expect(entry.en.title.length).toBeLessThanOrEqual(60);
+    for (const paragraph of [...entry.es.body, ...entry.en.body]) {
+      expect(paragraph.length).toBeLessThanOrEqual(320);
+    }
+    // Neutrality kept without the old repeated disclaimer.
+    expect(entry.es.body.join(' ')).not.toContain('no prueba que esa persona milite');
+    expect(entry.en.body.join(' ')).not.toContain('does not prove membership');
+  }
+});
+
+it('does not imply the blocked PDFs and the PIP site were rechecked on the review date', () => {
+  const es = explainerHtml('El DDEC anuncia nuevos incentivos.', 'es');
+  const en = explainerHtml('The resident commissioner requested funds.', 'en');
+  for (const [html, latest, earlier] of [
+    [es, '20 de noviembre de 2026', '19 de noviembre'],
+    [en, 'November 20, 2026', 'November 19, 2026'],
+  ] as [string, string, string][]) {
+    expect(html).toContain(latest);
+    expect(html).toContain(earlier);
+  }
 });
 
 it('cites only https pages on the reviewed hosts', () => {
@@ -101,17 +141,56 @@ it('uses context before firing short names', () => {
   expect(matchExplainer('CEE')).toEqual([]);
 });
 
+it('matches the new entries only with their context guards', () => {
+  expect(matchExplainer('El DDEC anuncia nuevos incentivos.')).toEqual(['ddec']);
+  expect(matchExplainer('La secretaria de Desarrollo Económico y Comercio visita Ponce.')).toEqual(['ddec']);
+  expect(matchExplainer('El desarrollo económico de la isla crece.')).toEqual([]);
+  expect(matchExplainer('New Fortress Energy surte gas natural a la planta.')).toEqual(['nfe']);
+  expect(matchExplainer('NFEnergía opera la terminal del puerto de San Juan.')).toEqual(['nfe']);
+  expect(matchExplainer('NFE extiende el contrato con la AEE.')).toEqual(['nfe']);
+  expect(matchExplainer('un nfe extraño')).toEqual([]);
+  expect(matchExplainer('El Distrito T-Mobile llena su calendario de conciertos.')).toEqual(['distrito-tmobile']);
+  expect(matchExplainer('Concierto en el T-Mobile District de San Juan.')).toEqual(['distrito-tmobile']);
+  expect(matchExplainer('T-Mobile mejora la cobertura en la isla.')).toEqual([]);
+  expect(matchExplainer('El distrito escolar aprueba el presupuesto.')).toEqual([]);
+  expect(matchExplainer('El coquito navideño regresa a las mesas.')).toEqual(['coquito']);
+  expect(matchExplainer('Concurso de coquito en Bayamón.')).toEqual(['coquito']);
+  expect(matchExplainer('Escuelas adoptan el método de lectura Coquito.')).toEqual([]);
+  expect(matchExplainer('Ronaldo anota tras el rumor de un traspaso.')).toEqual([]);
+  expect(matchExplainer('Los taínos habitaban Borikén.')).toEqual(['taino']);
+  expect(matchExplainer('Hallan vasija taína en una cueva de Arecibo.')).toEqual(['taino']);
+  expect(matchExplainer('Petroglifo taíno será restaurado en Jayuya.')).toEqual(['taino']);
+  expect(matchExplainer('Taína Rodríguez gana la medalla de oro.')).toEqual([]);
+  expect(matchExplainer('Restaurante Taíno reabre en el Condado.')).toEqual([]);
+});
+
+it('describes the resident commissioner from the statute and CRS', () => {
+  expect(matchExplainer('El comisionado residente en Washington presenta un proyecto.')).toEqual(['resident-commissioner']);
+  const es = explainerHtml('La comisionada residente pidió una audiencia.', 'es');
+  const en = explainerHtml('The resident commissioner requested a hearing.', 'en');
+  for (const html of [es, en]) {
+    expect(html).toContain('https://uscode.house.gov/us/usc/119-118/t48/s891/');
+    expect(html).toContain('https://www.congress.gov/crs-product/R40170');
+  }
+  expect(es).toContain('48 U.S.C. § 891');
+  expect(es).toContain('cuatro años');
+  expect(es).toContain('no puede votar en el pleno');
+  expect(en).toContain('four-year term');
+  expect(en).toContain('not on the House floor');
+  expect(en).not.toContain('Jenniffer');
+});
+
 it('caps matches and stays in the view language with citations', () => {
   const crowded = 'PROMESA, el Senado, el PNP, el PIP, el MVC, Proyecto Dignidad, LUMA y el Estado Libre Asociado.';
   expect(matchExplainer(crowded).slice(0, 3)).toEqual(['fomb', 'legislature', 'pnp']);
   const spanish = explainerHtml(crowded, 'es');
   const english = explainerHtml(crowded, 'en');
   expect(spanish).toContain('data-explainer="fomb,legislature,pnp"');
-  expect(spanish).toContain('>Explicar el contexto</summary>');
+  expect(spanish).toContain('>Contexto</summary>');
   expect(spanish).toContain('glosario revisado');
   expect(spanish).toContain('Se muestran tres.');
   expect(spanish).not.toContain('reviewed glossary');
-  expect(english).toContain('>Explain the context</summary>');
+  expect(english).toContain('>Context</summary>');
   expect(english).toContain('reviewed glossary');
   expect(english).toContain('Three are shown.');
   expect(english).not.toContain('glosario revisado');
@@ -131,8 +210,9 @@ it('escapes card text and does not invent a party for an official', () => {
   expect(html).not.toContain('onmouseover');
   expect(html).not.toContain('&lt;script&gt;');
   const official = explainerHtml('La gobernadora criticó al PNP.', 'es');
-  expect(official).toContain('no prueba que esa persona milite');
-  expect(official).not.toMatch(/gobernadora es|pertenece al PNP|afiliada/i);
+  expect(official).toContain('su declaración, no una descripción de la ley vigente');
+  expect(official).not.toContain('no prueba');
+  expect(official).not.toMatch(/gobernadora es|pertenece al PNP|afiliada|milita en/i);
 });
 
 it('renders a closed bilingual disclosure without calling AI or rewriting the headline', async () => {
@@ -163,7 +243,7 @@ it('renders a closed bilingual disclosure without calling AI or rewriting the he
     }).text();
     const note = panel(html);
     expect(note).toContain('class="explainer"');
-    expect(note).toContain(lang === 'es' ? 'Explicar el contexto' : 'Explain the context');
+    expect(note).toContain(lang === 'es' ? '>Contexto</summary>' : '>Context</summary>');
     expect(note).not.toContain('<img src=x');
     expect(note).not.toContain('<script>');
     expect(note).not.toContain('sátira');
