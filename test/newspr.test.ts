@@ -62,11 +62,38 @@ describe('news.pr classification', () => {
   expect(classify(categoryItem.url, [], categoryItem.title + ' ' + categoryItem.summary, 'newspr').section)
    .not.toBe(categoryItem.section);
  });
- it('leaves other sources’ categories and keywords untouched', () => {
-  const endi = sources.find(s => s.id === 'endi')!;
-  const endiItems = parseFeed(readFileSync(`test/fixtures/${endi.files[0]}`, 'utf8'), endi, seen);
-  for (const item of endiItems) expect(currentItem(item).section).toBe(item.section);
-  expect(classify('https://www.elnuevodia.com/noticias/locales/x/', [], 'noticia', 'endi').section).toBe('otras');
+ it('leaves other sources’ categories, payloads and render behavior untouched', () => {
+  // Scope guard (F3): category preservation is news.pr-only. Every other source's
+  // fixtures must keep the exact pre-news.pr render behavior — re-classification
+  // from URL and keywords only, no stored categories — verified across all of them.
+  const others = sources.filter(s => s.id !== 'newspr' && s.id !== 'reddit_puertorico');
+  let checked = 0;
+  for (const source of others) for (const file of new Set(source.files)) {
+   const parsed = parseFeed(readFileSync(`test/fixtures/${file}`, 'utf8'), source, seen);
+   for (const item of parsed) {
+    checked++;
+    expect(item.categories).toBeUndefined();                       // payloads keep their exact current shape
+    expect(currentItem(item).section).toBe(classify(item.url, [], item.title + ' ' + item.summary).section); // the exact pre-news.pr expression
+   }
+  }
+  expect(checked).toBeGreaterThanOrEqual(400);                      // every non-newspr, non-reddit fixture item
+  // The concrete regression the global categories change caused: Radio Isla's flu
+  // transmission report rendered under its keyword section (salud); the global
+  // change moved it to Government & Politics. The news.pr-only scoping keeps the
+  // rendered section exactly as deployed before this source existed.
+  const radioisla = additionalSources.find(s => s.id === 'radioisla')!;
+  const flu = parseFeed(readFileSync(`test/fixtures/${radioisla.files[0]}`, 'utf8'), radioisla, seen)
+   .find(i => /influenza/i.test(i.title))!;
+  expect(classify(flu.url, [], flu.title + ' ' + flu.summary).section).toBe('salud');
+  expect(currentItem(flu).section).toBe('salud');                    // unchanged: never politica
+ });
+ describe('other sources: stored payload shape is unchanged', () => {
+  it('does not store feed categories on non-newspr items at ingest', () => {
+   const endi = sources.find(s => s.id === 'endi')!;
+   const endiItems = parseFeed(readFileSync(`test/fixtures/${endi.files[0]}`, 'utf8'), endi, seen);
+   expect(endiItems.some(i => i.categories)).toBe(false);
+   expect(classify('https://www.elnuevodia.com/noticias/locales/x/', [], 'noticia', 'endi').section).toBe('otras');
+  });
  });
 });
 
