@@ -168,7 +168,7 @@ export default {
   const fromUrl=url.pathname==='/story'&&live?.story?url.searchParams.get('id')??'':'';
   const shareId=typeof mappedId==='number'&&Number.isSafeInteger(mappedId)&&mappedId>0?mappedId:(/^[1-9]\d{0,8}$/.test(fromUrl)?Number(fromUrl):0);
   const share=shareId?`<button type="button" class="share-ask" data-share-path="${escape('/story?id='+shareId+(lang==='en'?'&lang=en':''))}" data-share-lang="${lang}">${t('Compartir','Share')}</button><p class="share-note" role="status" aria-live="polite"></p>`:'';
-  const lighter=articleEligible(original)?`<div class="lighter"><button type="button" class="lighter-ask" data-lighter-url="${escape(original.url)}" data-lighter-lang="${lang}" data-cached="${known?'1':'0'}" aria-expanded="false">${known?t('Ver la sátira guardada','Show the saved satire'):t('Pedir una sátira','Ask for a satire')}</button>${share}<p class="lighter-note" role="status" aria-live="polite"></p></div>`:(share?`<div class="share">${share}</div>`:'');
+  const lighter=articleEligible(original)?`<div class="lighter"><button type="button" class="lighter-ask" data-lighter-url="${escape(original.url)}" data-lighter-lang="${lang}" data-cached="${known?'1':'0'}" aria-expanded="false">${t('Mostrar sátira','Show satire')}</button>${share}<p class="lighter-note" role="status" aria-live="polite"></p></div>`:(share?`<div class="share">${share}</div>`:'');
   const image = safeUrl(item.image);
   // Every outbound link runs through /click when the page is served live, so the
   // click ledger covers archive and story pages too — /click redirects only

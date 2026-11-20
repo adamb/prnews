@@ -91,7 +91,8 @@ describe('story social preview', () => {
   expect(head).not.toContain(satire);
   expect(html).not.toContain(satire);
   expect(html).toContain('class="card lead');
-  expect(html).toContain('Ver la sátira guardada');
+  expect(html).toContain('Mostrar sátira');
+  expect(html).not.toContain('Ver la sátira guardada');
   expect(html).toContain('/click?url=' + encodeURIComponent(item.url));
   expect(html).toContain('data-share-path="/story?id=7"');
   expect(excerpt.length).toBeLessThanOrEqual(300);
@@ -185,7 +186,7 @@ describe('story id query', () => {
    .run(item.url, item.source, JSON.stringify(item), translation, item.time, item.time, item.time);
  };
 
- it('joins story ids in the one page query, leaves /api/live alone, and renders the saved satire on /story', async () => {
+ it('joins story ids in the one page query, leaves /api/live alone, and renders the satire button on /story', async () => {
   const { sql, seen, env } = setup();
   const kept = story({ title: 'Horario nuevo en las oficinas de Bayamón', summary: 'El portavoz confirmó el cambio de horario esta mañana.' });
   const orphan = story({ title: 'El ferri de Culebra añade una salida', summary: 'La autoridad portuaria publicó el itinerario de la tarde.' });
@@ -221,7 +222,10 @@ describe('story id query', () => {
   const storyHtml = await page.text();
   const storyHead = headOf(storyHtml);
   expect(storyHtml).toContain('class="card lead');
-  expect(storyHtml).toContain('Ver la sátira guardada');
+  expect(storyHtml).toContain('Mostrar sátira');
+  expect(storyHtml).toContain('data-cached="1"');
+  expect(storyHtml).not.toContain('Ver la sátira guardada');
+  expect(storyHtml).not.toContain('Pedir una sátira');
   expect(storyHtml).toContain('/click?url=' + encodeURIComponent(kept.url));
   expect(storyHtml).toContain(`data-share-path="/story?id=${id}"`);
   expect(storyHead).toContain(`<meta property="og:title" content="${esc(kept.title)}">`);
@@ -240,7 +244,10 @@ describe('story id query', () => {
   expect(englishHead).toContain('<meta property="og:locale" content="en_US">');
   expect(englishHead).toContain(`<link rel="canonical" href="https://news.dev.pr/story?id=${id}&amp;lang=en">`);
   expect(englishHtml).toContain(`data-share-path="/story?id=${id}&amp;lang=en"`);
-  expect(englishHtml).toContain('Show the saved satire');
+  expect(englishHtml).toContain('Show satire');
+  expect(englishHtml).toContain('data-cached="1"');
+  expect(englishHtml).not.toContain('Show the saved satire');
+  expect(englishHtml).not.toContain('Ask for a satire');
   expect(headOf(englishHtml)).not.toContain(satireEn);
 
   const missing = await worker.fetch(new Request('https://news.dev.pr/story?id=99999'), env);
