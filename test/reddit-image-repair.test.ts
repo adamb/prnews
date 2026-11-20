@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, it, vi } from 'vitest';
 import { repairArcticImages } from '../src/reddit-repair';
+import { arcticFeed } from '../src/reddit';
 import type { Env } from '../src/ingest';
 import type { Item } from '../src/parse';
 
@@ -123,3 +124,59 @@ it('runs at most one repair request per hour (the lease doubles as the cadence g
  expect(await repairArcticImages(env, NOW + 76 * 60000)).toEqual({ skipped: 'already running' }); // 15-min cron inside the hour
  expect(calls).toBe(1);
 });
+
+it('stays completely quiet while the Arctic scan itself is in failure backoff, then repairs after recovery', async () => {
+ const DB = database();
+ await insert(DB, redditItem('bk1'));
+ // Mirror the production 429 streak: the scan's feed_state row is in failure backoff.
+ await DB.prepare('INSERT INTO feed_state(url,source,last_checked,status,error,failures,next_check,item_count) VALUES(?,?,?,429,?,?,?,0)')
+  .bind(arcticFeed, 'reddit_puertorico', NOW - 3600000, 'HTTP 429', 9, NOW + 3600000).run();
+ const fetcher = vi.fn(async () => new Response(JSON.stringify({ data: [] })));
+ vi.stubGlobal('fetch', fetcher);
+ const env = { DB } as unknown as Env;
+ expect(await repairArcticImages(env, NOW)).toEqual({ skipped: 'arctic backoff' });
+ expect(fetcher).not.toHaveBeenCalled(); // no request against the rate-limited host
+ // The quiet pass took no lease and booked no attempt, so nothing compounds the failure.
+ expect((await DB.prepare('SELECT COUNT(*) AS n FROM arctic_image_repair').first<any>()).n).toBe(0);
+ expect((await DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE id='arctic-image-repair'").first<any>()).n).toBe(0);
+ // The scan succeeds again: failures reset, its ordinary hourly next_check remains — the repair must not be blocked by a healthy cadence.
+ await DB.prepare('UPDATE feed_state SET failures=0,error=NULL WHERE url=?').bind(arcticFeed).run();
+ expect((await repairArcticImages(env, NOW)).requested).toBe(1);
+ expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('honors a 429 Retry-After and does not re-request a row before it elapses', async () => {
+ const DB = database();
+ const item = redditItem('ra1');
+ await insert(DB, item);
+ const fetcher = vi.fn(async () => new Response('', { status: 429, headers: { 'Retry-After': '7200' } }));
+ vi.stubGlobal('fetch', fetcher);
+ const env = { DB } as unknown as Env;
+ expect(await repairArcticImages(env, NOW)).toEqual({ requested: 1, error: 'HTTP 429' });
+ const row = await DB.prepare('SELECT attempts,next_attempt FROM arctic_image_repair WHERE url=?').bind(item.url).first<any>();
+ expect(row.attempts).toBe(1);
+ expect(row.next_attempt).toBe(NOW + 7200000); // the host's Retry-After (2 h), not the 1-hour default
+ expect(await repairArcticImages(env, NOW + 3900000)).toEqual({ requested: 0, repaired: 0, terminal: 0 }); // lease elapsed, Retry-After has not
+ expect(fetcher).toHaveBeenCalledTimes(1);
+ expect((await DB.prepare('SELECT attempts FROM arctic_image_repair WHERE url=?').bind(item.url).first<any>()).attempts).toBe(1); // no attempt burned
+ expect((await repairArcticImages(env, NOW + 7500001)).requested).toBe(1); // after the Retry-After: second and final retry
+ expect(fetcher).toHaveBeenCalledTimes(2);
+ expect((await DB.prepare('SELECT attempts FROM arctic_image_repair WHERE url=?').bind(item.url).first<any>()).attempts).toBe(2);
+});
+
+it('ends rows without a Reddit comments ID instead of requesting them forever', async () => {
+ const DB = database();
+ const stored = redditItem('ok1');
+ const malformed = { ...redditItem('bad1'), url: 'https://www.reddit.com/r/PuertoRico/nope/' } as Item;
+ await insert(DB, stored); await insert(DB, malformed);
+ vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: [arcticPost({ ...stored, title: stored.title } as Item, { thumbnail: 'self' })] }))));
+ const env = { DB } as unknown as Env;
+ // The malformed row is never requested; the text post is terminal from the lookup.
+ expect(await repairArcticImages(env, NOW)).toEqual({ requested: 1, repaired: 0, terminal: 2 });
+ const bad = await DB.prepare('SELECT attempts,error FROM arctic_image_repair WHERE url=?').bind(malformed.url).first<any>();
+ expect(bad.attempts).toBe(3); // capped: never reselected
+ expect(bad.error).toBe('Not a Reddit comments URL');
+ vi.stubGlobal('fetch', vi.fn());
+ expect(await repairArcticImages(env, NOW + 3900000)).toEqual({ requested: 0, repaired: 0, terminal: 0 }); // neither row returns
+});
+
