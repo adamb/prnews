@@ -226,3 +226,9 @@
 - 469 tests, typecheck, dry-run build on the combined result. No migrations, pipeline or translation changes.
 - Live checks: home carries canonical plus es/en/x-default alternates and no robots tag; /?source=endi and /search carry `noindex,follow`; /story carries canonical and alternates; 63 cards show "Mostrar sátira"; sitemap is valid XML with 1,040 URLs (40 pages, 500 Spanish and 500 English stories) and about 370 KB.
 - robots.txt still disallows only /internal/. Existing index entries change only after Google recrawls.
+
+## 2026-11-20 — Share a story with its satire open
+
+- PR #38 (sharing with the satire open sends `/story?id=N&satire=1`, plus `&lang=en` in English, never the line itself; Web Share text carries the line and "chiste de IA, no noticia" / "AI joke, not news"; the preview description for that link is "Chiste de IA, no noticia: …" / "AI joke, not news: …" when a stored line passes `valid()`, otherwise the verbatim excerpt; the link opens with the satire already open; `noindex,follow` with the plain story URL as canonical; HTML cache `prnews-html-v36`), deployed from a0df03e9366876b81b21c234d77f6f58237f63fe. Cloudflare Worker version: 11d5d9b5-4f75-4385-aa1e-4dbf742ad3db. Previous: a61df213-2115-4b6c-b018-f8a5887f4238.
+- 477 tests, typecheck, dry-run build. No migrations, no model calls, nothing written on view. The on-card disclosure label is unchanged.
+- Not verified: the native OS share sheet, and how each messaging app caches or renders previews.
