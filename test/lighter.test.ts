@@ -12,6 +12,22 @@ it('rejects unchanged, oversized, markup, invented numbers and reassurance',()=>
  for(const text of [item.summary,'x'.repeat(301),'<script>alert(1)</script>','Traffic delayed for 99 hours.','Do not worry, you are safe.'])expect(valid(text,item)).toBe(false);
  expect(valid('The agency reports delays on the roads.',item)).toBe(true);
 });
+it('rejects an invented institution and keeps a joke aimed at the situation',()=>{
+ const apology={url:'https://example.com/apology',title:'Tres formas de dejar de pedir perdón en exceso, según la psicología',summary:'Las disculpas automáticas son un intento de controlar la ansiedad'} as Item;
+ expect(valid('Government apologizes in advance for upcoming apologies.',apology)).toBe(false);
+ expect(valid('Government apologizes in advance for upcoming apologies.',apology,'en')).toBe(false);
+ expect(valid('El gobierno se disculpó por adelantado y anunció más disculpas.',apology,'es')).toBe(false);
+ expect(valid('Automatic apologies filed a second apology and called the extra one growth.',apology,'en')).toBe(true);
+ const governed={url:'https://example.com/gov',title:'El gobierno publicó el acuerdo',summary:'El texto salió esta mañana.'} as Item;
+ expect(valid('The Gobierno filed the same signature twice this morning.',governed,'en')).toBe(true);
+ const governor={url:'https://example.com/governor',title:'Visita a la isla',summary:'El gobernador firmó el texto esta mañana.'} as Item;
+ expect(valid('The Gobierno filed the same signature twice this morning.',governor,'en')).toBe(true);
+ const englishGovernment={url:'https://example.com/en-gov',title:'The government published the text',summary:'The signature was filed this morning.'} as Item;
+ expect(valid('El gobierno archivó la misma firma otra vez esta mañana.',englishGovernment,'es')).toBe(true);
+ const board={url:'https://example.com/board',title:'La Junta exige transparencia',summary:'La Junta de Supervisión Fiscal pidió los documentos.'} as Item;
+ expect(valid('The board filed the same demand twice this morning.',board,'en')).toBe(true);
+ expect(valid('The apology stayed in a state of rehearsal and filed itself again.',apology,'en')).toBe(true);
+});
 it('withholds recognized sensitive topics in both languages',()=>{
  for(const text of ['Two dead after outage','Heridos en accidente','Health hazard','Emergencia por huracán','Police investigate murder'])expect(sensitive(text)).toBe(true);
  expect(sensitive('Agency paperwork and traffic delays')).toBe(false);
