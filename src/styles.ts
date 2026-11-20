@@ -136,6 +136,10 @@ mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:inherit;b
 .filters select{max-width:100%;padding:8px 12px;font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:999px}
 .filters button,.pagination a{display:inline-block;padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:13px;font-weight:600;cursor:pointer;transition:border-color .2s,background-color .2s}
 .filters button:hover,.pagination a:hover{border-color:var(--muted);text-decoration:none}
+.source-chip{margin:12px 0 4px;padding:10px 14px;max-width:100%;background:var(--soft);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;font-size:15px;font-weight:600;line-height:1.45;overflow-wrap:anywhere}
+.source-chip strong{font-weight:800}
+.source-chip a{color:var(--accent);font-weight:700;white-space:nowrap}
+.source-chip a:hover,.source-chip a:focus-visible{text-decoration:underline;text-underline-offset:3px}
 .list>.filters{padding:4px 0 18px}
 input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1px solid var(--line)}
 .pagination{display:flex;gap:12px;margin:36px 0 10px}
@@ -152,6 +156,8 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .ph b{font:700 clamp(1.1rem,3.6vw,1.9rem)/1 var(--serif);letter-spacing:.05em}
 .meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;margin:0;font-size:12px;color:var(--muted)}
 .meta .src{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.meta .src a{color:inherit;text-decoration:none}
+.meta .src a:hover,.meta .src a:focus-visible{text-decoration:underline;text-underline-offset:3px}
 .meta .when::before{content:"·";margin-right:8px}
 .card h2,.card h3{margin:0;font-family:var(--serif);font-weight:700;letter-spacing:-.012em;line-height:1.2;text-wrap:balance;overflow-wrap:break-word;word-break:normal}
 .card h2 a,.card h3 a{background:linear-gradient(currentColor,currentColor) 0 100%/0 1px no-repeat;transition:background-size .35s ease}
@@ -314,6 +320,8 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .source p{margin:4px 0;color:var(--muted);font-size:14px}
 .source>div,.source>span{min-width:0;overflow-wrap:anywhere}
 .source h2{font-size:1.3rem}
+.source-stories{color:var(--accent);font-weight:700}
+.source-stories:hover,.source-stories:focus-visible{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:700px){.source{flex-direction:column;gap:8px}}
 main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause){padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-weight:600;cursor:pointer}
 main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause):hover{border-color:var(--muted)}
