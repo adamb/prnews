@@ -116,6 +116,39 @@ it('refuses other origins, unknown URLs, sensitive items, and the daily cap with
  expect(rows).toMatchObject({interactions:1, attempts:0, generations:0, failures:0});
 });
 
+it('still allows presses the old 24 limit blocked and blocks exactly at 1000', async () => {
+ const DB = database();
+ const run = vi.fn(async () => ({response: JSON.stringify({text: satire})}));
+ const published = Date.now();
+ const seeded = {...item, url:'https://example.com/b'};
+ const atCap = {...item, url:'https://example.com/c'};
+ const dbItems = [item, seeded, atCap];
+ for (const store of dbItems) {
+  await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(store.url, store.source, JSON.stringify(store), published, published, published).run();
+ }
+ // The same durable UTC-day counter, seeded to the raised ceiling.
+ const today = new Date().toISOString().slice(0,10);
+ await DB.prepare('INSERT INTO lighter_budget(day, calls) VALUES(?,24)').bind(today).run();
+ const env = {DB, AI:{run}} as unknown as Env;
+ // A day that had already spent 24 calls under the old ceiling is not blocked now.
+ const raised = await post(env, {url: item.url, lang:'en', action:'66666666-6666-4666-8666-666666666666'});
+ expect(raised.status).toBe(200);
+ expect(await raised.json()).toEqual({status:'ready', text: satire});
+ expect(run).toHaveBeenCalledTimes(1);
+ // The 999th call of the UTC day is allowed and lands on 1000.
+ await DB.prepare('UPDATE lighter_budget SET calls=999 WHERE day=?').bind(today).run();
+ const ninthousandonenine = await post(env, {url: seeded.url, lang:'en', action:'77777777-7777-4777-8777-777777777777'});
+ expect(ninthousandonenine.status).toBe(200);
+ expect(await ninthousandonenine.json()).toEqual({status:'ready', text: satire});
+ expect(await DB.prepare('SELECT calls FROM lighter_budget WHERE day=?').bind(today).first<{calls:number}>()).toEqual({calls:1000});
+ // The 1001st press of the UTC day is refused without a model call.
+ const capped = await post(env, {url: atCap.url, lang:'en', action:'88888888-8888-4888-8888-888888888888'});
+ expect(capped.status).toBe(429);
+ expect(await capped.json()).toEqual({status:'budget'});
+ expect(run).toHaveBeenCalledTimes(2);
+ expect(await DB.prepare('SELECT calls FROM lighter_budget WHERE day=?').bind(today).first<{calls:number}>()).toEqual({calls:1000});
+});
+
 it('records a failed attempt once and does not count a second press during backoff', async () => {
  const DB = database();
  await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(item.url, item.source, JSON.stringify(item), 1, 1, 1).run();
