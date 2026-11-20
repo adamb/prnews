@@ -4,8 +4,8 @@ State at the end of the previous thread. Read `README.md` and `AGENTS.md` first.
 
 ## Where things stand
 
-- `main` is at `abf364d`, clean and pushed. Production Worker version is `11d5d9b5-4f75-4385-aa1e-4dbf742ad3db`, built from `a0df03e`.
-- Everything the user asked for in the last thread is merged and deployed: per-source view (#31), satire guard (#32) and its relaxation (#34), icon-only theme button (#33), overflow fix (#36), hreflang/canonical/noindex plus sitemap (#35), single satire button label (#37), share-with-satire (#38).
+- `main` is at `05884d2`, clean and pushed. Production Worker version is `59331b4c-4485-4c63-b33e-a751b2c14b09`, built from `05884d2`.
+- Everything the user asked for in the last thread is merged and deployed, including PR #45's satire feedback and PR #46's eleven verified outlet feeds (see the newest `docs/releases.md` entries for the exact SHAs and live-check record).
 - Nothing is pending from the user.
 - Open PRs not touched in the last thread: #29 (Reddit image repair through Roux), #19 (News is my Business articles, Nov 16–19), #16 (keep News is my Business paused). Check them before building anything nearby.
 
