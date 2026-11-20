@@ -449,12 +449,20 @@ export const lighterClientScript = `(function(){
    else fail(button,'fail');
   });
  }
+ function cachedLine(button){
+  var note=noteOf(button);
+  if(!note||typeof note.querySelector!=='function') return '';
+  var body=note.querySelector('span');
+  return body&&typeof body.textContent==='string'?body.textContent:'';
+ }
  document.addEventListener('click', function(event){
   var target=event.target;
   var button=target&&target.closest?target.closest('.lighter-ask'):null;
   if(!button || button.getAttribute('data-mode')==='done') return;
   var copy=labels[langOf(button)];
-  if(button.getAttribute('data-mode')==='open'){
+  if(button.getAttribute('data-mode')==='open' || (button.getAttribute('aria-expanded')==='true' && button.textContent===copy.hide)){
+   var kept=cachedLine(button);
+   if(kept) held.set(button, kept);
    noteOf(button).textContent='';
    button.textContent=copy.show;
    button.setAttribute('aria-expanded','false'); button.setAttribute('data-mode','closed');

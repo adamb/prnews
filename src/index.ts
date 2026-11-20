@@ -169,11 +169,12 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
+  // v36 drops v35 pages whose share script cannot attach an open satire line.
   // v35 drops v34 pages that lack hreflang and canonical, and filtered pages that
   // were still indexable. v34 dropped v33 pages whose source names are not links
   // and that have no active-source chip. Compact imageless-lead rules and lighter-2
   // stay. 60s TTL still applies. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v35') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v36') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);

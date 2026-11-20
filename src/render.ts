@@ -1,4 +1,5 @@
 import {key as lighterKey,valid as validLighter,articleEligible,lighterClientScript} from './lighter';
+import {SATIRE_BLOCK_LABEL, SATIRE_PREVIEW_PREFIX, shareClientScript} from './share';
 import {explainerHtml} from './explainer';
 import type {LighterView, LedgerRow} from './lighter-stats';
 import { copyrightNotice } from './copyright';
@@ -52,45 +53,6 @@ export function detailText(lang: 'es' | 'en', none: number, invalid: number): st
  return t(`Sin traducción guardada: ${none}. Con una traducción en caché que no pasó la validación: ${invalid}. Ambos casos se reintentan de forma automática y acotada.`,
   `With no stored translation: ${none}. With a cached translation that failed validation: ${invalid}. Both cases retry automatically, bounded.`);
 }
-/** Share control. textContent only, same rule as lighterClientScript. No cookies, no analytics. */
-const shareClientScript = `(function(){
- document.addEventListener('click', function(event){
-  var target=event.target;
-  var button=target&&target.closest?target.closest('.share-ask'):null;
-  if(!button) return;
-  var path=button.getAttribute('data-share-path')||'';
-  if(!/^\\/story\\?id=[1-9]\\d{0,8}(?:&lang=en)?$/.test(path)) return;
-  var lang=button.getAttribute('data-share-lang')==='en'?'en':'es';
-  var article=button.closest('article');
-  var heading=article?article.querySelector('h2 a, h3 a'):null;
-  var title=heading&&heading.textContent?heading.textContent:document.title;
-  var url=location.origin+path;
-  var parent=button.parentNode;
-  var note=parent&&parent.querySelector?parent.querySelector('.share-note'):null;
-  function copied(){
-   if(!note) return;
-   var text=lang==='en'?'Link copied':'Enlace copiado';
-   var stamp=String(Date.now());
-   button.setAttribute('data-share-stamp', stamp);
-   note.textContent=text;
-   setTimeout(function(){ if(button.getAttribute('data-share-stamp')===stamp) note.textContent=''; }, 4000);
-  }
-  function go(){ location.assign(url); }
-  function copy(){
-   var clip=navigator.clipboard;
-   if(!clip||typeof clip.writeText!=='function'){ go(); return; }
-   clip.writeText(url).then(copied).catch(go);
-  }
-  if(typeof navigator.share==='function'){
-   navigator.share({title:title, url:url}).catch(function(err){
-    if(err&&err.name==='AbortError') return;
-    copy();
-   });
-   return;
-  }
-  copy();
- });
-})();`;
 export default {
  fetch(request: Request, live?: LiveData, digestAvailable?: boolean): Response {
  const allItems = withoutStockImages((live?.items ?? data.items as Item[]).map(currentItem));
@@ -165,11 +127,16 @@ export default {
   const item = displayItem(original);
   const take=live?.lighter?.[lighterKey(original,lang)];
   const known=!!(take&&validLighter(take,original,lang));
+  const openLine=known&&take&&url.pathname==='/story'&&live?.story&&url.searchParams.get('satire')==='1'?take:'';
   const mappedId=live?.storyIds?.[original.url];
   const fromUrl=url.pathname==='/story'&&live?.story?url.searchParams.get('id')??'':'';
   const shareId=typeof mappedId==='number'&&Number.isSafeInteger(mappedId)&&mappedId>0?mappedId:(/^[1-9]\d{0,8}$/.test(fromUrl)?Number(fromUrl):0);
   const share=shareId?`<button type="button" class="share-ask" data-share-path="${escape('/story?id='+shareId+(lang==='en'?'&lang=en':''))}" data-share-lang="${lang}">${t('Compartir','Share')}</button><p class="share-note" role="status" aria-live="polite"></p>`:'';
-  const lighter=articleEligible(original)?`<div class="lighter"><button type="button" class="lighter-ask" data-lighter-url="${escape(original.url)}" data-lighter-lang="${lang}" data-cached="${known?'1':'0'}" aria-expanded="false">${t('Mostrar sátira','Show satire')}</button>${share}<p class="lighter-note" role="status" aria-live="polite"></p></div>`:(share?`<div class="share">${share}</div>`:'');
+  const satireNote=openLine?`<p class="lighter-note" role="status" aria-live="polite"><small>${SATIRE_BLOCK_LABEL[lang]}</small><br><span>${escape(openLine)}</span></p>`:`<p class="lighter-note" role="status" aria-live="polite"></p>`;
+  const satireAsk=openLine
+   ? `<button type="button" class="lighter-ask" data-lighter-url="${escape(original.url)}" data-lighter-lang="${lang}" data-cached="1" data-mode="open" aria-expanded="true">${t('Ocultar sátira','Hide satire')}</button>`
+   : `<button type="button" class="lighter-ask" data-lighter-url="${escape(original.url)}" data-lighter-lang="${lang}" data-cached="${known?'1':'0'}" aria-expanded="false">${t('Mostrar sátira','Show satire')}</button>`;
+  const lighter=articleEligible(original)?`<div class="lighter">${satireAsk}${share}${satireNote}</div>`:(share?`<div class="share">${share}</div>`:'');
   const image = safeUrl(item.image);
   // Every outbound link runs through /click when the page is served live, so the
   // click ledger covers archive and story pages too — /click redirects only
@@ -227,7 +194,8 @@ export default {
    const en = item && englishStoryAvailable(item, cacheFor(item)[item.url]) ? pair.en : null;
    const self = lang === 'en' ? pair.en : pair.es;
    const canonical = headExtra.includes('rel="canonical"') ? '' : canonicalLink(self, escape);
-   return canonical + alternateLinks(pair.es, en, escape, 'html');
+   const robots = url.searchParams.get('satire') === '1' ? NOINDEX_FOLLOW : '';
+   return robots + canonical + alternateLinks(pair.es, en, escape, 'html');
   }
   if (!isBilingualPath(path)) return '';
   const rawPage = Number(url.searchParams.get('page'));
@@ -270,7 +238,11 @@ export default {
   const id=live.storyIds?.[item.url]??((/^[1-9]\d{0,8}$/.test(url.searchParams.get('id')??''))?Number(url.searchParams.get('id')):0);
   const canonical=id?`${url.origin}/story?id=${encodeURIComponent(String(id))}${lang==='en'?'&lang=en':''}`:'';
   const photo=canonical&&safeUrl(shown.image).startsWith('https://')?safeUrl(shown.image):'';
-  const head=canonical?`<link rel="canonical" href="${escape(canonical)}"><meta property="og:type" content="article"><meta property="og:site_name" content="news.dev.pr"><meta property="og:title" content="${escape(shown.title)}"><meta property="og:description" content="${escape(shown.summary)}"><meta property="og:url" content="${escape(canonical)}"><meta property="og:locale" content="${lang==='en'?'en_US':'es_PR'}">${photo?`<meta property="og:image" content="${escape(photo)}">`:''}<meta name="twitter:card" content="${photo?'summary_large_image':'summary'}">`:'';
+  const storedSatire=live.lighter?.[lighterKey(item,lang)];
+  const satireLine=url.searchParams.get('satire')==='1'&&storedSatire&&validLighter(storedSatire,item,lang)?storedSatire:'';
+  const description=satireLine?SATIRE_PREVIEW_PREFIX[lang]+satireLine:shown.summary;
+  const twitter=satireLine?`<meta name="twitter:description" content="${escape(description)}">`:'';
+  const head=canonical?`<link rel="canonical" href="${escape(canonical)}"><meta property="og:type" content="article"><meta property="og:site_name" content="news.dev.pr"><meta property="og:title" content="${escape(shown.title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${escape(canonical)}"><meta property="og:locale" content="${lang==='en'?'en_US':'es_PR'}">${photo?`<meta property="og:image" content="${escape(photo)}">`:''}<meta name="twitter:card" content="${photo?'summary_large_image':'summary'}">${twitter}`:'';
   return page(shown.title,`<div class="list">${card(item,'lead')}<p>${t('Lee el artículo completo en la fuente original.','Read the full article at its original source.')}</p></div>`,'',200,head);
  }
  if(url.pathname==='/hall'&&live?.hall) {
