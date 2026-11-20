@@ -1,0 +1,200 @@
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { additionalFeedURLs, additionalSources } from '../src/additional-sources';
+import { isEnglishItem, isEnglishSource, sources } from '../src/sources';
+import { parseFeed, type Item } from '../src/parse';
+import { currentItem } from '../src/current-item';
+import { classify } from '../src/sections';
+import { translated, validSpanishTranslation, needsTranslation, needsSpanishTranslation, type Translation } from '../src/i18n';
+import { clusterStories, sameEvent } from '../src/frontpage';
+import { refresh, type Env } from '../src/ingest';
+
+const seen = Date.parse('2026-11-19T23:30:00Z');
+const newspr = sources.find(s => s.id === 'newspr')!;
+const items = parseFeed(readFileSync(`test/fixtures/${newspr.files[0]}`, 'utf8'), newspr, seen);
+
+describe('news.pr registry', () => {
+ it('registers the public rss.xml (never the subscriber-gated /feed page)', () => {
+  expect(additionalSources.some(s => s.id === 'newspr')).toBe(true);
+  expect(additionalFeedURLs.newspr).toEqual(['https://news.pr/rss.xml']);
+  expect(Object.keys(additionalFeedURLs).some(k => k.includes('feed/'))).toBe(false);
+  expect(sources.filter(s => s.id === 'newspr').length).toBe(1);
+ });
+ it('is an English source, so its originals skip the Spanish→English queue', () => {
+  expect(isEnglishSource('newspr')).toBe(true);
+  for (const item of items) {
+   expect(item.source).toBe('newspr');
+   expect(isEnglishItem(item)).toBe(true);          // English source default; no per-article Spanish signal asserted
+   expect(needsTranslation(item, {})).toBe(false);  // English edition renders the original: no redundant AI
+  }
+ });
+});
+
+describe('news.pr classification', () => {
+ // One synthetic item per publisher label: the live capture does not carry every
+ // label on every day (it had no Justice & Public Safety item at capture time).
+ const labeled = (category: string, title = 'Headline for the label test', summary = 'Excerpt text'): Item =>
+  parseFeed(`<?xml version="1.0"?><rss version="2.0"><channel><title>news.pr</title>${[category].map(c => `<item><title>${title}</title><link>https://news.pr/story/${c.replace(/\W+/g, '')}</link><guid>news-pr:${c}:v1</guid><pubDate>Thu, 19 Nov 2026 12:00:00 GMT</pubDate><category>${c}</category><description>${summary}</description></item>`).join('')}</channel></rss>`, newspr, seen)[0];
+ it('maps the publisher’s exact categories to existing sections', () => {
+  expect(items.length).toBeGreaterThanOrEqual(10);
+  expect(labeled('Energy & Grid').section).toBe('energia');
+  expect(labeled('energy & grid').section).toBe('energia');
+  expect(labeled('Economy & Business').section).toBe('negocios');
+  expect(labeled('Justice & Public Safety').section).toBe('policiales');
+  expect(labeled('Sports').section).toBe('deportes');
+  expect(labeled('Culture & Events').section).toBe('entretenimiento');
+  expect(labeled('Education & Health').section).toBe('salud');
+  expect(labeled('Federal & Fiscal').section).toBe('politica');
+  for (const label of ['briefs', 'Environment & Climate', 'Infrastructure & Transport', 'Tourism & Travel', 'la isla que viene', 'general', 'More']) {
+   const item = labeled(label);
+   expect(item.reason === 'keywords' || item.reason === 'fallback').toBe(true); // falls through to the shared classifier
+   expect(item.section).not.toBe('comunidad');
+  }
+  expect(items.filter(i => (i.categories ?? []).some(c => /energy & grid/i.test(c))).every(i => i.section === 'energia' && i.reason === 'category')).toBe(true);
+ });
+ it('keeps the same section when the renderer re-classifies stored items', () => {
+  for (const item of items) expect(currentItem(item).section).toBe(item.section);
+  // The stored categories are what makes render-time re-classification reproduce
+  // the ingest-time result; without them a keyword match would override the feed label.
+  const categoryItem = items.find(i => i.reason === 'category')!;
+  expect(categoryItem).toBeTruthy();
+  expect(classify(categoryItem.url, [], categoryItem.title + ' ' + categoryItem.summary, 'newspr').section)
+   .not.toBe(categoryItem.section);
+ });
+ it('leaves other sources’ categories and keywords untouched', () => {
+  const endi = sources.find(s => s.id === 'endi')!;
+  const endiItems = parseFeed(readFileSync(`test/fixtures/${endi.files[0]}`, 'utf8'), endi, seen);
+  for (const item of endiItems) expect(currentItem(item).section).toBe(item.section);
+  expect(classify('https://www.elnuevodia.com/noticias/locales/x/', [], 'noticia', 'endi').section).toBe('otras');
+ });
+});
+
+describe('news.pr English→Spanish translation direction', () => {
+ const item = items[0];
+ const spanishEntry = (title = `Titular traducido del artículo`, summary = 'Resumen traducido con la información completa del suceso publicado hoy.'): Translation =>
+  ({ target: 'es', originalTitle: item.title, originalSummary: item.summary, title, summary });
+ it('waits for a Spanish translation, not an English one', () => {
+  expect(needsSpanishTranslation(item, {})).toBe(true);
+  expect(needsSpanishTranslation(item, { [item.url]: spanishEntry() })).toBe(false);
+  // Only news.pr is ever inverted:
+  expect(needsSpanishTranslation({ ...item, source: 'sjds' }, {})).toBe(false);
+ });
+ it('rejects copy-through English and entries without the reverse marker', () => {
+  expect(validSpanishTranslation(item, { ...spanishEntry(), title: item.title })).toBe(false);  // unchanged headline
+  expect(validSpanishTranslation(item, { ...spanishEntry(), target: undefined } as Translation)).toBe(false); // EN-direction shape
+  expect(validSpanishTranslation(item, { ...spanishEntry(), originalTitle: 'Changed later' })).toBe(false);  // stale revision
+  expect(validSpanishTranslation(item, { ...spanishEntry(), title: 'The English headline stays here' })).toBe(false); // not Spanish
+ });
+ it('renders the original in English and the cached translation in Spanish', () => {
+  const cache = { [item.url]: spanishEntry() };
+  expect(translated(item, 'en', cache)).toEqual({ ...item, translated: false });   // English edition: original, no AI
+  expect(translated(item, 'es', cache).translated).toBe(true);                       // Spanish edition: valid Spanish
+  expect(translated(item, 'es', cache).title).toBe(`Titular traducido del artículo`);
+  expect(translated(item, 'es', {}).translated).toBe(false);                        // no cache → English original stays
+ });
+ it('shows the Spanish translation on the Spanish page and the original on the English page', async () => {
+  const renderer = (await import('../src/render')).default;
+  const cache = { [item.url]: spanishEntry() };
+  const es = await renderer.fetch(new Request('https://example.com/?lang=es'), { items: [item], translations: cache, feeds: [] }).text();
+  expect(es).toContain('Titular traducido del artículo');
+  const en = await renderer.fetch(new Request('https://example.com/?lang=en'), { items: [item], translations: cache, feeds: [] }).text();
+  expect(en).toContain(item.title.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))); // the original English headline stays (HTML-escaped)
+  expect(en).not.toContain('Titular traducido del artículo'); // no redundant AI output
+ });
+ it('invalidates the cache when the publisher revises the item', () => {
+  const revised = { ...item, title: item.title + ' (updated)' };
+  expect(needsSpanishTranslation(revised, { [item.url]: spanishEntry() })).toBe(true);
+ });
+});
+
+describe('news.pr same-event clustering', () => {
+ const base = (source: string, title: string, time = seen - 3600000): Item =>
+  ({ url: `https://example.com/${source}/${Math.abs([...title].reduce((a, c) => a + c.charCodeAt(0), 0))}/`, source, title, summary: 'Summary', image: '', time, observed: false, section: 'otras', reason: 'test' });
+ it('folds a matching story with the original publisher as lead and news.pr as también', () => {
+  const title = 'Power outage hits San Juan neighborhood overnight';
+  const original = base('noticel', title), rewrite = base('newspr', title, seen - 1800000);
+  expect(sameEvent(original, rewrite)).toBe(true);
+  const [cluster] = clusterStories([rewrite, original]);
+  expect(cluster.item.source).toBe('noticel');
+  expect(cluster.also.map(i => i.source)).toEqual(['newspr']);
+ });
+ it('still lets a news.pr-only cluster lead with news.pr', () => {
+  const [cluster] = clusterStories([base('newspr', 'Unique story only this outlet covered tonight')]);
+  expect(cluster.item.source).toBe('newspr');
+  expect(cluster.also).toHaveLength(0);
+ });
+ it('reports news.pr in the registry-driven /fuentes health page', async () => {
+  const renderer = (await import('../src/render')).default;
+  const state = { url: 'https://news.pr/rss.xml', source: 'newspr', etag: null, modified: null, last_checked: 1795131000000, last_ok: 1795131000000, status: 200, error: null, failures: 0, next_check: 1795131000000, item_count: 30 };
+  const page = await renderer.fetch(new Request('https://example.com/fuentes'), { items, translations: {}, feeds: [state] }).text();
+  expect(page).toContain('news.pr');
+  expect(page).toContain('Inglés');          // factual language label from the shared registry
+  expect(page).toContain('Último éxito');    // its own last-success status, like every feed
+  const failing = await renderer.fetch(new Request('https://example.com/fuentes'), { items: [], translations: {}, feeds: [{ ...state, error: 'HTTP 500', last_ok: null }] }).text();
+  expect(failing).toContain('Actualizando…'); // public error state stays safe (no database message)
+  expect(failing).not.toContain('HTTP 500');
+ });
+ it('does not weaken the shared threshold for unrelated headlines', () => {
+  const a = base('newspr', 'School budget hearing scheduled for Monday evening');
+  const b = base('noticel', 'Cruise ship arrives at the port of San Juan');
+  expect(sameEvent(a, b)).toBe(false);
+  expect(clusterStories([a, b])).toHaveLength(2);
+ });
+});
+
+describe('news.pr reverse translation queue (D1)', () => {
+ function database(): D1Database {
+  const sqlite = new DatabaseSync(':memory:');
+  sqlite.exec(readFileSync('migrations/0001_live.sql', 'utf8'));
+  sqlite.exec(readFileSync('migrations/0010_image_enrich.sql', 'utf8'));
+  function prepare(sql: string): any {
+   let args: any[] = [];
+   return { bind(...values: any[]) { args = values; return this; }, async first() { return sqlite.prepare(sql).get(...args) ?? null; }, async all() { return { results: sqlite.prepare(sql).all(...args) }; }, async run() { const result = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(result.changes) } }; } };
+  }
+  return { prepare, async batch(statements: any[]) { return Promise.all(statements.map(s => s.run())); } } as unknown as D1Database;
+ }
+ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+ it('ingests the feed, translates into Spanish with a per-run cap, and never queues news.pr for English', async () => {
+  const DB = database();
+  const aiCalls: { system: string }[] = [];
+  const env = { DB, AI: { run: async (_model: string, payload: any) => {
+   const input = JSON.parse(payload.messages[1].content) as { id: number }[];
+   aiCalls.push({ system: payload.messages[0].content });
+   return { response: JSON.stringify({ articles: input.map(i => ({ id: i.id, title: `Titular traducido del artículo ${i.id}`, summary: `Resumen traducido con la información completa del suceso número ${i.id} publicado hoy.` })) }) };
+  } } } as unknown as Env;
+  const now = Date.parse('2026-11-19T23:30:00Z');
+  vi.spyOn(Date, 'now').mockReturnValue(now);
+  const feed = readFileSync('test/fixtures/newspr.xml', 'utf8');
+  vi.stubGlobal('fetch', vi.fn(async (input: URL) => String(input).includes('news.pr')
+   ? new Response(feed, { headers: { 'content-type': 'application/rss+xml' } })
+   : new Response('Unavailable', { status: 503 }))); // other sources stay isolated failures
+  await refresh(env);
+  const count = async () => (await DB.prepare("SELECT COUNT(*) AS n FROM articles WHERE source='newspr'").first<any>()).n;
+  const stored = async () => (await DB.prepare("SELECT payload,translation FROM articles WHERE source='newspr'").all<{ payload: string; translation: string | null }>()).results;
+  expect(await count()).toBe(items.length);
+  const first = (await stored()).filter(r => r.translation);
+  expect(first.length).toBe(8); // REVERSE_PER_RUN bounds the queue; the rest waits for later runs
+  expect(aiCalls.length).toBe(2);  // two bounded batches of 4; the Spanish→English queue found nothing to do
+  expect(aiCalls.every(c => c.system.includes('fluent Spanish') && !c.system.includes('fluent English'))).toBe(true);
+  const entry = JSON.parse(first[0].translation!) as Translation;
+  expect(entry.target).toBe('es');
+  expect(entry.originalTitle).toBe((JSON.parse(first[0].payload) as Item).title);
+  const cache: Record<string, Translation> = { [(JSON.parse(first[0].payload) as Item).url]: entry };
+  const shown = translated(JSON.parse(first[0].payload) as Item, 'es', cache);
+  expect(shown.translated).toBe(true);
+  expect(shown.title).toContain('Titular traducido');
+  expect(await DB.prepare("SELECT COUNT(*) AS n FROM articles WHERE source!='newspr'").first<any>()).toMatchObject({ n: 0 });
+  // The queue drains 8 per run: 30 items take 4 runs; every call is the Spanish
+  // prompt, and once every item has a valid cache a further run claims nothing.
+  await refresh(env); await refresh(env); await refresh(env);
+  expect((await stored()).filter(r => r.translation).length).toBe(items.length);
+  expect(aiCalls.length).toBe(8);
+  const before = aiCalls.length;
+  await refresh(env);
+  expect(aiCalls.length).toBe(before); // valid caches are reused; page views and idle runs never call AI
+  const calls = vi.mocked(fetch).mock.calls.length;
+  await refresh(env);
+  expect(vi.mocked(fetch).mock.calls.length).toBe(calls); // feeds wait for their 15-minute slot
+ });
+});

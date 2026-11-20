@@ -52,7 +52,22 @@ function sportsShooting(text: string): boolean {
  if (matches(text, hard) || matches(text, 'dead|death')) return false;
  return matches(text, 'shooting') && matches(text, '\\d+ points|\\d+ puntos') && matches(text, '(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) rebounds?|\\d+ rebotes|home courts?|bsnf|basketball|baloncesto');
 }
-export function classify(url: string, categories: string[], text: string): { section: Section; reason: string } {
+// news.pr's own section labels, mapped to categories the shared `cats` map already
+// knows, so the feed's exact category decides (source-scoped, exact strings — not
+// keywords). Only labels confirmed on the live feed are mapped; they resolve to
+// existing sections, never a new one. Unmapped labels (briefs, Environment &
+// Climate, Infrastructure & Transport, Tourism & Travel, la isla que viene, general,
+// More, ...) deliberately fall through to the shared keyword classifier below,
+// which finds the nearest existing bucket, with 'otras' as the honest fallback.
+const NEWSPR_CATEGORY: Record<string, string> = {
+ 'energy & grid': 'energia', 'economy & business': 'economia', 'justice & public safety': 'seguridad',
+ sports: 'sports', 'culture & events': 'cultura', 'education & health': 'salud', 'federal & fiscal': 'politics',
+};
+/** Feed-category normalization for one source; other sources are untouched. */
+function normalizeCategories(source: string | undefined, categories: string[]): string[] {
+ return source === 'newspr' ? categories.map(c => NEWSPR_CATEGORY[fold(c).trim()] ?? c) : categories;
+}
+export function classify(url: string, categories: string[], text: string, source?: string): { section: Section; reason: string } {
  let path = '';
  try { path = fold(decodeURIComponent(new URL(url).pathname)); } catch { /* Text still works for invalid feed links. */ }
  const paths: [RegExp, Section][] = [
@@ -67,7 +82,7 @@ export function classify(url: string, categories: string[], text: string): { sec
  ];
  for (const [rule, section] of paths) if (rule.test(path)) return { section, reason: 'url' };
  const cats: Record<string, Section> = { policiacas: 'policiales', policiales: 'policiales', seguridad: 'policiales', policia: 'policiales', crime: 'policiales', gobierno: 'politica', legislatura: 'politica', politics: 'politica', deportes: 'deportes', mundo: 'mundo', 'estados unidos': 'mundo', business: 'negocios', negocios: 'negocios', economia: 'negocios', technology: 'negocios', tecnologia: 'negocios', sports: 'deportes', mainland: 'mundo', international: 'mundo', viewpoint: 'opinion', opinion: 'opinion', salud: 'salud', health: 'salud', educacion: 'educacion', education: 'educacion', entretenimiento: 'entretenimiento', entertainment: 'entretenimiento', cultura: 'entretenimiento', clima: 'clima', weather: 'clima', ambiente: 'clima', energia: 'energia', 'bienes raices': 'bienes-raices', 'real estate': 'bienes-raices', inmobiliaria: 'bienes-raices', inmobiliario: 'bienes-raices' };
- for (const category of categories) if (cats[fold(category).trim()]) return { section: cats[fold(category).trim()], reason: 'category' };
+ for (const category of normalizeCategories(source, categories)) if (cats[fold(category).trim()]) return { section: cats[fold(category).trim()], reason: 'category' };
  const normalized = fold(text);
  // Events of violence and traffic injury beat incidental hospitals and roads.
  // Bare "shooting" is violence. A shooting guard or a made basket is not.

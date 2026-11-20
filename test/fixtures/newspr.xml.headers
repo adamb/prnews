@@ -1,0 +1,9 @@
+feed: https://news.pr/rss.xml
+status: 200
+content-type: application/rss+xml; charset=utf-8
+cache-control: public, max-age=60 (no etag, no last-modified: every 15-minute scan re-downloads)
+captured: 2026-11-19T23:05Z (30 items, oldest 2026-11-18T14:08:06Z, newest 2026-11-19T22:32:18Z; ~22 items/day)
+robots: https://news.pr/robots.txt allows all
+not-used: https://news.pr/feed is the subscriber-gated reader page (HTML), not a feed; the publisher also offers /rss.xml?lang=es (its own Spanish edition, links carry ?lang=es) which is NOT ingested because those links would be separate canonical URLs
+language: English source (site offers its own Spanish edition, but this integration stores the English original and mirrors an AI translation to Spanish for the Spanish edition)
+categories-seen: Energy & Grid, Economy & Business, Justice & Public Safety, Sports, Culture & Events, Education & Health, Federal & Fiscal, briefs, general, More, Infrastructure & Transport, la isla que viene

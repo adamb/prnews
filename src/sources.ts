@@ -15,7 +15,13 @@ export const sources:Source[] = [
 ];
 
 
-export const isEnglishSource = (id: string) => id === 'sjds' || id === 'nimb';
+export const isEnglishSource = (id: string) => id === 'sjds' || id === 'nimb' || id === 'newspr';
+
+/** news.pr (https://news.pr): the AI-written English newspaper. Its items keep the
+ * English original at `title`/`summary` and are translated into Spanish for the
+ * Spanish edition (the reverse of the Spanish→English pipeline every other source
+ * uses); see src/i18n.ts and docs/newspr-source.md. */
+export const newsprSource = 'newspr';
 
 /** Per-article language wins over the blanket source default: bilingual publishers
  * (e.g. San Juan Daily Star) ship both languages, so a per-article signal decides —

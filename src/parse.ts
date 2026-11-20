@@ -2,7 +2,7 @@ import { XMLParser } from 'fast-xml-parser';
 import * as he from 'he';
 import { classify, type Section } from './sections';
 import type { Source } from './sources';
-export interface Item { originalLanguage?: 'en'|'es'; url: string; source: string; title: string; summary: string; image: string; time: number; observed: boolean; section: Section; reason: string; }
+export interface Item { originalLanguage?: 'en'|'es'; url: string; source: string; title: string; summary: string; image: string; time: number; observed: boolean; section: Section; reason: string; /** Feed <category> labels, kept so re-classification reproduces the ingest-time section. */ categories?: string[]; }
 export const plain = (s: string) => he.decode(s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
 export function summary(s: string): string {
  const clean = plain(s).replace(/The post .*?(?:appeared first on|first appeared on).*$/i, '').replace(/\[…\]|\[\.\.\.\]/g, '').trim();
@@ -115,6 +115,11 @@ export function parseFeed(xml: string, source: Source, seen: number): Item[] {
   const observed = source.id === 'telemundo' || !Number.isFinite(date) || date > seen || dates.filter(d => d === date).length > 5;
   // Per-article language for demonstrably Spanish text (community posts keep their own bilingual flow).
   const originalLanguage = source.id === 'reddit_puertorico' ? undefined : detectSpanish(title, dek);
-  return [{ url, source: source.id, title, summary: dek, image, time: observed ? seen : date, observed, ...(source.id === 'reddit_puertorico' ? {section: 'comunidad' as const, reason: 'community'} : classify(url, list(r.category).map(str), title + ' ' + dek)), ...(originalLanguage ? {originalLanguage} : {}) }];
+  // Feed categories are kept on the item so the render-time re-classification
+  // (src/current-item.ts) sees the same inputs the ingest-time call saw; without
+  // them a feed-category section (reason 'category') would be recomputed from
+  // URL and keywords alone and could silently override the publisher's label.
+  const categories = list(r.category).map(str).filter(Boolean);
+  return [{ url, source: source.id, title, summary: dek, image, time: observed ? seen : date, observed, ...(source.id === 'reddit_puertorico' ? {section: 'comunidad' as const, reason: 'community'} : classify(url, categories, title + ' ' + dek, source.id)), ...(originalLanguage ? {originalLanguage} : {}), ...(categories.length ? {categories} : {}) }];
  });
 }

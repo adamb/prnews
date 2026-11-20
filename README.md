@@ -149,6 +149,7 @@ An authenticated POST to `/internal/archive` processes an additional image batch
 - `scripts/repair-live.ts` reapplies classification, repairs only URL-derived NIMB punctuation, and queues incomplete translations. The News is my Business issue was in the manual slug import, not the shared feed sanitizer. Other publishers' titles are untouched.
 
 - Live status: cached NWS Puerto Rico alerts, latest USGS Puerto Rico-region earthquake, and the official LUMA load-shedding layer (explicitly not all outages). Failed sources hide immediately; cache expiry hides stale chips. WAPA, WIPR, Claridad, Radio Isla 1320 (`https://radioisla.tv/feed/`) and WALO 1240 in Humacao (`https://waloradio.com/feed/`, not its narrower Noticias category) RSS feeds are enabled. El Post Antillano is excluded because its domain serves unrelated parked content.
+- news.pr (`https://news.pr`, English, AI-written, ~20–30 items/day) is polled from its public RSS `https://news.pr/rss.xml` on the shared 15-minute schedule, never from its subscriber-gated `/feed` page. Its exact feed categories map to existing sections; it is the only source translated **English→Spanish** for the Spanish edition (a bounded reverse queue of 8 per run that mirrors the Spanish→English one; the English edition shows the original). When the unchanged same-event threshold folds its rewrite with the publisher's own story, the original publisher leads and news.pr is the "También en" link. See [docs/newspr-source.md](docs/newspr-source.md).
 
 ### Dated source size
 

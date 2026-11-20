@@ -9,5 +9,9 @@ export function repairNimbTitle(title:string):string {
 export function currentItem(item:Item):Item {
  if(item.source==='reddit_puertorico')return item;
  if(item.reason==='manual-import')return item.source==='nimb'&&('titleOrigin' in item)&&item.titleOrigin==='url-slug'?{...item,title:repairNimbTitle(item.title)}:item;
- return {...item,...classify(item.url,[],item.title+' '+item.summary)};
+ // Reclassification must see the same inputs the ingest-time classify() saw: the
+ // stored feed categories (with the source-scoped normalization inside classify)
+ // plus URL and keywords. Without them, a publisher's exact feed category
+ // (reason 'category') would be overridden by a weaker keyword match.
+ return {...item,...classify(item.url,item.categories??[],item.title+' '+item.summary,item.source)};
 }
