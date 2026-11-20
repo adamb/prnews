@@ -300,6 +300,17 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .card p.share-note{display:block;overflow:visible;white-space:normal;-webkit-line-clamp:unset;-webkit-box-orient:unset}
 .card .lighter-note,.card .share-note{flex-basis:100%}
 .lighter-note:empty{display:none}
+/* Anonymous 👍/👎 under a displayed satire take. Same tokens as .lighter-ask, so
+   light and dark both clear contrast; the pressed pill uses --ink on --soft. */
+.lighter-vote{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;margin:2px 0 0}
+.lighter-vote-btn{display:inline-flex;align-items:center;justify-content:center;min-height:34px;min-width:36px;padding:4px 10px;font:600 13px/1.3 var(--sans);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;cursor:pointer;transition:color .2s,border-color .2s,background-color .2s}
+.lighter-vote-btn:hover:not(:disabled){color:var(--ink);border-color:var(--muted);background:var(--soft)}
+.lighter-vote-btn:disabled{cursor:default;opacity:.7}
+.lighter-vote-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.lighter-vote-btn[aria-pressed="true"]{color:var(--ink);background:var(--soft);border-color:var(--ink)}
+.card.brief .lighter-vote-btn,.card.mid .lighter-vote-btn{min-height:28px;min-width:30px;padding:2px 7px;font-size:12px}
+.lighter-vote-note{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.lighter-vote-note:empty{display:none}
 .lighter-stats{margin:28px 0}.lighter-stats p,.lighter-stats h3,.lighter-stats a{overflow-wrap:anywhere}.lighter-stats .take{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:8px 0}.lighter-stats summary{cursor:pointer;min-height:44px;padding:8px 0}
 @media(max-width:390px){.lighter-stats .source{flex-direction:column;align-items:flex-start;gap:6px}.lighter-stats{margin:20px 0}}
 
@@ -329,8 +340,8 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .source-stories{color:var(--accent);font-weight:700}
 .source-stories:hover,.source-stories:focus-visible{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:700px){.source{flex-direction:column;gap:8px}}
-main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause){padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-weight:600;cursor:pointer}
-main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause):hover{border-color:var(--muted)}
+main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause):not(.lighter-vote-btn){padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-weight:600;cursor:pointer}
+main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause):not(.lighter-vote-btn):hover{border-color:var(--muted)}
 .archive-list>div{border-bottom:1px solid var(--line);padding:24px 0}.archive-list .card.tile{display:flex;align-items:stretch;max-width:380px}.archive-list .card.tile .picture{aspect-ratio:3/2}.archive-list .card.tile .excerpt{display:block;overflow:visible}
 .digest-unavailable{font-size:14px;color:var(--muted);background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:6px 0 0}
 .signup-form{display:flex;flex-wrap:wrap;align-items:end;gap:12px}.signup-form label{display:grid;gap:6px;flex:1;min-width:180px}.signup-form input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);padding:12px;border-radius:4px}.signup-form p{flex-basis:100%;font-size:13px;color:var(--muted)}

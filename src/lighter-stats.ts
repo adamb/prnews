@@ -2,6 +2,7 @@ import {currentItem} from './current-item';
 import type {Env} from './ingest';
 import type {Item} from './parse';
 import {CANDIDATE_LIMIT, articleEligible, cacheSkips, key, sensitive, valid} from './lighter';
+import type {FeedbackView} from './lighter-feedback';
 
 /** Read contract for the on-demand worker's ledger. This module only reads.
  * Table lighter_stats, one row per scope ('all' | 'es' | 'en'), no person or address data:
@@ -25,6 +26,7 @@ export interface LighterView {
  ledger: LedgerSnapshot | { available: false };
  queue: QueueSnapshot | { available: false };
  ready: ReadySnapshot | { available: false };
+ feedback?: FeedbackView | { available: false };
 }
 
 const emptyPair = (): CountPair => ({ es: 0, en: 0 });
@@ -56,7 +58,7 @@ export function readySnapshot(items: Item[], lighter: Record<string, string> | u
  return { available: true, truncated: Object.keys(map).length >= TEXT_LOAD_CAP, ready, examples };
 }
 
-export async function attachStoryIds(env: Env, examples: ReadyExample[]): Promise<void> {
+export async function attachStoryIds<T extends {url: string; storyId: number | null}>(env: Env, examples: T[]): Promise<void> {
  if (!examples.length) return;
  try {
   const urls = [...new Set(examples.map(example => example.url))];
