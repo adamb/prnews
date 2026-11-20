@@ -8,7 +8,7 @@ import { clickRoute, topClicked, cleanupClicks, hallOfFame, cumulativeTop, total
 import { refreshWebAnalytics, webAnalyticsSnapshot } from './analytics';
 import { syndicationRoute, storyLookup } from './syndication';
 import { alertsRoute } from './alerts-http';
-import { runAlertSweep, type AlertEnv } from './alerts';
+import { runAlertSweep, confirmedAlertAccountCounts, type AlertEnv } from './alerts';
 import { turnstileRenderConfigured } from './turnstile';
 import { digestRoute } from './digest-http';
 import { eligibleDigestCutoff, runDigest, configured as digestConfigured } from './digest';
@@ -164,10 +164,10 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
-  // v31 drops v30 pages whose comparison toggle painted the selected label in the page background color.
-  // v30 matched the radio day note. Compact imageless-lead rules and lighter-2 stay.
-  // 60s TTL still applies. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v31') : undefined;
+  // v32 drops v31 pages that omit the confirmed alert-account count.
+  // v31 dropped pages whose comparison toggle painted the selected label in the page background color.
+  // Compact imageless-lead rules and lighter-2 stay. 60s TTL still applies. This does not purge R2 or D1.
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v32') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
@@ -190,6 +190,7 @@ export default {
    const totals=url.pathname==='/stats'?await totalClicks(env).catch(()=>undefined):undefined;
    const popular=url.pathname==='/stats'?await cumulativeTop(env).catch(()=>[]):[];
    const analytics=url.pathname==='/stats'?await webAnalyticsSnapshot(env).catch(()=>undefined):undefined;
+   const alertAccounts=url.pathname==='/stats'?await confirmedAlertAccountCounts(env):undefined;
    const sourceClicks=url.pathname==='/comparar'?await clicksBySource(env):undefined;
    const pageNow=Date.now();
    let recurringThemes:ThemeReport|undefined;
@@ -204,7 +205,7 @@ export default {
     if(ready.available)await attachStoryIds(env,ready.examples);
     lighterView={ledger:await readLighterLedger(env),queue:await readLighterQueue(env,Date.now()),ready};
    }
-   const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,sourceClicks,now:pageNow,recurringThemes},digestConfigured(env));
+   const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,alertAccounts,sourceClicks,now:pageNow,recurringThemes},digestConfigured(env));
    if(response.status === 200) {
     response.headers.set('Cache-Control','public, max-age=60');
     // CDN-Cache-Control pins the edge TTL too, in case a zone Cache Rule ever overrides it.

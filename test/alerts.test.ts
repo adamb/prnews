@@ -13,14 +13,15 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {
 	runAlertSweep, subscribe, confirm, requestSignin, useMagicLink, manageWatcher, sessionFromCookie,
-	unsubscribeToken, phraseMatches, phraseTokens, setPacingForTests, type AlertEnv,
+	unsubscribeToken, phraseMatches, phraseTokens, setPacingForTests, confirmedAlertAccountCounts,
+	OWNER_SIGNUP_EMAIL, closeAccount, type AlertEnv,
 } from '../src/alerts';
 import renderer from '../src/render';
 import { alertsRoute, alertThemeBoot, alertThemeToggle, alertThemeBootHash, alertThemeToggleHash } from '../src/alerts-http';
 import { turnstileClientScript, turnstileClientScriptHash } from '../src/turnstile';
 import type { Item } from '../src/parse';
 
-const MIGRATIONS = ['0001_live.sql', '0009_alerts.sql'];
+const MIGRATIONS = ['0001_live.sql', '0009_alerts.sql', '0013_owner_signup_notice.sql'];
 function database() {
 	const db = new DatabaseSync(':memory:');
 	for (const name of MIGRATIONS) db.exec(readFileSync(`migrations/${name}`, 'utf8'));
@@ -44,6 +45,7 @@ const insertArticle = (env: AlertEnv, article: Item, firstSeen: number, translat
 	env.DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at,translation) VALUES(?,?,?,?,?,?,?)')
 		.bind((article as Item).url, (article as Item).source, JSON.stringify(article), firstSeen, firstSeen, (article as Item).time, translation ? JSON.stringify(translation) : null).run();
 const getOutbox = (env: AlertEnv, kind: string) => env.DB.prepare('SELECT id,kind,account_id,email,payload,state,attempts,attempt_at,lease_until,created_at FROM alert_outbox WHERE kind=? ORDER BY created_at DESC').bind(kind);
+const isOwnerSend = (call: FetchCall) => String((call.json as { to?: string } | undefined)?.to ?? '') === OWNER_SIGNUP_EMAIL;
 const post = (path: string, fields: Record<string, string>, headers: Record<string, string> = {}): Request =>
 	new Request(`https://news.dev.pr${path}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'https://news.dev.pr', ...headers }, body: new URLSearchParams(fields).toString() });
 const get = (path: string, headers: Record<string, string> = {}): Request => new Request(`https://news.dev.pr${path}`, { headers });
@@ -571,7 +573,7 @@ describe('provider outbox: pacing, uncertain resolution, throttle, rejections', 
 		let notifyAttempts = 0;
 		const mock = mockFetch((call) => {
 			if (call.url.includes('/emails/outbound')) {
-				if (/^Confirma/.test(String((call.json ?? {}).subject ?? ''))) return Response.json({ id: 'c1' });
+				if (/^Confirma/.test(String((call.json ?? {}).subject ?? '')) || isOwnerSend(call)) return Response.json({ id: 'c1' });
 				notifyAttempts++;
 				if (notifyAttempts === 1) throw new TypeError('network down'); // acceptance unknown
 				return Response.json({ id: 'n1' });
@@ -609,7 +611,7 @@ describe('provider outbox: pacing, uncertain resolution, throttle, rejections', 
 		const { DB } = database(); const env = baseEnv(DB);
 		const mock = mockFetch((call) => {
 			if (call.url.includes('/emails/outbound')) {
-				if (/^Confirma/.test(String((call.json ?? {}).subject ?? ''))) return Response.json({ id: 'c1' });
+				if (/^Confirma/.test(String((call.json ?? {}).subject ?? '')) || isOwnerSend(call)) return Response.json({ id: 'c1' });
 				throw new TypeError('cut mid-request');
 			}
 			if (call.url.includes('siteverify')) return turnstileOk();
@@ -625,7 +627,7 @@ describe('provider outbox: pacing, uncertain resolution, throttle, rejections', 
 			await env.DB.prepare('UPDATE alert_outbox SET attempt_at=? WHERE state=?').bind(now + 1000 - 121000, 'uncertain').run();
 			await runAlertSweep(env, now + 122000);
 			expect((await getOutbox(env, 'notify').first<any>()).state).toBe('sent');
-			expect(outboundCalls(mock.calls).filter(c => !/^Confirma/.test(String((c.json ?? {}).subject)))).toHaveLength(1); // proven present: no second send ever
+			expect(outboundCalls(mock.calls).filter(c => !/^Confirma/.test(String((c.json ?? {}).subject)) && !isOwnerSend(c))).toHaveLength(1); // proven present: no second subscriber send
 		} finally { mock.restore(); setPacingForTests({}); }
 	});
 
@@ -635,7 +637,7 @@ describe('provider outbox: pacing, uncertain resolution, throttle, rejections', 
 		const mock = mockFetch((call) => {
 			calls.push(call);
 			if (call.url.includes('/emails/outbound')) {
-				if (/^Confirma/.test(String((call.json ?? {}).subject ?? ''))) return Response.json({ id: 'c1' });
+				if (/^Confirma/.test(String((call.json ?? {}).subject ?? '')) || isOwnerSend(call)) return Response.json({ id: 'c1' });
 				return Response.json({ id: 'x' }, { status: 429, headers: { 'Retry-After': '120' } });
 			}
 			if (call.url.includes('siteverify')) return turnstileOk();
@@ -664,7 +666,7 @@ describe('provider outbox: pacing, uncertain resolution, throttle, rejections', 
 		const mock = mockFetch((call) => {
 			calls.push(call);
 			if (call.url.includes('/emails/outbound')) {
-				if (/^Confirma/.test(String((call.json ?? {}).subject ?? ''))) return Response.json({ id: 'c1' });
+				if (/^Confirma/.test(String((call.json ?? {}).subject ?? '')) || isOwnerSend(call)) return Response.json({ id: 'c1' });
 				expect(call.url).toBe('https://api.improvmx.com/v4/domains/code.pr/emails/outbound');
 				expect((call.init.headers as any).Authorization).toBe('Basic ' + Buffer.from('api:improv-fake-key').toString('base64'));
 				expect((call.json as any).from).toBe('prnews');
@@ -693,7 +695,7 @@ describe('provider outbox: pacing, uncertain resolution, throttle, rejections', 
 		const { DB } = database(); const env = baseEnv(DB);
 		const mock = mockFetch((call) => {
 			if (call.url.includes('/emails/outbound')) {
-				if (/^Confirma/.test(String((call.json ?? {}).subject ?? ''))) return Response.json({ id: 'c1' });
+				if (/^Confirma/.test(String((call.json ?? {}).subject ?? '')) || isOwnerSend(call)) return Response.json({ id: 'c1' });
 				throw new TypeError('down');
 			}
 			if (call.url.includes('siteverify')) return turnstileOk();
@@ -1350,5 +1352,222 @@ describe('notification edition', () => {
   expect(response!.status).toBe(303);
   expect((await DB.prepare('SELECT language FROM alert_accounts').first<any>()).language).toBe(language==='en'?'es':'en');
   mock.restore();
+ });
+});
+
+describe('first confirmation operator notice', () => {
+ const ownerRows = (env: AlertEnv) => env.DB.prepare("SELECT id,email,payload,state,kind FROM alert_outbox WHERE kind='owner'").bind().all<{ id: string; email: string; payload: string; state: string; kind: string }>();
+ const notices = (env: AlertEnv) => env.DB.prepare('SELECT account_id,outbox_id,confirmed_at FROM alert_signup_notices').bind().all<{ account_id: string; outbox_id: string; confirmed_at: number }>();
+
+ it('enqueues one paced notice on the first confirmation and ignores replay, sign-in, and watcher edits', async () => {
+  const { DB, db } = database(); const env = baseEnv(DB);
+  const sends: FetchCall[] = [];
+  let verifyCalls = 0;
+  const mock = mockFetch(call => {
+   if (call.url.includes('siteverify')) return turnstileOk(++verifyCalls === 1 ? 'signup' : 'signin');
+   if (call.url.includes('/emails/outbound')) { sends.push(call); return Response.json({ id: 'owner-1' }); }
+   return Response.json({ logs: [] });
+  });
+  try {
+   setPacingForTests({ minIntervalMs: 1, minuteCap: 100, dailyCap: 100000 });
+   // Wall clock, same as the other paced sends: a historical `now` sits behind
+   // alert_pace.last_send (stamped with Date.now()) and the gate sleeps 120s.
+   const now = Date.now();
+   await subscribe(env, { email: 'reader@example.org', phrase: 'Tom & Jerry <script> "x"', captcha: 'valid' }, now);
+   expect((await ownerRows(env)).results).toHaveLength(0);
+   const token = JSON.parse((await getOutbox(env, 'confirm').first<any>()).payload).token;
+   db.prepare("INSERT INTO alert_watchers(id,account_id,phrase,tokens,status,baseline,scan_cursor,created_at,updated_at) SELECT 'second', id, ?, 'luma', 'pending', ?, ?, ?, ? FROM alert_accounts").run('luma', now, now, now + 1, now + 1);
+   const result = await confirm(env, token, now + 60_000);
+   expect(result.status).toBe('confirmed');
+   const rows = (await ownerRows(env)).results;
+   expect(rows).toHaveLength(1);
+   expect(rows[0].state).toBe('sent');
+   expect(rows[0].email).toBe(OWNER_SIGNUP_EMAIL);
+   expect(rows[0].id).toBe('owner-signup:' + (await notices(env)).results[0].account_id);
+   const payload = JSON.parse(rows[0].payload);
+   expect(payload.phrases).toEqual(['Tom & Jerry <script> "x"', 'luma']);
+   expect(JSON.stringify(payload)).not.toContain('reader@example.org');
+   const ownerMail = sends.filter(isOwnerSend);
+   expect(ownerMail).toHaveLength(1);
+   expect(ownerMail[0].url).toBe('https://api.improvmx.com/v4/domains/code.pr/emails/outbound');
+   expect(ownerMail[0].json.from).toBe('prnews');
+   expect(ownerMail[0].json.reply_to).toBe('prnews@code.pr');
+   expect(ownerMail[0].json.to).toBe(OWNER_SIGNUP_EMAIL);
+   expect(ownerMail[0].json.subject).not.toContain('reader@example.org');
+   expect(ownerMail[0].json.subject).not.toContain('<script>');
+   expect(ownerMail[0].json.html).toContain('&amp;');
+   expect(ownerMail[0].json.html).toContain('&lt;script&gt;');
+   expect(ownerMail[0].json.html).toContain('luma');
+   expect(ownerMail[0].json.html).not.toContain('<script>');
+   expect(ownerMail[0].json.html).not.toContain('reader@example.org');
+   expect(ownerMail[0].json.text).not.toContain('reader@example.org');
+   expect(ownerMail[0].json.text).toContain('Tom & Jerry <script> "x"');
+   expect(String(ownerMail[0].json.text)).toContain('AST');
+   expect(await env.DB.prepare('SELECT id FROM alert_queue').bind().first()).toBeNull();
+   expect(await getOutbox(env, 'notify').first()).toBeNull();
+
+   expect((await confirm(env, token, now + 61_000)).status).toBe('processed');
+   await requestSignin(env, { email: 'reader@example.org', captcha: 'valid' }, now + 62_000);
+   expect(await getOutbox(env, 'signin').first()).not.toBeNull();
+   const session = await sessionFromCookie(env, result.status === 'confirmed' ? result.session.secret : '', now + 60_000);
+   await manageWatcher(env, session!.account_id, 'edit', (await env.DB.prepare("SELECT id FROM alert_watchers WHERE phrase='luma'").bind().first<{ id: string }>())!.id, 'otra frase', now + 63_000);
+   await manageWatcher(env, session!.account_id, 'add', '', 'presupuesto', now + 64_000);
+   expect((await ownerRows(env)).results).toHaveLength(1);
+   expect(JSON.parse((await ownerRows(env)).results[0].payload).phrases).toEqual(['Tom & Jerry <script> "x"', 'luma']);
+   expect(sends.filter(isOwnerSend)).toHaveLength(1);
+
+   await insertArticle(env, item('https://match.example/1', 'Llega el presupuesto', now + 70_000), now + 70_000);
+   await runAlertSweep(env, now + 80_000);
+   expect((await ownerRows(env)).results).toHaveLength(1);
+   const notify = await getOutbox(env, 'notify').first<any>();
+   expect(notify.email).toBe('reader@example.org');
+   expect(sends.filter(isOwnerSend)).toHaveLength(1);
+  } finally { mock.restore(); setPacingForTests({}); }
+ });
+
+ it('keeps the same notice across unsubscribe, a closed reconfirmation, and an outbox prune', async () => {
+  const { DB, db } = database(); const env = baseEnv(DB);
+  const mock = mockFetch(call => call.url.includes('siteverify') ? turnstileOk('signup') : Response.json({ id: 'ok' }));
+  try {
+   setPacingForTests({ minIntervalMs: 1, minuteCap: 100, dailyCap: 100000 });
+   const now = Date.now();
+   const { session } = await activated(env, { email: 'again@example.org', phrase: 'luma', now });
+   expect((await ownerRows(env)).results).toHaveLength(1);
+   await env.DB.prepare("UPDATE alert_outbox SET state='pending', attempts=0, lease_until=0, sent_at=NULL WHERE kind='owner'").bind().run();
+   await closeAccount(env, session.account_id);
+   expect((await env.DB.prepare("SELECT state FROM alert_outbox WHERE kind='owner'").bind().first<any>()).state).toBe('pending');
+   expect((await env.DB.prepare("SELECT status FROM alert_accounts").bind().first<any>()).status).toBe('closed');
+   await runAlertSweep(env, now + 120_000);
+   expect((await env.DB.prepare("SELECT state FROM alert_outbox WHERE kind='owner'").bind().first<any>()).state).toBe('sent');
+   db.prepare("DELETE FROM alert_outbox WHERE kind='owner'").run();
+   await subscribe(env, { email: 'again@example.org', phrase: 'nueva', captcha: 'valid' }, now + 130_000);
+   const token = JSON.parse((await getOutbox(env, 'confirm').first<any>()).payload).token;
+   expect((await confirm(env, token, now + 140_000)).status).toBe('confirmed');
+   expect((await ownerRows(env)).results).toHaveLength(0);
+   expect((await notices(env)).results).toHaveLength(1);
+  } finally { mock.restore(); setPacingForTests({}); }
+ });
+
+ it('resolves an uncertain operator notice through the provider log and does not send a second copy when the log shows acceptance', async () => {
+  const { DB } = database(); const env = baseEnv(DB);
+  let ownerSends = 0;
+  const mock = mockFetch(call => {
+   if (call.url.includes('siteverify')) return turnstileOk();
+   if (call.url.includes('/emails/outbound')) {
+    if (isOwnerSend(call)) { ownerSends++; if (ownerSends === 1) throw new TypeError('network down'); return Response.json({ id: 'owner-retry' }); }
+    return Response.json({ id: 'other' });
+   }
+   if (call.url.includes('/logs/search')) return Response.json({ logs: [] });
+   if (call.url.includes('/logs')) return Response.json({ logs: [] });
+   return Response.json({});
+  });
+  try {
+   setPacingForTests({ minIntervalMs: 1, minuteCap: 100, dailyCap: 100000 });
+   const now = Date.now();
+   await activated(env, { email: 'uncertain@example.org', phrase: 'luma', now });
+   expect((await env.DB.prepare("SELECT state,attempts FROM alert_outbox WHERE kind='owner'").bind().first<any>())).toMatchObject({ state: 'uncertain', attempts: 1 });
+   await env.DB.prepare("UPDATE alert_outbox SET attempt_at=? WHERE kind='owner'").bind(now + 60_000 - 121_000).run();
+   await runAlertSweep(env, now + 200_000);
+   expect((await env.DB.prepare("SELECT state FROM alert_outbox WHERE kind='owner'").bind().first<any>()).state).toBe('pending');
+   await runAlertSweep(env, now + 200_000 + 301_000);
+   expect(ownerSends).toBe(2);
+   expect((await env.DB.prepare("SELECT state FROM alert_outbox WHERE kind='owner'").bind().first<any>()).state).toBe('sent');
+   await runAlertSweep(env, now + 900_000);
+   expect(ownerSends).toBe(2);
+  } finally { mock.restore(); setPacingForTests({}); }
+ });
+
+ it('does not resend an operator notice when the provider log already shows it', async () => {
+  const { DB } = database(); const env = baseEnv(DB);
+  let ownerSends = 0;
+  const mock = mockFetch(call => {
+   if (call.url.includes('siteverify')) return turnstileOk();
+   if (call.url.includes('/emails/outbound') && isOwnerSend(call)) { ownerSends++; throw new TypeError('cut'); }
+   if (call.url.includes('/emails/outbound')) return Response.json({ id: 'c1' });
+   if (call.url.includes('/logs/search')) return Response.json({ logs: [{ id: 'seen' }] });
+   return Response.json({ logs: [] });
+  });
+  try {
+   setPacingForTests({ minIntervalMs: 1, minuteCap: 100, dailyCap: 100000 });
+   const now = Date.now();
+   await activated(env, { now });
+   await env.DB.prepare("UPDATE alert_outbox SET attempt_at=? WHERE kind='owner'").bind(now - 121_000).run();
+   await runAlertSweep(env, now + 200_000);
+   expect((await env.DB.prepare("SELECT state FROM alert_outbox WHERE kind='owner'").bind().first<any>()).state).toBe('sent');
+   expect(ownerSends).toBe(1);
+  } finally { mock.restore(); setPacingForTests({}); }
+ });
+
+ it('still confirms the account when the operator notice cannot be recorded', async () => {
+  const { DB } = database(); const env = baseEnv(DB);
+  const wrapped = { ...env, DB: { prepare(sql: string) {
+   if (sql.includes('alert_signup_notices')) return { bind: () => ({ run: async () => { throw new Error('notice down'); }, first: async () => { throw new Error('notice down'); }, all: async () => { throw new Error('notice down'); } }) };
+   return env.DB.prepare(sql);
+  } } as unknown as D1Database };
+  const mock = mockFetch(call => call.url.includes('siteverify') ? turnstileOk() : Response.json({ id: 'ok' }));
+  try {
+   const now = 1_700_000_400_000;
+   await subscribe(env, { email: 'still@example.org', phrase: 'luma', captcha: 'valid' }, now);
+   const token = JSON.parse((await getOutbox(env, 'confirm').first<any>()).payload).token;
+   const result = await confirm(wrapped, token, now + 1000);
+   expect(result.status).toBe('confirmed');
+   expect((await env.DB.prepare("SELECT status FROM alert_accounts WHERE email='still@example.org'").bind().first<any>()).status).toBe('active');
+   expect((await ownerRows(env)).results).toHaveLength(0);
+   expect((await notices(env)).results).toHaveLength(0);
+  } finally { mock.restore(); }
+ });
+
+ it('keeps the outbox copy when the owner-kind migration is applied twice', () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(readFileSync('migrations/0001_live.sql', 'utf8'));
+  db.exec(readFileSync('migrations/0009_alerts.sql', 'utf8'));
+  db.prepare("INSERT INTO alert_accounts(id,email,language,status,created_at) VALUES('acct','kept@example.org','es','active',1)").run();
+  db.prepare("INSERT INTO alert_outbox(id,kind,account_id,email,payload,state,created_at) VALUES('row','notify','acct','kept@example.org','{}','sent',1)").run();
+  const sql = readFileSync('migrations/0013_owner_signup_notice.sql', 'utf8');
+  db.exec(sql);
+  db.exec(sql);
+  const row = db.prepare('SELECT kind,state,email FROM alert_outbox WHERE id=?').get('row') as { kind: string; state: string; email: string };
+  expect(row).toEqual({ kind: 'notify', state: 'sent', email: 'kept@example.org' });
+  expect(db.prepare("SELECT COUNT(*) AS n FROM alert_accounts").get()).toMatchObject({ n: 1 });
+ });
+});
+
+describe('confirmed alert account counts', () => {
+ it('counts active and closed accounts and renders no addresses or keywords', async () => {
+  const { DB, db } = database(); const env = baseEnv(DB);
+  expect(await confirmedAlertAccountCounts(env)).toEqual({ active: 0, closed: 0 });
+  const empty = await renderer.fetch(new Request('https://news.dev.pr/stats?lang=en'), { items: [], translations: {}, feeds: [], alertAccounts: { active: 0, closed: 0 } }).text();
+  expect(empty).toContain('id="alert-accounts"');
+  expect(empty).toContain('0 active confirmed alert accounts');
+  expect(empty).toContain('Closed accounts: 0');
+  expect(empty).toContain('not people');
+  db.prepare("INSERT INTO alert_accounts(id,email,language,status,created_at) VALUES('a','one@example.org','es','active',1),('b','two@example.org','en','active',2),('c','old@example.org','es','closed',3),('d','pending@example.org','es','unconfirmed',4)").run();
+  db.prepare("INSERT INTO alert_watchers(id,account_id,phrase,tokens,status,baseline,scan_cursor,created_at,updated_at) VALUES('w','a','secreto','secreto','active',1,1,1,1)").run();
+  expect(await confirmedAlertAccountCounts(env)).toEqual({ active: 2, closed: 1 });
+  const counts = await confirmedAlertAccountCounts(env);
+  const html = await renderer.fetch(new Request('https://news.dev.pr/stats?lang=en'), { items: [], translations: {}, feeds: [], alertAccounts: counts }).text();
+  expect(html).toContain('2 active confirmed alert accounts');
+  expect(html).toContain('Closed accounts: 1, excluded from the active count.');
+  expect(html).not.toContain('one@example.org');
+  expect(html).not.toContain('two@example.org');
+  expect(html).not.toContain('old@example.org');
+  expect(html).not.toContain('pending@example.org');
+  expect(html).not.toContain('secreto');
+  expect(html).not.toContain(OWNER_SIGNUP_EMAIL);
+  const one = await renderer.fetch(new Request('https://news.dev.pr/stats?lang=es'), { items: [], translations: {}, feeds: [], alertAccounts: { active: 1, closed: 0 } }).text();
+  expect(one).toContain('1 cuenta de alertas confirmada activa');
+  expect(one).not.toContain('one@example.org');
+  expect(one).not.toContain('secreto');
+  const missing = await renderer.fetch(new Request('https://news.dev.pr/stats?lang=en'), { items: [], translations: {}, feeds: [], alertAccounts: null }).text();
+  expect(missing).toContain('The confirmed alert account count is unavailable.');
+  expect(missing).not.toContain('0 active confirmed alert accounts');
+  const signup = await renderer.fetch(new Request('https://news.dev.pr/signup?lang=en'), { items: [], translations: {}, feeds: [] }).text();
+  expect(signup).toContain('confirmed alert accounts');
+  expect(signup).toContain('does not include your email address');
+  expect(signup).not.toContain(OWNER_SIGNUP_EMAIL);
+  expect(signup).not.toContain('/digest/subscribe');
+  const about = await renderer.fetch(new Request('https://news.dev.pr/about?lang=en'), { items: [], translations: {}, feeds: [] }).text();
+  expect(about).toContain('not a count of people');
+  expect(about).not.toContain(OWNER_SIGNUP_EMAIL);
  });
 });
