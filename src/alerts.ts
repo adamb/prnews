@@ -17,6 +17,9 @@
  *    are resolved through the provider's email-log probes; only a proven 'absent' ever allows
  *    one more send. 429 responses honor Retry-After without consuming attempts and stop the
  *    batch. Sends pace globally against the account's shared 10/minute and daily quota.
+ *  - The first successful confirmation of an account enqueues one operator notice through
+ *    that same outbox. The notice is not a keyword match, does not include the subscriber
+ *    email, and is not cancelled when that account later unsubscribes.
  *  - Tokens, emails, and provider errors are never logged. Raw tokens are never persisted
  *    in their own table; outbox rows keep only the single-use mail links they must send and
  *    are purged within a day of settling.
@@ -63,6 +66,9 @@ const GLOBAL_SIGNUP_DAILY = 50, GLOBAL_SIGNIN_DAILY = 50, PER_ADDRESS_DAY = 3;
 const CONFIRM_TTL = DAY, SIGNIN_TTL = 15 * 60000, MANAGE_TTL = 14 * DAY, SESSION_TTL = 30 * DAY;
 const MAX_ATTEMPTS = 5, RESOLVE_WINDOW = DAY, PROBES_PER_RUN = 4, PROBE_GRACE = 120000;
 const NOTIFY_RETENTION = 21 * DAY, MAIL_RETENTION = 7 * DAY;
+/** Operator mailbox for the one-time new-account notice. Not a secret. Public pages do not print it. */
+export const OWNER_SIGNUP_EMAIL = 'beguelin@gmail.com';
+const OWNER_NOTICE_PREFIX = 'owner-signup:';
 
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const randomToken = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
@@ -221,7 +227,7 @@ async function subscribeAttempt(env: AlertEnv, input: {
 			await env.DB.prepare("UPDATE alert_accounts SET status='unconfirmed',language=?,request_day=0,request_count=0 WHERE id=? AND status='closed'").bind(language, account.id).run();
 			await env.DB.prepare('DELETE FROM alert_watchers WHERE account_id=?').bind(account.id).run();
 			await env.DB.prepare('DELETE FROM alert_tokens WHERE account_id=?').bind(account.id).run();
-			await env.DB.prepare("UPDATE alert_outbox SET state='cancelled' WHERE account_id=? AND state IN ('pending','uncertain','sending')").bind(account.id).run();
+			await cancelAccountMail(env, account.id);
 			const mail = await enrollWatchers(env, account.id, language, tokens, input.phrase, now);
 			if (mail) await tryImmediateSend(env, mail, now);
 			return { status: 'accepted' };
@@ -292,10 +298,21 @@ export async function confirm(env: AlertEnv, token: string, now = Date.now()): P
 	if (!row) return { status: 'processed' };
 	const claim = await env.DB.prepare('UPDATE alert_tokens SET used_at=? WHERE id=? AND used_at IS NULL').bind(now, row.id).run();
 	if (!claim.meta.changes) return { status: 'processed' };
-	await env.DB.prepare("UPDATE alert_accounts SET status='active' WHERE id=? AND status='unconfirmed'").bind(row.account_id).run();
+	const activated = await env.DB.prepare("UPDATE alert_accounts SET status='active' WHERE id=? AND status='unconfirmed'").bind(row.account_id).run();
 	// The activation moment is the watermark: stories collected or published earlier never match.
 	await env.DB.prepare("UPDATE alert_watchers SET status='active',baseline=?,scan_cursor=?,updated_at=? WHERE account_id=? AND status='pending'").bind(now, now, now, row.account_id).run();
 	await env.DB.prepare("DELETE FROM alert_tokens WHERE account_id=? AND purpose IN ('confirm','manage')").bind(row.account_id).run();
+	// First transition only. A later sign-in, replay, edit, or closed-account reconfirmation
+	// finds the durable notice row and does not enqueue another. A notice failure still leaves
+	// the account confirmed: the visitor's activation does not depend on the operator mail.
+	if (Number(activated.meta?.changes ?? 0) > 0) {
+		try {
+			const noticeId = await recordOwnerSignup(env, row.account_id, now);
+			if (noticeId) await tryImmediateSend(env, noticeId, now);
+		} catch {
+			console.error('alerts_owner_notice_failed');
+		}
+	}
 	if (row.status === 'unconfirmed' && await activeWatchers(env, row.account_id)) {
 		const session = await createSession(env, row.account_id, now);
 		if (session) return { status: 'confirmed', session };
@@ -399,7 +416,8 @@ export async function manageWatcher(env: AlertEnv, accountId: string, action: 'a
 }
 
 /** Unsubscribe-all via the mailed capability link: closes the account, drops every watcher
- * and queued match, revokes sessions, and cancels anything not yet accepted by the provider. */
+ * and queued match, revokes sessions, and cancels that account's unsent subscriber mail.
+ * The operator's first-confirmation notice is left in the outbox. */
 export async function closeByUnsubscribeHash(env: AlertEnv, token: string): Promise<boolean> {
 	const account = await env.DB.prepare('SELECT id FROM alert_accounts WHERE out_hash=?').bind(token).first<{ id: string }>();
 	if (!account) return false;
@@ -410,8 +428,49 @@ export async function closeAccount(env: AlertEnv, accountId: string): Promise<vo
 	await env.DB.prepare('DELETE FROM alert_watchers WHERE account_id=?').bind(accountId).run();
 	await env.DB.prepare('DELETE FROM alert_tokens WHERE account_id=?').bind(accountId).run();
 	await env.DB.prepare('DELETE FROM alert_sessions WHERE account_id=?').bind(accountId).run();
-	await env.DB.prepare("UPDATE alert_outbox SET state='cancelled' WHERE account_id=? AND state IN ('pending','uncertain','sending')").bind(accountId).run();
+	await cancelAccountMail(env, accountId);
 	await env.DB.prepare("UPDATE alert_accounts SET status='closed' WHERE id=?").bind(accountId).run();
+}
+/** Subscriber unsubscribe and closed re-enrollment cancel that account's unsent mail.
+ * The operator's first-confirmation notice is not that mail: it keeps its pace slot,
+ * including when the account is already closed or the row is still uncertain. */
+async function cancelAccountMail(env: AlertEnv, accountId: string): Promise<void> {
+	await env.DB.prepare("UPDATE alert_outbox SET state='cancelled' WHERE account_id=? AND state IN ('pending','uncertain','sending') AND kind<>'owner'").bind(accountId).run();
+}
+/** One operator notice per account, keyed by the account id. Phrases are the watchers
+ * this confirmation activated. They are not copied onto the operator's own watchers,
+ * and this function does not match or enqueue keyword alerts. */
+async function recordOwnerSignup(env: AlertEnv, accountId: string, confirmedAt: number): Promise<string> {
+	const id = OWNER_NOTICE_PREFIX + accountId;
+	const pending = await env.DB.prepare("SELECT phrase FROM alert_watchers WHERE account_id=? AND status='active' AND baseline=? ORDER BY created_at, id").bind(accountId, confirmedAt).all<{ phrase: string }>();
+	const phrases = pending.results.map(row => oneLine(row.phrase).slice(0, 120)).filter(Boolean).slice(0, MAX_WATCHERS);
+	const payload = JSON.stringify({
+		ownerNotice: true,
+		confirmedAt,
+		phrases,
+		ref: accountId.replace(/-/g, '').slice(0, 8),
+	});
+	const notice = await env.DB.prepare(`INSERT INTO alert_signup_notices(account_id, outbox_id, confirmed_at)
+		SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM alert_signup_notices WHERE account_id=?)`).bind(accountId, id, confirmedAt, accountId).run();
+	if (!Number(notice.meta?.changes ?? 0)) return '';
+	const inserted = await env.DB.prepare(`INSERT OR IGNORE INTO alert_outbox(id,kind,account_id,batch_hour,email,payload,state,created_at)
+		VALUES(?, 'owner', ?, NULL, ?, ?, 'pending', ?)`).bind(id, accountId, OWNER_SIGNUP_EMAIL, payload, confirmedAt).run();
+	return Number(inserted.meta?.changes ?? 0) ? id : '';
+}
+/** Public aggregate only. Active rows are confirmed alert accounts. Closed rows are
+ * confirmed accounts that later unsubscribed. Unconfirmed rows are omitted. Null means
+ * the read failed; callers must not present that as zero. */
+export async function confirmedAlertAccountCounts(env: { DB: D1Database }): Promise<{ active: number; closed: number } | null> {
+	try {
+		const row = await env.DB.prepare(`SELECT
+			COALESCE(SUM(CASE WHEN status='active' THEN 1 ELSE 0 END), 0) AS active,
+			COALESCE(SUM(CASE WHEN status='closed' THEN 1 ELSE 0 END), 0) AS closed
+			FROM alert_accounts`).first<{ active: number | null; closed: number | null }>();
+		if (!row) return { active: 0, closed: 0 };
+		return { active: Number(row.active ?? 0), closed: Number(row.closed ?? 0) };
+	} catch {
+		return null;
+	}
 }
 
 /* ------------------------------------------------------------------ cron sweep */
@@ -551,7 +610,7 @@ function itemOf(snapshot: QueuePayload): Item {
 	return { title: snapshot.title, summary: snapshot.summary, url: snapshot.url, source: snapshot.source, image: '', time: 0, observed: false, section: 'otras', reason: '' } as Item;
 }
 
-interface OutboxRow { id: string; kind: 'notify' | 'confirm' | 'signin'; account_id: string; email: string; payload: string; attempts: number; attempt_at: number | null; created_at: number }
+interface OutboxRow { id: string; kind: 'notify' | 'confirm' | 'signin' | 'owner'; account_id: string; email: string; payload: string; attempts: number; attempt_at: number | null; created_at: number }
 
 /** A claimed 'sending' row whose lease expired is crash recovery, as in the digest: its
  * acceptance is unknown, so it becomes 'uncertain' and resolves through provider logs. */
@@ -609,11 +668,12 @@ async function paceGate(env: AlertEnv, now: number): Promise<void> {
 /** Globally paced, bounded dispatch of outbox rows. 'uncertain' rows are NEVER resent here;
  * they must first resolve to 'present' (stop) or 'absent' (safe to resend) through probes.
  * A 429 consumes no attempt, honors Retry-After, and stops the rest of the batch.
- * Notifications require an 'active' account, but confirm/sign-in rows mail exactly the
- * accounts that still need one (the activation email cannot wait for activation). */
+ * Notifications require an 'active' account. Confirm and sign-in rows mail the account
+ * that still needs that link. Operator notices mail even after that account closes:
+ * they are not the subscriber's delivery and unsubscribe does not cancel them. */
 async function dispatch(env: AlertEnv, now: number, outboxId: string | null = null): Promise<number> {
 	const dailyCap = paceTestOverrides.dailyCap ?? numericFloorCap(env.ALERTS_DAILY_SEND_CAP, DAILY_SEND_CAP);
-	const rows = await env.DB.prepare("SELECT o.id,o.kind,o.account_id,o.email,o.payload,o.attempts,o.created_at FROM alert_outbox o JOIN alert_accounts a ON a.id=o.account_id WHERE o.state='pending' AND o.lease_until<=? AND o.attempts<? AND o.created_at>? AND (? IS NULL OR o.id=?) AND (o.kind IN ('confirm','signin') OR a.status='active') ORDER BY o.created_at LIMIT ?")
+	const rows = await env.DB.prepare("SELECT o.id,o.kind,o.account_id,o.email,o.payload,o.attempts,o.created_at FROM alert_outbox o JOIN alert_accounts a ON a.id=o.account_id WHERE o.state='pending' AND o.lease_until<=? AND o.attempts<? AND o.created_at>? AND (? IS NULL OR o.id=?) AND (o.kind IN ('confirm','signin','owner') OR a.status='active') ORDER BY o.created_at LIMIT ?")
 		.bind(now, MAX_ATTEMPTS, now - RESOLVE_WINDOW, outboxId, outboxId, SENDS_PER_RUN).all<OutboxRow>();
 	let sent = 0;
 	for (const row of rows.results) {
@@ -649,8 +709,21 @@ async function dispatch(env: AlertEnv, now: number, outboxId: string | null = nu
 function renderOutboxEmail(row: OutboxRow): { to: string; subject: string; text: string; html: string } | undefined {
 	const payload = JSON.parse(row.payload) as {
 		ref?: string; language?: Language; token?: string; items?: QueuePayload[]; manageToken?: string; outToken?: string;
+		ownerNotice?: boolean; confirmedAt?: number; phrases?: unknown;
 	};
 	const tag = ` [#${payload.ref ?? row.id.slice(0, 8)}]`;
+	if (row.kind === 'owner') {
+		const when = typeof payload.confirmedAt === 'number' && Number.isFinite(payload.confirmedAt) ? payload.confirmedAt : row.created_at;
+		const phrases = (Array.isArray(payload.phrases) ? payload.phrases : []).filter((phrase): phrase is string => typeof phrase === 'string').map(phrase => oneLine(phrase).slice(0, 120)).filter(Boolean).slice(0, MAX_WATCHERS);
+		const stamp = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Puerto_Rico', dateStyle: 'medium', timeStyle: 'short' }).format(when) + ' AST';
+		const iso = new Date(when).toISOString();
+		const textList = phrases.length ? phrases.map(phrase => `- ${phrase}`).join('\n') : '- (none)';
+		const htmlList = phrases.length ? phrases.map(phrase => `<li>${escape(phrase)}</li>`).join('') : '<li>(none)</li>';
+		const subject = oneLine(`New confirmed alert account · news.dev.pr${tag}`);
+		const text = `A keyword alert account was confirmed.\nConfirmed at: ${stamp} (${iso})\nInitial keywords:\n${textList}\n\nThis notice does not include the subscriber email address. It is the one notice for that account's first successful confirmation.`;
+		const html = `<p>A keyword alert account was confirmed.</p><p>Confirmed at: ${escape(stamp)} (${escape(iso)})</p><p>Initial keywords:</p><ul>${htmlList}</ul><p>This notice does not include the subscriber email address. It is the one notice for that account's first successful confirmation.</p>`;
+		return { to: row.email, subject, text, html };
+	}
 	if (row.kind === 'confirm') {
 		const token = payload.token ?? '';
 		if (!/^[a-f0-9]{64}$/.test(token)) return undefined;

@@ -244,3 +244,35 @@ typecheck, build, and diff review. Regression tests cover both notification edit
 delayed English translation, publication labels, HTML/text language links, signup preference
 and authenticated add-alert language changes. No live email, resend, account mutation,
 migration, bulk translation, or changes to previously delivered mail.
+
+## Operator notice on first confirmation
+
+A signup counts when a confirmation token is redeemed and the account moves from
+`unconfirmed` to `active`. An unconfirmed address, a replayed token, a sign-in, a watcher
+edit, and an added watcher do not count. A closed account that confirms again is the same
+account and does not count again. The public wording is "confirmed alert accounts":
+one row is one email account, not one person.
+
+That first transition inserts `alert_signup_notices(account_id)` and one `alert_outbox` row
+with kind `owner`, id `owner-signup:<account id>`, and recipient `beguelin@gmail.com`.
+The body has the confirmation time and the phrases activated by that confirmation. It does
+not include the subscriber email, a manage link, or an unsubscribe token. HTML is escaped
+and phrases are collapsed to one line. The row uses the existing pace, daily budget, and
+uncertain-log reconciliation. ImprovMX still has no idempotency key; the notice row is what
+stops a second event. A provider acceptance is best effort. If the process stops after the
+notice row and before the outbox row, that account does not get a second chance: the token
+is already used.
+
+Dispatch sends kind `owner` even when the subscriber account is closed or not active.
+Unsubscribe and a closed re-enrollment cancel that account's other unsent mail and leave
+the operator row alone. The notice is not a keyword match and is not copied onto the
+operator's watchers. Accounts already active when this ships do not get a notice. A failure
+to record the notice does not undo the confirmation.
+
+`/stats` shows the active count and the excluded closed count. Unconfirmed rows are omitted.
+A failed read says the count is unavailable and does not show zero. The page has no address
+list and no keyword list. There is no account-enumeration route. Public pages say "site
+operator" and do not name the notice recipient.
+Migration `0013_owner_signup_notice.sql` copies the outbox so kind `owner` is allowed and
+adds the notice table. It does not delete accounts or rewrite mail history. Apply it before
+the worker that inserts kind `owner`. Re-applying copies the current outbox and keeps every row.
