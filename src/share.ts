@@ -2,8 +2,8 @@
 
 /** Preview prefix. The on-card label stays the shorter line the button already paints. */
 export const SATIRE_PREVIEW_PREFIX = {
-  es: 'Chiste de IA, no noticia: ',
-  en: 'AI joke, not news: ',
+  es: 'Una mirada satírica con IA: ',
+  en: 'AI satirical take: ',
 } as const;
 
 /** Same words as lighterClientScript's open-block label. */
@@ -27,7 +27,7 @@ function sharePath(base, satireOpen) {
 }
 function sharePayload(title, url, lang, line) {
   var payload = {title: title, url: url};
-  if (line) payload.text = line + ' — ' + (lang === 'en' ? 'AI joke, not news' : 'chiste de IA, no noticia');
+  if (line) payload.text = line + ' — ' + (lang === 'en' ? 'AI satirical take' : 'una mirada satírica con IA');
   return payload;
 }
 function shareClipboard(payload) {

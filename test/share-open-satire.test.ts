@@ -82,14 +82,14 @@ describe('share payload', () => {
     expect(open).toEqual({
       title: 'Titular',
       url: 'https://news.dev.pr/story?id=7&satire=1',
-      text: `${marked} — chiste de IA, no noticia`,
+      text: `${marked} — una mirada satírica con IA`,
     });
     expect(open.url).not.toContain(marked);
     expect(open.text).toContain('&');
     expect(shareClipboard(open)).toBe(`${open.text} ${open.url}`);
 
     const english = sharePayload('Headline', 'https://news.dev.pr/story?id=7&satire=1&lang=en', 'en', englishLine);
-    expect(english.text).toBe(`${englishLine} — AI joke, not news`);
+    expect(english.text).toBe(`${englishLine} — AI satirical take`);
     expect(shareClipboard(english)).toBe(`${english.text} ${english.url}`);
 
     const closed = sharePayload('Titular', 'https://news.dev.pr/story?id=7', 'es', '');
@@ -175,7 +175,7 @@ describe('share payload', () => {
     expect(open.shared).toEqual([{
       title: headline,
       url: 'https://news.dev.pr/story?id=7&satire=1',
-      text: `${marked} — chiste de IA, no noticia`,
+      text: `${marked} — una mirada satírica con IA`,
     }]);
     expect(JSON.stringify(open.shared)).not.toContain(encodeURIComponent(marked));
     expect((open.shared[0] as { url: string }).url).not.toContain(marked);
@@ -188,7 +188,7 @@ describe('share payload', () => {
     expect(hidden.shared).toEqual([{ title: headline, url: 'https://news.dev.pr/story?id=7' }]);
 
     const fallback = await click({ path: '/story?id=7', lang: 'es', title: headline, line: marked, expanded: true, mode: 'open', fail: 'share' });
-    expect(fallback.copied).toEqual([`${marked} — chiste de IA, no noticia https://news.dev.pr/story?id=7&satire=1`]);
+    expect(fallback.copied).toEqual([`${marked} — una mirada satírica con IA https://news.dev.pr/story?id=7&satire=1`]);
     expect(fallback.note.textContent).toBe('Enlace copiado');
 
     const aborted = await click({ path: '/story?id=7', lang: 'es', title: headline, line: marked, expanded: true, mode: 'open', fail: 'abort' });
@@ -481,7 +481,7 @@ describe('satire landing layout', () => {
         const shared = await page.evaluate<Array<{ title: string; text?: string; url: string }>>('window.__shares');
         expect(shared).toEqual([{
           title: headline,
-          text: `${marked} — chiste de IA, no noticia`,
+          text: `${marked} — una mirada satírica con IA`,
           url: `https://news.dev.pr/story?id=7&satire=1`,
         }]);
         expect(shared[0].url).not.toContain(marked);
