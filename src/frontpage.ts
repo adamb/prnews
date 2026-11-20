@@ -1,4 +1,5 @@
 import { primarySection } from './sections';
+import { newsprSource } from './sources';
 import { redditSource } from './reddit';
 import { publisherPlaceholder, safeUrl, type Item } from './parse';
 
@@ -50,7 +51,10 @@ const hasImage = (item: Item) => !!safeUrl(item.image);
  * on the English edition), so the comparison matches what is on the page. Items are expected
  * newest-first (the page query orders them so): each story is compared only with stories inside
  * the same-event window, which keeps ~2,000 stories cheap. Input order is kept; a cluster leads
- * with its first member that has a thumbnail, else its newest. */
+ * with its first member that has a thumbnail, else its newest. The one exception is news.pr: it
+ * rewrites the day's record, so when the unchanged conservative threshold folds its item with
+ * the publisher's own story, the original publisher leads and news.pr is the "También en" link;
+ * a cluster of only news.pr items still leads with news.pr. Thresholds are untouched. */
 export function clusterStories(items: Item[], titleOf: (item: Item) => string = i => i.title): Cluster[] {
  const words = new Map<Item, Set<string>>();
  const tokens = (item: Item) => { let set = words.get(item); if (!set) { set = headlineTokens(titleOf(item)); words.set(item, set); } return set; };
@@ -65,7 +69,9 @@ export function clusterStories(items: Item[], titleOf: (item: Item) => string = 
   if (home) home.push(item); else groups.push([item]);
  }
  return groups.map(group => {
-  const lead = group.find(hasImage) ?? group[0];
+  const original = group.filter(member => member.source !== newsprSource);
+  const pool = original.length ? original : group;
+  const lead = pool.find(hasImage) ?? pool[0];
   return { item: lead, also: group.filter(member => member !== lead) };
  });
 }

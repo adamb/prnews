@@ -6,10 +6,10 @@ import { sourceMark } from '../src/brand';
 import { parseFeed, plain, safeUrl, summary } from '../src/parse';
 // Fixtures captured over real HTTP (see docs/sources-status-integration.md).
 // Item counts are fixed to those saves: WAPA/WIPR/Claridad on 2026-11-14,
-// Radio Isla and WALO on 2026-11-19.
+// Radio Isla and WALO on 2026-11-19, news.pr on 2026-11-19.
 const seen = Date.parse('2026-11-14T22:30:00Z');
 const feed = (id: string, at = seen) => parseFeed(readFileSync(`test/fixtures/${id}.xml`, 'utf8'), additionalSources.find(s => s.id === id)!, at);
-const EXPECTED_ITEMS: Record<string, number> = { wapa: 50, wipr: 10, claridad: 5, radioisla: 25, walo: 10 };
+const EXPECTED_ITEMS: Record<string, number> = { wapa: 50, wipr: 10, claridad: 5, radioisla: 25, walo: 10, newspr: 30 };
 const cdata = (block: string, tag: string) => new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`).exec(block)?.[1] ?? '';
 /** A sentence from the end of content:encoded must not survive into the stored excerpt. */
 const encodedTailAbsent = (encoded: string, excerpt: string) => {
@@ -23,12 +23,14 @@ const rawItems = (id: string) => readFileSync(`test/fixtures/${id}.xml`, 'utf8')
 
 describe('additional sources: verified publisher feeds', () => {
  it('covers exactly the verified ids and never registers the unavailable ones', () => {
-  expect(additionalSources.map(s => s.id).sort()).toEqual(['claridad', 'radioisla', 'walo', 'wapa', 'wipr']);
+  expect(additionalSources.map(s => s.id).sort()).toEqual(['claridad', 'newspr', 'radioisla', 'walo', 'wapa', 'wipr']);
   expect(additionalMappingIsConsistent()).toBe(true);
-  expect(Object.keys(additionalFeedURLs)).toEqual(['wapa', 'wipr', 'claridad', 'radioisla', 'walo']);
+  expect(Object.keys(additionalFeedURLs)).toEqual(['wapa', 'wipr', 'claridad', 'radioisla', 'walo', 'newspr']);
   expect(feeds.radioisla).toEqual(['https://radioisla.tv/feed/']);
   expect(feeds.walo).toEqual(['https://waloradio.com/feed/']);
+  expect(feeds.newspr).toEqual(['https://news.pr/rss.xml']); // public RSS, never the gated /feed page
   expect(Object.values(feeds).flat().join('\n')).not.toContain('waloradio.com/category/noticias');
+  expect(Object.values(feeds).flat().join('\n')).not.toContain('news.pr/feed');
   expect(additionalSources.map(s => s.id)).not.toContain(unavailableSources[0].homepage); // El Post Antillano stays out
  });
  it('parses each saved feed with its exact verified item count', () => {

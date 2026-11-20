@@ -1,7 +1,8 @@
 /**
  * Additional Puerto Rico news feeds. WAPA, WIPR and Claridad were verified on
- * 2026-11-14; Radio Isla 1320 and WALO 1240 on 2026-11-19 (see
- * docs/sources-status-integration.md). `sources` and `ingest` already append
+ * 2026-11-14; Radio Isla 1320 and WALO 1240 on 2026-11-19; news.pr on
+ * 2026-11-19 (see docs/sources-status-integration.md and docs/newspr-source.md).
+ * `sources` and `ingest` already append
  * `additionalSources` and merge `additionalFeedURLs`, so a new entry here is
  * the registry change. Parsing, the 300-character excerpt cap, image recovery
  * and translation stay on the shared pipeline.
@@ -19,6 +20,7 @@ export const additionalSources: Source[] = [
  { id: 'claridad', name: 'Claridad', homepage: 'https://claridadpuertorico.com', files: ['claridad.xml'] },
  { id: 'radioisla', name: 'Radio Isla 1320', homepage: 'https://radioisla.tv', files: ['radioisla.xml'] },
  { id: 'walo', name: 'WALO 1240 · Humacao', homepage: 'https://waloradio.com', files: ['walo.xml'] },
+ { id: 'newspr', name: 'news.pr', homepage: 'https://news.pr', files: ['newspr.xml'] },
 ];
 
 /** feedURL map entries for src/ingest's `feeds` record (merge, don't replace). */
@@ -29,6 +31,8 @@ export const additionalFeedURLs: Record<string, string[]> = {
  radioisla: ['https://radioisla.tv/feed/'],
  // Main feed, not /category/noticias/feed/: the category feed drops police items.
  walo: ['https://waloradio.com/feed/'],
+ // The public RSS, never the subscriber-gated /feed page. See docs/newspr-source.md.
+ newspr: ['https://news.pr/rss.xml'],
 };
 
 export interface UnavailableSource { name: string; homepage: string; reason: string }
