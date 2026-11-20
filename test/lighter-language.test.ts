@@ -17,6 +17,7 @@ const maestrosTake = 'Maestros en Puerto Rico realizan manifestaciones para exig
 const englishTake = 'The bureau at PRITS Academy scheduled another course about its own course.';
 const namedEnglish = 'The bureau briefed WIPR and Suzanne Roig before the PRITS Academy course.';
 const namedSpanish = 'La agencia WIPR insiste en que PRITS Academy ya ofreció la capacitación.';
+const symposiumSpanish = 'El simposio celebró una década de supervisión y sirvió otro panel de preguntas.';
 const nameLead = 'Manatí files the form after Rosalía calls the bureau.';
 const ambiguous = 'PRITS Academy briefing.';
 
@@ -146,7 +147,7 @@ it('stores a matching edition either way and keeps the other edition', async () 
  const run = vi.fn(async (_model: string, options: {messages:{content:string}[]}) => {
   const body = JSON.parse(options.messages[1].content) as {outputLanguage:string;title:string};
   if (body.outputLanguage === 'English' && body.title === spanishStory.title) return {response: JSON.stringify({text: englishTake})};
-  if (body.outputLanguage === 'Spanish' && body.title === englishStory.title) return {response: JSON.stringify({text: namedSpanish})};
+  if (body.outputLanguage === 'Spanish' && body.title === englishStory.title) return {response: JSON.stringify({text: symposiumSpanish})};
   return {response: JSON.stringify({text: ''})};
  });
  const env = {DB, AI:{run}} as unknown as Env;
@@ -154,7 +155,7 @@ it('stores a matching edition either way and keeps the other edition', async () 
  const en = await post(env, {url:spanishStory.url, lang:'en', action:'44444444-4444-4444-8444-444444444444'}, now);
  expect(await en?.json()).toEqual({status:'ready', text:englishTake});
  const es = await post(env, {url:englishStory.url, lang:'es', action:'55555555-5555-4555-8555-555555555555'}, now);
- expect(await es?.json()).toEqual({status:'ready', text:namedSpanish});
+ expect(await es?.json()).toEqual({status:'ready', text:symposiumSpanish});
  expect(run).toHaveBeenCalledTimes(2);
  expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first()).toBeNull();
  expect((await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(englishStory,'en')).first<{text:string|null}>())?.text ?? null).toBeNull();

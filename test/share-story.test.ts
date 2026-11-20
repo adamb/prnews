@@ -71,7 +71,7 @@ describe('share control', () => {
 describe('story social preview', () => {
  const headline = 'Titular con & "comillas" <y>';
  const excerpt = 'Extracto con & y "comillas" que no se reescribe.';
- const satire = 'La agencia abrió un comité para admirar su propia espera con calma y sin prisa.';
+ const satire = 'El titular se quedó mirando sus propias comillas con calma y sin ninguna prisa.';
  const item = story({ title: headline, summary: excerpt, image: 'https://img.example/photo.jpg' });
  const english: Translation = { originalTitle: headline, originalSummary: excerpt, title: 'Headline with & "quotes" <and>', summary: 'Excerpt with & and "quotes" left verbatim.' };
 
@@ -193,8 +193,8 @@ describe('story id query', () => {
   insert(sql, orphan);
   sql.prepare('DELETE FROM story_ids WHERE url=?').run(orphan.url);
   const id = (sql.prepare('SELECT id FROM story_ids WHERE url=?').get(kept.url) as { id: number }).id;
-  const satire = 'La agencia abrió un comité para admirar su propia espera con calma y sin prisa.';
-  const satireEn = 'The agency opened another committee to admire its own waiting room.';
+  const satire = 'El titular se quedó mirando sus propias comillas con calma y sin ninguna prisa.';
+  const satireEn = 'The new schedule arrived again and filed itself with unusual calm this morning.';
   expect(valid(satire, kept, 'es')).toBe(true);
   expect(valid(satireEn, kept, 'en')).toBe(true);
   sql.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').run(key(kept, 'es'), satire, 1, 0);

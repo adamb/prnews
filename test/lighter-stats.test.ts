@@ -45,7 +45,7 @@ it('counts only current-version ready takes and classifies the same queue genera
  const pending=story('https://example.com/pending','Bridge maintenance','Crews schedule bridge maintenance.',700);
  const retry=story('https://example.com/retry','Office paperwork','The office delayed the paperwork.',600);
  const failed=story('https://example.com/failed','Power paperwork','The utility delayed a form.',500);
- const ready=story('https://example.com/ready','Road work','Crews repave the main road.',400);
+ const ready=story('https://example.com/ready','Road work','The agency says crews repave the main road.',400);
  const withheld=story('https://example.com/withheld','Budget hearing','The hearing covers the agency budget.',300);
  const sensitive=story('https://example.com/sensitive','Two dead after outage','Officials describe the outage.',900);
  const DB=database();

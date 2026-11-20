@@ -8,7 +8,7 @@ import {readySnapshot} from '../src/lighter-stats';
 import type {Env} from '../src/ingest';
 import type {Item} from '../src/parse';
 
-const satire = 'The agency formed a committee to admire its own delay.';
+const satire = 'The delay turned into a second delay and called the extra copy a plan.';
 const item = {url:'https://example.com/a', source:'noticel', title:'Traffic delays', summary:'The agency reports traffic delays.', image:'', time:1, observed:false, section:'politica', reason:'test'} as Item;
 const action = '11111111-1111-4111-8111-111111111111';
 
@@ -35,6 +35,13 @@ it('keeps the shared predicates and a new prompt version', () => {
  expect(satirePrompt('en')).toContain('satire');
  expect(satirePrompt('en')).toContain('untrusted');
  expect(satirePrompt('en')).not.toContain('Onion');
+ expect(satirePrompt('en')).not.toContain('Aim the joke at an institution, agency, or bureaucracy.');
+ expect(satirePrompt('en')).toContain('only when one is named or clearly present');
+ expect(satirePrompt('en')).toContain('situation, idea, or behavior');
+ expect(satirePrompt('en')).toContain('Never invent an institution, government, agency, official, company, or person');
+ expect(satirePrompt('en')).toContain('Never at injured people, victims, or private individuals');
+ expect(satirePrompt('en')).toContain('Do not invent quotes, numbers, names, places, motives, scenes, or allegations.');
+ expect(satirePrompt('en')).toContain('{"text":""}');
  expect(valid(satire, item)).toBe(true);
  expect(valid('The agency said "traffic is a lifestyle."', item)).toBe(false);
  expect(valid('<script>alert(1)</script> and more text', item)).toBe(false);
