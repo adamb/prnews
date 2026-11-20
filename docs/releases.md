@@ -214,3 +214,15 @@
 - Read-only check against production before release: 8 of 71 stored satires fail the guard (down from 15); the two National Day of Indignation lines pass. Nothing deleted.
 - 460 tests, typecheck, dry-run build. No migrations or pipeline changes.
 - Known issue found after deploy (pre-existing, not from these PRs): at 320–360 px the homepage can scroll sideways by up to ~58 px when a Reddit "Comunidad" lead appears, because `.reddit-summary{white-space:nowrap}` widens its grid column. Fix pending.
+
+## 2026-11-20 — Phone overflow fix
+
+- PR #36 (one-line Reddit excerpts clip inside the section grid instead of widening the page), deployed from 0154027fe9854538208acd1bc50d39a51ccc29e1. Cloudflare Worker version: daebc57c-1913-4460-81ab-8cf03fd244f7. Previous: fd0b81d6-1c43-47d7-94c0-cfcc064cda58. CSS only; 461 tests, typecheck, dry-run build.
+- Live check with Playwright at 320, 360, 390 and 1440 px on /, /?lang=en, /s/comunidad and /s/politica: no sideways scroll. This resolves the known issue recorded in the previous release.
+
+## 2026-11-20 — Search indexing tags and one satire label
+
+- PR #35 (hreflang es/en/x-default in page heads and sitemap, canonical on indexable pages, `noindex,follow` on `?source=` views, /search, /stats, /hall and filtered /archive, English story URLs in the sitemap only when that edition returns 200; HTML cache `prnews-html-v35`) and PR #37 (the satire button reads "Mostrar sátira" / "Show satire" whether or not a line is stored), deployed from 950d5d4cbf1a79faaf2289bcba8635cd1169db75. Cloudflare Worker version: a61df213-2115-4b6c-b018-f8a5887f4238. Previous: daebc57c-1913-4460-81ab-8cf03fd244f7.
+- 469 tests, typecheck, dry-run build on the combined result. No migrations, pipeline or translation changes.
+- Live checks: home carries canonical plus es/en/x-default alternates and no robots tag; /?source=endi and /search carry `noindex,follow`; /story carries canonical and alternates; 63 cards show "Mostrar sátira"; sitemap is valid XML with 1,040 URLs (40 pages, 500 Spanish and 500 English stories) and about 370 KB.
+- robots.txt still disallows only /internal/. Existing index entries change only after Google recrawls.
