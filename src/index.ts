@@ -173,7 +173,10 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
-  // v38 drops v37 pages whose share/preview copy still said "AI joke, not news"
+  // v40 drops v39 pages whose explainer still says "Explicar el contexto" /
+  // "Explain the context" instead of "Contexto" / "Context", and that omit the
+  // new glossary entries and the shortened banner.
+  // v39 drops v38 pages whose share/preview copy still said "AI joke, not news"
   // / "Chiste de IA, no noticia". The preview prefix, the share text tail and the
   // page's share script all carry the new wording.
   // v37 drops v36 pages that lack the keyword-alert invitation on reading routes.
@@ -182,7 +185,7 @@ export default {
   // were still indexable. v34 dropped v33 pages whose source names are not links
   // and that have no active-source chip. Compact imageless-lead rules and lighter-2
   // stay. 60s TTL still applies. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v39') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v40') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
