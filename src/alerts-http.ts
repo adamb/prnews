@@ -330,3 +330,25 @@ export async function alertsRoute(request: Request, env: AlertEnv): Promise<Resp
 		return result(lang, t('Actualizando… Intenta de nuevo pronto.', 'Updating… Please try again shortly.'), 503);
 	}
 }
+
+/** Boolean-only companion for the public reading-page invitation script: does this browser's
+ * alert session have at least one active watcher? The response carries exactly that bit —
+ * never an email, a phrase, or session material — and is always no-store, so it can never
+ * enter the shared HTML cache or the edge. A request without a valid session answers the
+ * same false a signed-out visitor gets; no account state is revealed either way. */
+export async function alertsActiveRoute(request: Request, env: AlertEnv): Promise<Response | undefined> {
+	const url = new URL(request.url);
+	if (url.pathname !== '/api/alerts-active') return undefined;
+	if (request.method !== 'GET' && request.method !== 'HEAD')
+		return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD', 'Cache-Control': 'no-store' } });
+	const headers = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' };
+	try {
+		const session = await sessionFromCookie(env, cookieValue(request, ALERTS_COOKIE));
+		const row = session
+			? await env.DB.prepare("SELECT 1 AS one FROM alert_watchers WHERE account_id=? AND status='active' LIMIT 1").bind(session.account_id).first<{ one: number }>()
+			: null;
+		return new Response(request.method === 'HEAD' ? null : JSON.stringify({ active: Boolean(row) }), { headers });
+	} catch {
+		return new Response('{"error":"unavailable"}', { status: 503, headers: { ...headers, 'Retry-After': '30' } });
+	}
+}
