@@ -1,4 +1,5 @@
 import {lighterRoute,read as readLighter} from './lighter';
+import {lighterFeedbackRoute,readLighterFeedback} from './lighter-feedback';
 import {attachStoryIds, lighterCacheReadable, readLighterLedger, readLighterQueue, readySnapshot, type LighterView} from './lighter-stats';
 import {sampleQueue,queueHistory} from './stats';
 import {clicksBySource} from './source-compare';
@@ -127,6 +128,9 @@ export default {
   if(!env.DB) return renderer.fetch(request,undefined,digestConfigured(env));
   const satire=await lighterRoute(request,env);
   if(satire)return satire;
+  // Anonymous satire votes: POST only, no AI, no generation-budget use, no GET writes.
+  const feedback=await lighterFeedbackRoute(request,env);
+  if(feedback)return feedback;
   const click=await clickRoute(request,env);
   if(click)return click;
   if(url.pathname==='/search') {
@@ -173,6 +177,8 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
+  // v41 drops v40 pages whose satire notes cannot host the anonymous vote controls
+  // (missing lighter-feedback script) and whose stats page lacks the vote aggregate.
   // v40 drops v39 pages whose explainer still says "Explicar el contexto" /
   // "Explain the context" instead of "Contexto" / "Context", and that omit the
   // new glossary entries and the shortened banner.
@@ -184,7 +190,7 @@ export default {
   // were still indexable. v34 dropped v33 pages whose source names are not links
   // and that have no active-source chip. Compact imageless-lead rules and lighter-2
   // stay. 60s TTL still applies. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v40') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v41') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
@@ -223,7 +229,9 @@ export default {
    if(url.pathname==='/stats'){
     const ready=readySnapshot(items,lighter,await lighterCacheReadable(env));
     if(ready.available)await attachStoryIds(env,ready.examples);
-    lighterView={ledger:await readLighterLedger(env),queue:await readLighterQueue(env,Date.now()),ready};
+    const feedbackView=await readLighterFeedback(env);
+    if(feedbackView.available)await attachStoryIds(env,[...feedbackView.top,...feedbackView.bottom]);
+    lighterView={ledger:await readLighterLedger(env),queue:await readLighterQueue(env,Date.now()),ready,feedback:feedbackView};
    }
    const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,alertAccounts,sourceClicks,now:pageNow,recurringThemes,storyIds},digestConfigured(env));
    if(response.status === 200) {
