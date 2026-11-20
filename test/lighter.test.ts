@@ -13,7 +13,7 @@ it('rejects unchanged, oversized, markup, invented numbers and reassurance',()=>
  expect(valid('The agency reports delays on the roads.',item)).toBe(true);
 });
 it('rejects an invented institution and keeps a joke aimed at the situation',()=>{
- const apology={url:'https://example.com/apology',title:'Tres formas de dejar de pedir perdón en exceso, según la psicología',summary:'Las disculpas automáticas son un intento de controlar la ansiedad'} as Item;
+ const apology={url:'https://example.com/apology',title:'Tres maneras de dejar de disculparse en exceso, según la psicología',summary:'Las disculpas automáticas son un intento de controlar la ansiedad'} as Item;
  expect(valid('Government apologizes in advance for upcoming apologies.',apology)).toBe(false);
  expect(valid('Government apologizes in advance for upcoming apologies.',apology,'en')).toBe(false);
  expect(valid('El gobierno se disculpó por adelantado y anunció más disculpas.',apology,'es')).toBe(false);
@@ -27,6 +27,29 @@ it('rejects an invented institution and keeps a joke aimed at the situation',()=
  const board={url:'https://example.com/board',title:'La Junta exige transparencia',summary:'La Junta de Supervisión Fiscal pidió los documentos.'} as Item;
  expect(valid('The board filed the same demand twice this morning.',board,'en')).toBe(true);
  expect(valid('The apology stayed in a state of rehearsal and filed itself again.',apology,'en')).toBe(true);
+ expect(valid('The United States filed the same form twice this morning.',apology,'en')).toBe(true);
+ expect(valid('El estado de ánimo produjo otra disculpa automática esta tarde.',apology,'es')).toBe(true);
+ const protest={url:'https://example.com/indignacion',title:'Llaman a manifestarse en el “Día de Indignación Nacional”',summary:'Protesta será el próximo viernes.'} as Item;
+ expect(valid('Bureaucrats are bracing for a flood of strongly worded letters on the National Day of Indignation.',protest,'en')).toBe(true);
+ expect(valid('Officials drafted another memo and called the extra copy a plan.',protest,'en')).toBe(true);
+ expect(valid('The authorities scheduled a second meeting about the same meeting.',protest,'en')).toBe(true);
+ expect(valid('Los burócratas prepararon otra carta y la archivaron dos veces.',protest,'es')).toBe(true);
+ expect(valid('Los funcionarios anunciaron otra reunión para admirar la convocatoria.',protest,'es')).toBe(true);
+ expect(valid('Las autoridades pidieron otra carta y la archivaron de nuevo.',protest,'es')).toBe(true);
+ expect(valid('La Autoridad archivó el mismo formulario otra vez esta mañana.',protest,'es')).toBe(true);
+ const wages={url:'https://example.com/navidad',title:'“No puede haber Navidad si no hay justicia salarial”: Convocan al Día de la Indignación Nacional',summary:'La convocatoria pide justicia salarial.'} as Item;
+ expect(valid('Bureaucrats are now expected to solve economic woes, just in time for holiday shopping.',wages,'en')).toBe(true);
+ expect(valid('A government agency is now trying to evict the tenants before Friday.',protest,'en')).toBe(false);
+ expect(valid('The ministry scheduled another hearing about the same letter.',protest,'en')).toBe(false);
+ expect(valid('The department filed the same form twice this morning.',protest,'en')).toBe(false);
+ expect(valid('The committee admired its own hearing and scheduled another.',protest,'en')).toBe(false);
+ expect(valid('The State filed the same form twice before Friday.',protest,'en')).toBe(false);
+ expect(valid('Una agencia intenta desalojar a los vecinos antes del viernes.',protest,'es')).toBe(false);
+ expect(valid('El ministerio anunció otro formulario antes de la protesta.',protest,'es')).toBe(false);
+ expect(valid('El departamento archivó el mismo formulario otra vez.',protest,'es')).toBe(false);
+ expect(valid('El comité admiró su propia audiencia y citó otra.',protest,'es')).toBe(false);
+ expect(valid('La junta archivó el mismo formulario otra vez esta mañana.',protest,'es')).toBe(false);
+ expect(valid('El Estado anunció otro formulario antes de la protesta.',protest,'es')).toBe(false);
 });
 it('withholds recognized sensitive topics in both languages',()=>{
  for(const text of ['Two dead after outage','Heridos en accidente','Health hazard','Emergencia por huracán','Police investigate murder'])expect(sensitive(text)).toBe(true);

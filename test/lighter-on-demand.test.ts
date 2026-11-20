@@ -38,7 +38,9 @@ it('keeps the shared predicates and a new prompt version', () => {
  expect(satirePrompt('en')).not.toContain('Aim the joke at an institution, agency, or bureaucracy.');
  expect(satirePrompt('en')).toContain('only when one is named or clearly present');
  expect(satirePrompt('en')).toContain('situation, idea, or behavior');
- expect(satirePrompt('en')).toContain('Never invent an institution, government, agency, official, company, or person');
+ expect(satirePrompt('en')).toContain('Generic stand-ins such as bureaucrats or officials are allowed when the story is about public affairs, government, or a protest.');
+ expect(satirePrompt('en')).toContain('Never invent a specific institution, government, agency, company, or person');
+ expect(satirePrompt('en')).not.toContain('official, company, or person');
  expect(satirePrompt('en')).toContain('Never at injured people, victims, or private individuals');
  expect(satirePrompt('en')).toContain('Do not invent quotes, numbers, names, places, motives, scenes, or allegations.');
  expect(satirePrompt('en')).toContain('{"text":""}');
