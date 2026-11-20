@@ -71,17 +71,24 @@ export function inSection(item: Item, section: string): boolean {
  if(item.source!==redditSource) return item.section===section;
  return section==='comunidad' || redditTopic(item.title)===section;
 }
+/** Validates one archived post and builds the stored item with the same rules the
+ * feed scan applies, so the bounded image repair reuses identical logic. Returns
+ * undefined for removed, foreign-subreddit, out-of-window, or malformed posts. */
+export function parseArcticPost(post: any, now: number): Item | undefined {
+ if(typeof post.subreddit!=='string'||post.subreddit.toLowerCase()!=='puertorico'||typeof post.id!=='string'||!/^[a-z0-9]+$/.test(post.id)) return undefined;
+ if(post.removed_by_category || post.selftext==='[removed]' || post.selftext==='[deleted]' || ['[removed]','[deleted]'].includes(post.title)) return undefined;
+ if(typeof post.title!=='string'||typeof post.created_utc!=='number') return undefined;
+ const title=plain(post.title), time=post.created_utc*1000;
+ if(!title||!Number.isFinite(time)||time>now||time<now-14*86400000) return undefined;
+ if(typeof post.permalink!=='string'||!new RegExp(`^/r/puertorico/comments/${post.id}/`,'i').test(post.permalink)) return undefined;
+ const url=canonical(post.permalink,'https://www.reddit.com');
+ return {url,source:redditSource,title,summary:redditExcerpt(typeof post.selftext==='string'?post.selftext:''),image:redditImage(post),time,observed:false,section:'comunidad',reason:'community'};
+}
 export function parseArctic(text: string, now: number): Item[] {
  const payload=JSON.parse(text);
  if(!Array.isArray(payload.data)) throw new Error('Invalid Arctic Shift response');
  return payload.data.flatMap((post: any): Item[]=>{
-  if(typeof post.subreddit!=='string'||post.subreddit.toLowerCase()!=='puertorico'||typeof post.id!=='string'||!/^[a-z0-9]+$/.test(post.id)) return [];
-  if(post.removed_by_category || post.selftext==='[removed]' || post.selftext==='[deleted]' || ['[removed]','[deleted]'].includes(post.title)) return [];
-  if(typeof post.title!=='string'||typeof post.created_utc!=='number') return [];
-  const title=plain(post.title), time=post.created_utc*1000;
-  if(!title||!Number.isFinite(time)||time>now||time<now-14*86400000) return [];
-  if(typeof post.permalink!=='string'||!new RegExp(`^/r/puertorico/comments/${post.id}/`,'i').test(post.permalink)) return [];
-  const url=canonical(post.permalink,'https://www.reddit.com');
-  return [{url,source:redditSource,title,summary:redditExcerpt(typeof post.selftext==='string'?post.selftext:''),image:redditImage(post),time,observed:false,section:'comunidad',reason:'community'}];
+  const item=parseArcticPost(post,now);
+  return item?[item]:[];
  });
 }

@@ -3,6 +3,7 @@ import {refreshStatus} from './live-status';
 import { arcticFeed, parseArctic, redditSource } from './reddit';
 import { archiveImages } from './archive';
 import { enrichImages } from './image-enrich';
+import { repairArcticImages } from './reddit-repair';
 import {translated, validTranslation, validSpanishTranslation, needsTranslation, needsSpanishTranslation} from './i18n';
 import type { DigestEnv } from './digest';
 import { newsprSource, sources } from './sources';
@@ -192,6 +193,9 @@ export async function refresh(env:Env) {
   // Recover publisher images (og:image) for feed items without one, then copy the
   // queue — including the newly found URLs, raised by the archive triggers — to R2.
   await enrichImages(env,now).then(result=>console.log('image_enrich_result',JSON.stringify(result))).catch(error=>console.warn('image_enrich_error',String(error)));
+  // Bounded Arctic repair for Reddit posts that aged out of the newest-100 scan window
+  // with an empty image; recovered URLs are archived by the same trigger pipeline below.
+  await repairArcticImages(env,now).then(result=>console.log('arctic_repair_result',JSON.stringify(result))).catch(error=>console.warn('arctic_repair_error',String(error)));
   await archiveImages(env,now);
   await translatePending(env,now);
  await translatePendingReverse(env,now);
