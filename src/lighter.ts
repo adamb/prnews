@@ -32,6 +32,16 @@ export const LEASE_MS=20_000;
  */
 export const PROVIDER_THROTTLE_DEFAULT_SECONDS=120;
 const PROVIDER_THROTTLE_MAX_SECONDS=3600;
+/**
+ * Bounded wait before the next press on the same cache cell after an ordinary
+ * invalid model answer: a wrong-edition sentence, a line that fails the
+ * satire checks, or an abstention. The model runs at temperature 0, so the
+ * old 1 h/2 h ladder only made the reader wait an hour to meet the same
+ * deterministic answer. The three-attempt cap is unchanged, so the shorter
+ * wait cannot multiply model calls; infrastructure failures (timeout, model,
+ * decode, save) keep the longer backoff below.
+ */
+export const VALIDATION_RETRY_SECONDS=120;
 const ACTION_TTL_MS=48*3600*1000;
 const PENDING_WINDOW_MS=60_000;
 const ACTION_ID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -70,24 +80,38 @@ function mentionsState(line:string,folded:string){
  }
  return false;
 }
+/** Generic person phrases: "a government official", "un funcionario del
+ * gobierno". The person is the actor, not a named institution, so the word
+ * government/gobierno inside the phrase does not count as naming one. The
+ * institution test still applies to every other use of the word, and to the
+ * institution nouns themselves ("a government agency" is still an agency). */
+const GENERIC_PERSON=/\bgovernment(?:'s)?\s+(?:official|bureaucrat|employee|worker|spokesperson|spokesman|spokeswoman)s?\b|\b(?:funcionari[oa]s?|oficiales?|emplead[oa]s?|trabajador(?:es)?|portavoces?)\s+del\s+gobierno\b/g;
 /** A specific institution in the line whose stem is absent from the headline and excerpt. */
 function inventedInstitution(line:string,source:string){
- const foldedLine=fold(line),foldedSource=fold(source);
+ const foldedLine=fold(line).replace(GENERIC_PERSON,' '),foldedSource=fold(source);
  for(const actor of INSTITUTION_ACTORS) if(actor.line.test(foldedLine)&&!actor.source.test(foldedSource))return true;
  if(mentionsBoard(foldedLine)&&!/\b(?:boards?|juntas?)\b/.test(foldedSource))return true;
  if(mentionsState(line,foldedLine)&&!/\bestados?\b|\bestatales?\b|\bstates?\b/.test(foldedSource))return true;
  return false;
 }
-export function valid(text:unknown,i:Item,lang?:string):text is string {
- if(typeof text!=='string')return false;
+/** Which validity rule rejected the line. Null means the text is valid.
+ * Sanitized by design: a category name only, never the model output, the
+ * provider error, or the article data. */
+export type Rejection='quotes'|'numbers'|'shape'|'institution'|'language';
+export function rejection(text:unknown,i:Item,lang?:string):Rejection|null{
+ if(typeof text!=='string')return 'shape';
  const source=i.title+' '+i.summary;
- const inventedQuotes=/[«»“”"]/.test(text)&&!/[«»“”"]/.test(source);
- const shape=text.trim().length>=20&&text.length<=300&&!inventedQuotes&&!/[<>]|https?:|you are safe|estás a salvo|no hay peligro|jaja|haha|😂/i.test(text)&&text.trim()!==i.title.trim()&&text.trim()!==i.summary.trim()&&!(text.match(/\d+(?:[.,]\d+)*/g)??[]).some(n=>!source.includes(n));
- if(!shape)return false;
- if(inventedInstitution(text,source))return false;
+ const trimmed=text.trim();
+ if(/[«»“”"]/.test(text)&&!/[«»“”"]/.test(source))return 'quotes';
+ if(!(trimmed.length>=20&&text.length<=300&&!/[<>]|https?:|you are safe|estás a salvo|no hay peligro|jaja|haha|😂/i.test(text)&&trimmed!==i.title.trim()&&trimmed!==i.summary.trim()))return 'shape';
+ if((text.match(/\d+(?:[.,]\d+)*/g)??[]).some(n=>!source.includes(n)))return 'numbers';
+ if(inventedInstitution(text,source))return 'institution';
  // Without an edition, callers skip the language check. en/es must match that edition.
- if(lang==='es'||lang==='en')return sentenceEdition(text)===lang;
- return true;
+ if(lang==='es'||lang==='en')return sentenceEdition(text)===lang?null:'language';
+ return null;
+}
+export function valid(text:unknown,i:Item,lang?:string):text is string {
+ return rejection(text,i,lang)===null;
 }
 /** One sentence from a string, a `{text}` object, or a nested object. A non-string stays invalid. */
 function unwrapText(value:unknown, depth=0):unknown {
@@ -253,7 +277,7 @@ async function cachedText(env:Env, item:Item, lang:Edition){
  // A cell whose text is clearly the other edition is not a hit and must not block a retry.
  const edition=trimmed?sentenceEdition(trimmed):undefined;
  if(stored&&edition&&edition!==lang){
-  await env.DB.prepare('UPDATE lighter_cache SET text=NULL, attempts=0, next_try=0 WHERE key=? AND text=?').bind(cacheKey,stored).run();
+  await env.DB.prepare('UPDATE lighter_cache SET text=NULL, attempts=0, next_try=0, last_reason=NULL WHERE key=? AND text=?').bind(cacheKey,stored).run();
   row={text:null,attempts:0,next_try:0};
  }
  return {row:row??null, text:''};
@@ -349,17 +373,23 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
     const text=modelOutput(output);
     phase='save';
     if(valid(text, item, lang)){
-     await env.DB.prepare('UPDATE lighter_cache SET text=? WHERE key=?').bind(text.trim(), cacheKey).run();
+     await env.DB.prepare('UPDATE lighter_cache SET text=?, last_reason=NULL WHERE key=?').bind(text.trim(), cacheKey).run();
      await addStats(env, lang, {generations:1}, now);
      recorded=true;
      console.info('lighter_result',{lang,status:'generated'});
      return json({status:'ready',text:text.trim()});
     }
-    await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(backoffAt, cacheKey).run();
+    // An ordinary invalid answer (wrong edition, failed check, abstention) gets a
+    // short bounded wait, not the 1 h/2 h ladder: the model runs at temperature 0,
+    // so an hour only delayed the same deterministic outcome. The three-attempt
+    // cap is unchanged, so the shorter wait cannot multiply model calls.
+    const validationBackoffAt=now+VALIDATION_RETRY_SECONDS*1000;
+    const reason=text===''?'abstained':'rejected:'+(rejection(text,item,lang)??'shape');
+    await env.DB.prepare('UPDATE lighter_cache SET next_try=?, last_reason=? WHERE key=? AND text IS NULL').bind(validationBackoffAt, reason, cacheKey).run();
     await addStats(env, lang, {failures:1}, now);
     recorded=true;
-    console.info('lighter_result',{lang,status:text===''?'abstained':'validation_rejected'});
-    return failedAttempt(hit.row?.attempts??0, backoffAt, now);
+    console.info('lighter_result',{lang,status:text===''?'abstained':'validation_rejected',reason});
+    return failedAttempt(hit.row?.attempts??0, validationBackoffAt, now);
    }catch(error){
     if(called&&!recorded){
      const throttle=phase==='model'?providerThrottleSeconds(error):null;
@@ -371,7 +401,7 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
       // The press keeps its interaction count; no failure is recorded. The
       // browser disables the button for the returned bounded wait on its own.
       await rollbackClaim(env, cacheKey, lease).catch(()=>{});
-      await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(now+throttle*1000, cacheKey).run().catch(()=>{});
+      await env.DB.prepare('UPDATE lighter_cache SET next_try=?, last_reason=? WHERE key=? AND text IS NULL').bind(now+throttle*1000, 'provider_throttled', cacheKey).run().catch(()=>{});
       if(day){await releaseBudget(env, day).catch(()=>{});day='';}
       await addStats(env, lang, {attempts:-1}, now).catch(()=>{});
       console.info('lighter_result',{lang,status:'provider_throttled'});
@@ -379,9 +409,10 @@ export async function lighterRoute(request:Request, env:Env, now=Date.now()):Pro
      }
      // A timed-out call may still be running in this isolate. Its budget and
      // attempt are kept, matching the previous behavior for a real model call.
-     await env.DB.prepare('UPDATE lighter_cache SET next_try=? WHERE key=? AND text IS NULL').bind(backoffAt, cacheKey).run().catch(()=>{});
+     const failureReason=phase==='model'&&error instanceof Error&&error.message==='timeout'?'timeout':phase+'_error';
+     await env.DB.prepare('UPDATE lighter_cache SET next_try=?, last_reason=? WHERE key=? AND text IS NULL').bind(backoffAt, failureReason, cacheKey).run().catch(()=>{});
      await addStats(env, lang, {failures:1}, now).catch(()=>{});
-     console.info('lighter_result',{lang,status:phase+'_error'});
+     console.info('lighter_result',{lang,status:phase+'_error',reason:failureReason});
      return failedAttempt(hit.row?.attempts??0, backoffAt, now);
     }
     // The model was not called. Do not keep the daily slot or the attempt claim.

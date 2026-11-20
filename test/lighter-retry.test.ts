@@ -12,7 +12,7 @@ const nestedSpanish = 'La Junta insiste en otra audiencia para admirar su propio
 
 function database(): D1Database {
  const sqlite = new DatabaseSync(':memory:');
- for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql']) sqlite.exec(readFileSync(file,'utf8'));
+ for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql','migrations/0015_lighter_reason.sql']) sqlite.exec(readFileSync(file,'utf8'));
  const prepare = (query: string) => {
   let args: any[] = [];
   return {bind(...values: any[]){args=values;return this;}, async first(){return sqlite.prepare(query).get(...args) ?? null;}, async all(){return {results: sqlite.prepare(query).all(...args)};}, async run(){const result = sqlite.prepare(query).run(...args); return {meta:{changes:Number(result.changes)}};}};
@@ -55,9 +55,9 @@ it('rejects a nested Spanish sentence and still stores a nested English one', as
  const env = {DB, AI:{run}} as unknown as Env;
  const now = Date.UTC(2026, 10, 18, 13, 0, 0);
  const rejected = await post(env, {url:board.url, lang:'en', action:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1'}, now);
- expect(await rejected.json()).toEqual({status:'cooldown', retry_after:3600});
- expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(board,'en')).first<{text:string|null}>()).toEqual({text:null});
- const accepted = await post(env, {url:board.url, lang:'en', action:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2'}, now + 3600 * 1000);
+ expect(await rejected.json()).toEqual({status:'cooldown', retry_after:120});
+ expect(await DB.prepare('SELECT text, last_reason FROM lighter_cache WHERE key=?').bind(key(board,'en')).first<{text:string|null;last_reason:string|null}>()).toEqual({text:null, last_reason:'rejected:language'});
+ const accepted = await post(env, {url:board.url, lang:'en', action:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2'}, now + 120 * 1000);
  expect(await accepted.json()).toEqual({status:'ready', text:englishLine});
  expect(run).toHaveBeenCalledTimes(2);
 });
@@ -204,4 +204,44 @@ it('ships the wait copy with the English card and keeps the satire out of the HT
  expect(html).toContain("Satire isn't available for this story.");
  expect(html).not.toContain(englishLine);
  expect(html).not.toContain('innerHTML');
+});
+
+it('keeps a bounded wait and a sanitized reason for invalid answers, and clears it on success', async () => {
+ const DB = database();
+ await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(board.url, board.source, JSON.stringify(board), 1, 1, 1).run();
+ const run = vi.fn()
+  .mockResolvedValueOnce({response: JSON.stringify({text: 'The ministry scheduled another hearing about the same letter.'})})
+  .mockResolvedValueOnce({response: JSON.stringify({text: ''})});
+ const env = {DB, AI:{run}} as unknown as Env;
+ const now = Date.UTC(2026, 10, 20, 22, 40, 34);
+ const rejected = await post(env, {url:board.url, lang:'en', action:'cccccccc-cccc-4ccc-8ccc-cccccccccccd'}, now);
+ expect(await rejected.json()).toEqual({status:'cooldown', retry_after:120});
+ const cell = await DB.prepare('SELECT text, attempts, next_try, last_reason FROM lighter_cache WHERE key=?').bind(key(board,'en')).first<{text:string|null;attempts:number;next_try:number;last_reason:string|null}>();
+ expect(cell).toEqual({text:null, attempts:1, next_try:now+120_000, last_reason:'rejected:institution'});
+ // The stored category is sanitized: no model line, no article data.
+ expect(JSON.stringify(cell)).not.toContain('ministry');
+ const abstained = await post(env, {url:board.url, lang:'en', action:'cccccccc-cccc-4ccc-8ccc-cccccccccccc'}, now+120_000);
+ expect(await abstained.json()).toEqual({status:'cooldown', retry_after:120});
+ expect(await DB.prepare('SELECT attempts, last_reason FROM lighter_cache WHERE key=?').bind(key(board,'en')).first<{attempts:number;last_reason:string|null}>()).toEqual({attempts:2, last_reason:'abstained'});
+ run.mockResolvedValueOnce({response:{text:{sentence:englishLine}}});
+ const ready = await post(env, {url:board.url, lang:'en', action:'cccccccc-cccc-4ccc-8ccc-ccccccccccc0'}, now+240_000);
+ expect(await ready.json()).toEqual({status:'ready', text:englishLine});
+ expect(await DB.prepare('SELECT text, attempts, last_reason FROM lighter_cache WHERE key=?').bind(key(board,'en')).first<{text:string;attempts:number;last_reason:string|null}>()).toEqual({text:englishLine, attempts:3, last_reason:null});
+ const all = await DB.prepare("SELECT interactions, attempts, generations, failures FROM lighter_stats WHERE scope='all'").first<{interactions:number;attempts:number;generations:number;failures:number}>();
+ expect(all).toEqual({interactions:3, attempts:3, generations:1, failures:2});
+});
+
+it('keeps the longer backoff and a timeout reason for infrastructure errors', async () => {
+ const DB = database();
+ await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(board.url, board.source, JSON.stringify(board), 1, 1, 1).run();
+ const failing = vi.fn(async () => { throw new Error('timeout'); });
+ const env = {DB, AI:{run:failing}} as unknown as Env;
+ const now = Date.UTC(2026, 10, 20, 23, 0, 0);
+ const failed = await post(env, {url:board.url, lang:'en', action:'dddddddd-dddd-4ddd-8ddd-ddddddddddd1'}, now);
+ const body = await failed.json() as {status:string;retry_after:number};
+ expect(body.status).toBe('cooldown');
+ expect(body.retry_after).toBe(3600);
+ expect(JSON.stringify(body)).not.toContain('timeout');
+ expect(await DB.prepare('SELECT attempts, next_try, last_reason FROM lighter_cache WHERE key=?').bind(key(board,'en')).first<{attempts:number;next_try:number;last_reason:string|null}>()).toEqual({attempts:1, next_try:now+3600_000, last_reason:'timeout'});
+ expect(failing).toHaveBeenCalledTimes(1);
 });
