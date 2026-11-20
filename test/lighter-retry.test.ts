@@ -66,7 +66,7 @@ it('shows the English wait, then a real retry, and does not offer one when the s
  const note = {textContent:'', appendChild(node: unknown){ this.nodes.push(node); }, nodes:[] as unknown[]};
  const button = {
   disabled:false,
-  textContent:'Ask for a satire',
+  textContent:'Show satire',
   attrs:{'data-lighter-lang':'en','data-lighter-url':board.url,'data-cached':'0'} as Record<string, string>,
   parentNode:{querySelector:()=>note},
   setAttribute(name: string, value: string){ this.attrs[name] = String(value); },
@@ -117,7 +117,7 @@ it.each([
  const note = {textContent:''};
  const button = {
   disabled:false,
-  textContent:'Ask for a satire',
+  textContent:'Show satire',
   attrs:{'data-lighter-lang':'en','data-lighter-url':board.url,'data-cached':'0'} as Record<string, string>,
   parentNode:{querySelector:()=>note},
   setAttribute(name: string, value: string){ this.attrs[name] = String(value); },
@@ -152,11 +152,53 @@ it.each([
  }
 });
 
+it('restores one show label after hide, whether or not a line is cached', () => {
+ const note = {textContent:''};
+ const button = {
+  disabled:false,
+  textContent:'Hide satire',
+  attrs:{'data-lighter-lang':'en','data-lighter-url':board.url,'data-cached':'1','data-mode':'open','aria-expanded':'true'} as Record<string, string>,
+  parentNode:{querySelector:()=>note},
+  setAttribute(name: string, value: string){ this.attrs[name] = String(value); },
+  getAttribute(name: string){ return this.attrs[name] ?? null; },
+  removeAttribute(name: string){ delete this.attrs[name]; },
+  closest(selector: string){ return selector === '.lighter-ask' ? button : null; },
+ };
+ const listeners: Record<string, (event: {target: unknown}) => void> = {};
+ const previous = globalThis.document;
+ globalThis.document = {addEventListener(type: string, fn: (event: {target: unknown}) => void){ listeners[type] = fn; }} as unknown as Document;
+ try {
+  eval(lighterClientScript);
+  listeners.click({target: button});
+  expect(button.textContent).toBe('Show satire');
+  expect(button.getAttribute('data-mode')).toBe('closed');
+  expect(button.getAttribute('data-cached')).toBe('1');
+  expect(button.getAttribute('aria-expanded')).toBe('false');
+  button.setAttribute('data-cached', '0');
+  button.setAttribute('data-mode', 'open');
+  button.textContent = 'Hide satire';
+  listeners.click({target: button});
+  expect(button.textContent).toBe('Show satire');
+  expect(button.getAttribute('data-cached')).toBe('0');
+  button.setAttribute('data-lighter-lang', 'es');
+  button.setAttribute('data-mode', 'open');
+  listeners.click({target: button});
+  expect(button.textContent).toBe('Mostrar sátira');
+  expect(lighterClientScript).not.toContain('guardada');
+  expect(lighterClientScript).not.toContain('saved satire');
+ } finally {
+  globalThis.document = previous;
+ }
+});
+
 it('ships the wait copy with the English card and keeps the satire out of the HTML', async () => {
  const html = await renderer.fetch(new Request('https://news.dev.pr/?lang=en'), {items:[board], translations:{[board.url]:{originalTitle:board.title, originalSummary:board.summary, title:'Fiscal Supervision Board Demands Transparency from Government', summary:'The board demands transparency.'}}, feeds:[]}).text();
  expect(html).toContain('Fiscal Supervision Board Demands Transparency from Government');
  expect(html).toContain(`data-lighter-url="${board.url}" data-lighter-lang="en"`);
- expect(html).toContain('Ask for a satire');
+ expect(html).toContain('Show satire');
+ expect(html).toContain('Hide satire');
+ expect(html).not.toContain('Ask for a satire');
+ expect(html).not.toContain('Show the saved satire');
  expect(html).toContain("Satire isn't ready yet. You can try again in about # minutes.");
  expect(html).toContain('Not available today');
  expect(html).toContain("Satire isn't available for this story.");

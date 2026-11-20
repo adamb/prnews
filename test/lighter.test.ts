@@ -89,13 +89,19 @@ it('renders optional escaped edition-specific disclosure with originals and mobi
   const data={items:[story],translations:{},feeds:[],lighter:{[key(story,lang)]:text}};
   const html=await renderer.fetch(new Request('https://news.dev.pr/?lang='+lang),data).text();
   expect(html).toContain('class="lighter-ask"');
-  expect(html).toContain(lang==='es'?'Ver la sátira guardada':'Show the saved satire');
+  expect(html).toContain('data-cached="1"');
+  expect(html).toContain(lang==='es'?'Mostrar sátira':'Show satire');
+  expect(html).not.toContain('Pedir una sátira');
+  expect(html).not.toContain('Ask for a satire');
+  expect(html).not.toContain('Ver la sátira guardada');
+  expect(html).not.toContain('Show the saved satire');
   expect(html).not.toContain(text);
   expect(html).toContain(story.title);expect(html).toContain(encodeURIComponent(story.url));expect(html).toContain('min-height:44px');
   expect(html).toContain('max-width:390px');expect(html).toContain('--bg:#0e1311');
   expect(html).toContain('textContent');expect(html).not.toContain('innerHTML');
   const fallback=await renderer.fetch(new Request('https://news.dev.pr/?lang='+lang),{...data,lighter:{}}).text();
-  expect(fallback).toContain(lang==='es'?'Pedir una sátira':'Ask for a satire');
+  expect(fallback).toContain('data-cached="0"');
+  expect(fallback).toContain(lang==='es'?'Mostrar sátira':'Show satire');
   expect(fallback).not.toContain('<details class="lighter">');
  }
 });

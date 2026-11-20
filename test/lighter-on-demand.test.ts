@@ -65,7 +65,9 @@ it('counts one explicit request, reuses cache, and ignores polls, GET, and page 
  const home = await worker.fetch(new Request('https://news.dev.pr/'), env);
  const html = await home.text();
  expect(html).toContain('data-lighter-url="https://example.com/a" data-lighter-lang="es"');
- expect(html).toContain('Pedir una sátira');
+ expect(html).toContain('Mostrar sátira');
+ expect(html).not.toContain('Pedir una sátira');
+ expect(html).not.toContain('Ver la sátira guardada');
  expect(html).toContain(item.title);
  expect(html).not.toContain(satire);
  expect(run).not.toHaveBeenCalled();

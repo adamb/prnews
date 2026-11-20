@@ -80,8 +80,9 @@ it('asks in the page language and does not clamp the satire note', async () => {
  const english = await renderer.fetch(new Request('https://news.dev.pr/?lang=en'), data).text();
  expect(english).toContain(`data-lighter-url="${spanishStory.url}" data-lighter-lang="en" data-cached="0"`);
  expect(english).toContain(`data-lighter-url="${englishStory.url}" data-lighter-lang="en" data-cached="1"`);
- expect(english).toContain('Ask for a satire');
- expect(english).toContain('Show the saved satire');
+ expect(english).toContain('Show satire');
+ expect(english).not.toContain('Ask for a satire');
+ expect(english).not.toContain('Show the saved satire');
  expect(english).toContain('lang:langOf(button)');
  expect(english).not.toContain(spanishTake);
  expect(english).toContain('.card p.lighter-note{display:block;overflow:visible');
@@ -90,7 +91,9 @@ it('asks in the page language and does not clamp the satire note', async () => {
  expect(english).toContain('text-overflow:ellipsis');
  const spanish = await renderer.fetch(new Request('https://news.dev.pr/'), data).text();
  expect(spanish).toContain(`data-lighter-url="${spanishStory.url}" data-lighter-lang="es" data-cached="1"`);
- expect(spanish).toContain('Ver la sátira guardada');
+ expect(spanish).toContain('Mostrar sátira');
+ expect(spanish).not.toContain('Pedir una sátira');
+ expect(spanish).not.toContain('Ver la sátira guardada');
  expect(spanish).not.toContain(englishTake);
 });
 
@@ -174,7 +177,8 @@ it('replaces only a wrong-language cache cell and will not serve it from the oth
  expect(home.status).toBe(200);
  const homeHtml = await home.text();
  expect(homeHtml).toContain('data-lighter-lang="en" data-cached="0"');
- expect(homeHtml).toContain('Ask for a satire');
+ expect(homeHtml).toContain('Show satire');
+ expect(homeHtml).not.toContain('Ask for a satire');
  expect(homeHtml).not.toContain(spanishTake);
  expect(run).not.toHaveBeenCalled();
  expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string}>()).toEqual({text:spanishTake});
