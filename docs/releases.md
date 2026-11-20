@@ -195,3 +195,9 @@
 - Deployed source: a4c54cb (branch redesign/ui, PR #7). Cloudflare Worker version: 1fb68051-8624-482e-a5d3-ad182506e34a. Previous: 44f543c8-1387-4560-b3c1-879ede9f1b30.
 - One link added to the sections sheet (hidden at 900px and up where the header link shows). No migrations or pipeline changes.
 - Validation: 351 tests, tsc; clean pushed tree before manual `wrangler deploy`; live 200 on / and /?lang=en with the link present.
+
+## 2026-11-20 — Shareable story links
+
+- Deployed source: e0a5346bcefbe2270486e3efd779d118cdb83193 (PR #30, squash-merged to main). Cloudflare Worker version: bd3df842-e37f-4c96-9af4-60960d3506c2. Previous: 1fb68051-8624-482e-a5d3-ad182506e34a.
+- Share button on every card with a permalink id (Web Share, clipboard, then navigation fallback); `/story?id=N` carries Open Graph/Twitter tags with the verbatim headline, excerpt and a real https image. Satire text is never put in meta tags. No migrations or pipeline changes.
+- Validation: 456 tests, typecheck, wrangler dry-run build; clean tree at the pushed SHA before manual `wrangler deploy`. Native share sheet not exercised headless.
