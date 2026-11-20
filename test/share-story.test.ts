@@ -55,7 +55,7 @@ describe('share control', () => {
   expect(html).toContain('.card.brief .share-ask,.card.mid .share-ask{min-height:28px;padding:3px 0;border:0;font-size:11.5px}');
   expect(html).toContain('.share-ask:focus-visible{outline:3px solid var(--accent);outline-offset:3px}');
   const script = shareScript(html);
-  expect(script).toContain('navigator.share({title:title, url:url})');
+  expect(script).toContain('navigator.share(payload)');
   expect(script).toContain('writeText');
   expect(script).toContain('textContent');
   expect(script).toContain('Enlace copiado');
