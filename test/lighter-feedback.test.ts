@@ -15,6 +15,7 @@ const story=(url:string, title:string, summary:string, published=1):Item=>({url,
 const item=story('https://example.com/a','Traffic delays','The agency reports traffic delays.');
 const token=(n:number)=>`${String(n).padStart(8,'0')}-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const hashOf=async(value:string)=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('prnews-lighter-vote:'+value))).toString('hex');
+const takeHashOf=async(text:string)=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('prnews-lighter-take:'+text))).toString('hex');
 
 function database(files=['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql','migrations/0015_lighter_reason.sql','migrations/0016_lighter_votes.sql'],extra=''): D1Database {
  const sqlite=new DatabaseSync(':memory:');
@@ -29,7 +30,7 @@ function database(files=['migrations/0001_live.sql','migrations/0011_lighter.sql
 }
 const seedTake=async(db:D1Database,it:Item,lang:'es'|'en',text:string)=>db.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,1,0)').bind(key(it,lang),text).run();
 const seedArticle=async(db:D1Database,it:Item,published=Date.now())=>db.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(it.url,it.source,JSON.stringify(it),published,published,published).run();
-const voteRows=async(db:D1Database)=>(await db.prepare('SELECT token_hash, cache_key, vote, voted_at FROM lighter_votes ORDER BY cache_key, vote').all<{token_hash:string;cache_key:string;vote:string;voted_at:number}>()).results;
+const voteRows=async(db:D1Database)=>(await db.prepare('SELECT token_hash, cache_key, take_hash, vote, voted_at FROM lighter_votes ORDER BY cache_key, vote').all<{token_hash:string;cache_key:string;take_hash:string;vote:string;voted_at:number}>()).results;
 
 function route(env:Env,body:unknown,now:number,headers:Record<string,string>={}){
  return lighterFeedbackRoute(new Request('https://news.dev.pr/api/lighter-vote',{method:'POST',headers:{Origin:'https://news.dev.pr','Content-Type':'application/json','X-PRNews-Action':'lighter-vote','Sec-Fetch-Site':'same-origin',...headers},body:typeof body==='string'?body:JSON.stringify(body)}),env,now) as Promise<Response>;
@@ -56,14 +57,17 @@ it('refuses GET, other origins, foreign actions, and invalid bodies without a wr
  expect(await route(env,'not json',now)).toMatchObject({status:400});
  expect(await route(env,'x'.repeat(1001),now)).toMatchObject({status:400});
  for (const body of [
-  {url:item.url,lang:'en',vote:'sideways',token:token(1)},
-  {url:item.url,lang:'fr',vote:'up',token:token(1)},
-  {url:item.url,lang:'en',vote:'up',token:'not-a-uuid'},
-  {url:'http://example.com/a',lang:'en',vote:'up',token:token(1)},
-  {url:item.url,lang:'en',token:token(1)},
-  {lang:'en',vote:'up',token:token(1)},
+  {url:item.url,lang:'en',vote:'sideways',token:token(1),take:await takeHashOf(takeEn)},
+  {url:item.url,lang:'fr',vote:'up',token:token(1),take:await takeHashOf(takeEn)},
+  {url:item.url,lang:'en',vote:'up',token:'not-a-uuid',take:await takeHashOf(takeEn)},
+  {url:'http://example.com/a',lang:'en',vote:'up',token:token(1),take:await takeHashOf(takeEn)},
+  {url:item.url,lang:'en',token:token(1),take:await takeHashOf(takeEn)},
+  {lang:'en',vote:'up',token:token(1),take:await takeHashOf(takeEn)},
+  {url:item.url,lang:'en',vote:'up',token:token(1)},
+  {url:item.url,lang:'en',vote:'up',token:token(1),take:'not-a-hash'},
+  {url:item.url,lang:'en',vote:'up',token:token(1),take:'xyz'},
  ]) expect(await route(env,body,now)).toMatchObject({status:400});
- expect(await route(env,{url:'https://example.com/missing',lang:'en',vote:'up',token:token(1)},now)).toMatchObject({status:404});
+ expect(await route(env,{url:'https://example.com/missing',lang:'en',vote:'up',token:token(1),take:await takeHashOf(takeEn)},now)).toMatchObject({status:404});
  expect(await voteRows(DB)).toHaveLength(0);
  expect(run).not.toHaveBeenCalled();
 });
@@ -74,7 +78,9 @@ it('stores one current vote per browser per take, idempotent, changeable, and re
  await seedTake(DB,item,'en',takeEn);
  const env={DB} as unknown as Env;
  const now=Date.UTC(2026,10,20,12,0,0);
- const first=await route(env,{url:item.url,lang:'en',vote:'up',token:token(1)},now);
+ const shown=await takeHashOf(takeEn);
+ const cast=(vote:'up'|'down'|'none',n:number)=>route(env,{url:item.url,lang:'en',vote,token:token(n),take:shown},now);
+ const first=await cast('up',1);
  expect(first.status).toBe(200);
  expect(await first.json()).toEqual({status:'ok',vote:'up'});
  expect(first.headers.get('Cache-Control')).toBe('no-store');
@@ -84,30 +90,31 @@ it('stores one current vote per browser per take, idempotent, changeable, and re
  expect(rows[0].token_hash).toBe(await hashOf(token(1)));
  expect(rows[0].token_hash).not.toBe(token(1));
  expect(rows[0].cache_key).toBe(key(item,'en'));
+ expect(rows[0].take_hash).toBe(shown);
  expect(rows[0].voted_at).toBe(now);
  // Replay is idempotent: the same vote again adds no row and no count.
- for(let i=0;i<3;i++)expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(1)},now)).status).toBe(200);
+ for(let i=0;i<3;i++)expect((await cast('up',1)).status).toBe(200);
  expect(await voteRows(DB)).toHaveLength(1);
  let view=await readLighterFeedback(env);
  expect(view).toMatchObject({available:true,up:1,down:0,ratedTakes:1,minSample:FEEDBACK_MIN_SAMPLE,top:[],bottom:[]});
  // A second browser is a second row on the same take.
- expect((await route(env,{url:item.url,lang:'en',vote:'down',token:token(2)},now)).status).toBe(200);
+ expect((await cast('down',2)).status).toBe(200);
  view=await readLighterFeedback(env);
  expect(view).toMatchObject({up:1,down:1,ratedTakes:1});
  // Change moves the same row; retract deletes exactly this browser's row.
- expect((await route(env,{url:item.url,lang:'en',vote:'down',token:token(1)},now)).status).toBe(200);
+ expect((await cast('down',1)).status).toBe(200);
  const firstHash=await hashOf(token(1));
  const mine=(await voteRows(DB)).find(row=>row.token_hash===firstHash)!;
  expect(mine.vote).toBe('down');
  view=await readLighterFeedback(env);
  expect(view).toMatchObject({up:0,down:2});
- expect((await route(env,{url:item.url,lang:'en',vote:'none',token:token(1)},now)).status).toBe(200);
- expect((await route(env,{url:item.url,lang:'en',vote:'none',token:token(1)},now)).status).toBe(200);
+ expect((await cast('none',1)).status).toBe(200);
+ expect((await cast('none',1)).status).toBe(200);
  view=await readLighterFeedback(env);
  expect(view).toMatchObject({up:0,down:1,ratedTakes:1});
  expect(await voteRows(DB)).toHaveLength(1);
  // Totals are derived counts over rows, so they can never go negative.
- expect((await route(env,{url:item.url,lang:'en',vote:'none',token:token(2)},now)).status).toBe(200);
+ expect((await cast('none',2)).status).toBe(200);
  view=await readLighterFeedback(env);
  expect(view).toMatchObject({up:0,down:0,ratedTakes:0});
  // Votes never touch the generation ledger or the daily model budget: the seeded
@@ -122,50 +129,91 @@ it('rejects votes for anything but the current displayed generation',async()=>{
  await seedArticle(DB,item);
  const env={DB} as unknown as Env;
  const now=Date.UTC(2026,10,20,12,0,0);
+ const shown=await takeHashOf(takeEn);
  // No cache row at all.
- let answer=await route(env,{url:item.url,lang:'en',vote:'up',token:token(1)},now);
+ let answer=await route(env,{url:item.url,lang:'en',vote:'up',token:token(1),take:shown},now);
  expect(answer.status).toBe(409);
  expect(await answer.json()).toEqual({status:'gone'});
  // A hidden text (clearly the other edition for this key) is not a votable take.
  await seedTake(DB,item,'en',takeEs);
- answer=await route(env,{url:item.url,lang:'en',vote:'up',token:token(1)},now);
+ answer=await route(env,{url:item.url,lang:'en',vote:'up',token:token(1),take:await takeHashOf(takeEs)},now);
  expect(answer.status).toBe(409);
  // A valid take is votable, but a changed headline is a different generation.
  await DB.prepare('UPDATE lighter_cache SET text=? WHERE key=?').bind(takeEn,key(item,'en')).run();
- expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(1)},now)).status).toBe(200);
+ expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(1),take:shown},now)).status).toBe(200);
  const changed={...item,title:'Traffic delays stretch for miles',summary:'The agency reports traffic delays for miles.'};
  await DB.prepare('UPDATE articles SET payload=? WHERE url=?').bind(JSON.stringify(changed),item.url).run();
- expect((await route(env,{url:item.url,lang:'en',vote:'down',token:token(1)},now)).status).toBe(409);
+ expect((await route(env,{url:item.url,lang:'en',vote:'down',token:token(1),take:shown},now)).status).toBe(409);
  // The new generation has no text yet, so it inherits no rating and accepts no vote.
- expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(2)},now)).status).toBe(409);
+ expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(2),take:shown},now)).status).toBe(409);
  expect(await voteRows(DB)).toHaveLength(1);
 });
 
-it('bounds vote writes with the per-minute bucket and the two in-flight leases',async()=>{
+it('binds votes to the exact displayed text and rejects stale clients on a regenerated take',async()=>{
+ const DB=database();
+ await seedArticle(DB,item);
+ const env={DB} as unknown as Env;
+ const now=Date.UTC(2026,10,20,12,0,0);
+ const textA='The agency reports delays on the roads, version one.';
+ const textB='The agency reports delays on the roads, version two.';
+ // A clearly-wrong-edition line is cleared and the same key can hold a new text:
+ // the cache key alone does not identify the displayed generation.
+ await seedTake(DB,item,'en',textA);
+ const hashA=await takeHashOf(textA), hashB=await takeHashOf(textB);
+ // Three browsers vote on the exact text A.
+ for(const n of [1,5,6]) expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(n),take:hashA},now)).status).toBe(200);
+ // The same key is regenerated with a different text B.
+ await DB.prepare('UPDATE lighter_cache SET text=? WHERE key=?').bind(textB,key(item,'en')).run();
+ // A stale client still showing A cannot vote, retract, or silently rate B.
+ for(const vote of ['up','down','none'] as const) {
+  const stale=await route(env,{url:item.url,lang:'en',vote,token:token(1),take:hashA},now);
+  expect(stale.status).toBe(409);
+  expect(await stale.json()).toEqual({status:'stale'});
+ }
+ expect(await voteRows(DB)).toHaveLength(3);
+ // A client that displays B can vote, and B starts with no inherited ratings.
+ for(const n of [2,3,4]) expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(n),take:hashB},now)).status).toBe(200);
+ const view=await readLighterFeedback(env);
+ // Totals stay honest: A's three votes are still counted, never reassigned to B.
+ expect(view).toMatchObject({available:true,up:6,down:0,ratedTakes:1});
+ if(!view.available)return;
+ // The example is the current text B with only B's own three votes.
+ expect(view.top).toHaveLength(1);
+ expect(view.top[0]).toMatchObject({text:textB,ups:3,downs:0});
+ expect(view.bottom).toEqual([]);
+ // A vote bound to the old text A never rates B, and B's retract removes only B's row.
+ expect((await route(env,{url:item.url,lang:'en',vote:'none',token:token(2),take:hashB},now)).status).toBe(200);
+ const after=await readLighterFeedback(env);
+ // B now has two votes: still a rated take, but below the minimum sample for examples.
+ expect(after).toMatchObject({up:5,ratedTakes:1});
+ if(!after.available)return;
+ expect(after.top).toEqual([]);
+ expect(after.bottom).toEqual([]);
+ // The stale rows stay in the honest historical ledger: no delete ever ran for them.
+ expect(await voteRows(DB)).toHaveLength(5);
+});
+
+it('bounds vote writes with the global per-minute bucket only',async()=>{
  const DB=database();
  await seedArticle(DB,item);
  await seedTake(DB,item,'en',takeEn);
  const env={DB} as unknown as Env;
  const now=Date.UTC(2026,10,20,12,0,0);
  const bucket=Math.floor(now/60000);
+ const shown=await takeHashOf(takeEn);
  // A full bucket refuses before any write and prunes old buckets.
  await DB.prepare('INSERT INTO lighter_vote_rate(bucket,hits) VALUES(?,?)').bind(bucket-3,5).run();
  await DB.prepare('INSERT INTO lighter_vote_rate(bucket,hits) VALUES(?,?)').bind(bucket,FEEDBACK_RATE_PER_MINUTE).run();
- let refused=await route(env,{url:item.url,lang:'en',vote:'up',token:token(1)},now);
+ const refused=await route(env,{url:item.url,lang:'en',vote:'up',token:token(1),take:shown},now);
  expect(refused.status).toBe(429);
  expect(await refused.json()).toEqual({status:'rate'});
  expect((await DB.prepare('SELECT COUNT(*) AS n FROM lighter_vote_rate WHERE bucket=?').first<{n:number}>())!.n).toBe(0);
  expect(await voteRows(DB)).toHaveLength(0);
  await DB.prepare('DELETE FROM lighter_vote_rate').run();
- // Both leases taken: busy. A stale lease is reclaimable; a completed write releases its lease.
- await DB.prepare('UPDATE lighter_vote_inflight SET until_ms=?').bind(now+60000).run();
- refused=await route(env,{url:item.url,lang:'en',vote:'up',token:token(1)},now);
- expect(refused.status).toBe(429);
- expect(await refused.json()).toEqual({status:'busy'});
- await DB.prepare('UPDATE lighter_vote_inflight SET until_ms=? WHERE id=1').bind(now-1).run();
- expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(1)},now)).status).toBe(200);
- const leases=(await DB.prepare('SELECT id, until_ms FROM lighter_vote_inflight ORDER BY id').all<{id:number;until_ms:number}>()).results;
- expect(leases.map(row=>row.until_ms)).toEqual([0,now+60000]);
+ // No in-flight lease exists to refuse honest concurrent voters: a vote is one
+ // cheap D1 write, so nothing but the per-minute bucket bounds concurrency.
+ expect((await route(env,{url:item.url,lang:'en',vote:'up',token:token(1),take:shown},now)).status).toBe(200);
+ expect((await DB.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='lighter_vote_inflight'").first<{n:number}>())!.n).toBe(0);
 });
 
 it('aggregates totals and minimum-sample examples without identifiers',async()=>{
@@ -177,9 +225,10 @@ it('aggregates totals and minimum-sample examples without identifiers',async()=>
  await DB.prepare('INSERT INTO story_ids(id,url) VALUES(?,?)').bind(7,a.url).run();
  const env={DB} as unknown as Env;
  const now=Date.UTC(2026,10,20,12,0,0);
- for (let n=1;n<=3;n++) expect((await route(env,{url:a.url,lang:'en',vote:'up',token:token(n)},now)).status).toBe(200);
- for (let n=11;n<=13;n++) expect((await route(env,{url:b.url,lang:'en',vote:'down',token:token(n)},now)).status).toBe(200);
- expect((await route(env,{url:c.url,lang:'en',vote:'up',token:token(21)},now)).status).toBe(200);
+ const shown=await takeHashOf(takeEn);
+ for (let n=1;n<=3;n++) expect((await route(env,{url:a.url,lang:'en',vote:'up',token:token(n),take:shown},now)).status).toBe(200);
+ for (let n=11;n<=13;n++) expect((await route(env,{url:b.url,lang:'en',vote:'down',token:token(n),take:shown},now)).status).toBe(200);
+ expect((await route(env,{url:c.url,lang:'en',vote:'up',token:token(21),take:shown},now)).status).toBe(200);
  const view=await readLighterFeedback(env);
  expect(view).toMatchObject({available:true,up:4,down:3,ratedTakes:3,minSample:FEEDBACK_MIN_SAMPLE});
  if(!view.available)return;
@@ -191,10 +240,12 @@ it('aggregates totals and minimum-sample examples without identifiers',async()=>
  await attachStoryIds(env,[...view.top,...view.bottom]);
  expect(view.top[0].storyId).toBe(7);
  expect(view.bottom[0].storyId).toBeNull();
- // A take the current guard hides keeps its counted votes but is not displayed as an example.
+ // A take whose stored text was replaced (here by a line the guard hides) keeps its
+ // counted votes in the totals, but they are bound to the replaced text: the key no
+ // longer counts as a take with a current vote and is not displayed as an example.
  await DB.prepare('UPDATE lighter_cache SET text=? WHERE key=?').bind('nope',key(b,'en')).run();
  const hidden=await readLighterFeedback(env);
- expect(hidden).toMatchObject({available:true,up:4,down:3,ratedTakes:3});
+ expect(hidden).toMatchObject({available:true,up:4,down:3,ratedTakes:2});
  if(!hidden.available)return;
  expect(hidden.top.map(example=>example.url)).toEqual([a.url]);
  expect(hidden.bottom).toEqual([]);
@@ -208,11 +259,10 @@ it('keeps the additive migration replayable',()=>{
  for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql']) sqlite.exec(readFileSync(file,'utf8'));
  sqlite.exec(readFileSync('migrations/0016_lighter_votes.sql','utf8'));
  sqlite.exec(readFileSync('migrations/0016_lighter_votes.sql','utf8'));
- sqlite.exec("INSERT INTO lighter_votes(token_hash,cache_key,vote,voted_at) VALUES ('h','k','up',1)");
+ sqlite.exec("INSERT INTO lighter_votes(token_hash,cache_key,take_hash,vote,voted_at) VALUES ('h','k','t','up',1)");
  sqlite.exec('INSERT INTO lighter_vote_rate(bucket,hits) VALUES(1,1)');
  expect(sqlite.prepare('SELECT COUNT(*) AS n FROM lighter_votes').get()).toEqual({n:1});
- expect(sqlite.prepare('SELECT COUNT(*) AS n FROM lighter_vote_inflight WHERE until_ms=0').get()).toEqual({n:2});
- expect(sqlite.prepare("SELECT vote FROM lighter_votes WHERE token_hash='h' AND cache_key='k'").get()).toEqual({vote:'up'});
+ expect(sqlite.prepare("SELECT vote FROM lighter_votes WHERE token_hash='h' AND cache_key='k' AND take_hash='t'").get()).toEqual({vote:'up'});
 });
 
 it('renders the aggregate on /stats separately from generation counts and clicks',async()=>{
@@ -221,8 +271,9 @@ it('renders the aggregate on /stats separately from generation counts and clicks
  const b=story('https://example.com/b','Traffic delays continue','The agency reports more traffic delays.');
  for (const it of [a,b]) { await seedArticle(DB,it); await seedTake(DB,it,'en',takeEn); }
  const env={DB} as unknown as Env;
- for (let n=1;n<=3;n++) expect((await workerPost(env,{url:a.url,lang:'en',vote:'up',token:token(n)})).status).toBe(200);
- for (let n=11;n<=13;n++) expect((await workerPost(env,{url:b.url,lang:'en',vote:'down',token:token(n)})).status).toBe(200);
+ const shown=await takeHashOf(takeEn);
+ for (let n=1;n<=3;n++) expect((await workerPost(env,{url:a.url,lang:'en',vote:'up',token:token(n),take:shown})).status).toBe(200);
+ for (let n=11;n<=13;n++) expect((await workerPost(env,{url:b.url,lang:'en',vote:'down',token:token(n),take:shown})).status).toBe(200);
  const html=await (await worker.fetch(new Request('https://news.dev.pr/stats?lang=en'),env)).text();
  expect(html.indexOf('id="lighter-stats"')).toBeGreaterThan(-1);
  expect(html.indexOf('id="lighter-feedback"')).toBeGreaterThan(html.indexOf('id="lighter-stats"'));
@@ -287,6 +338,10 @@ it('keeps the client copy accessible, localized, and free of unsafe DOM sinks',(
  expect(lighterFeedbackClientScript).toContain("'/api/lighter-vote'");
  expect(lighterFeedbackClientScript).toContain("'X-PRNews-Action':'lighter-vote'");
  expect(lighterFeedbackClientScript).toContain('crypto.randomUUID');
+ // The vote binds to the exact displayed text and a stale client is told to reopen.
+ expect(lighterFeedbackClientScript).toContain('prnews-lighter-take:');
+ expect(lighterFeedbackClientScript).toContain('This satire is no longer the current version.');
+ expect(lighterFeedbackClientScript).toContain('Esta sátira ya no es la versión actual.');
  expect(lighterFeedbackClientScript).not.toContain(token(1));
 });
 
@@ -344,8 +399,9 @@ function fixture(lineText:string){
  return {listeners,storage,documentStub,localStorageStub,fetchMock,note};
 }
 
-async function withPage(lineText:string,run:(page:ReturnType<typeof fixture>,flush:()=>Promise<void>)=>Promise<void>,blockStorage=false){
+async function withPage(lineText:string,run:(page:ReturnType<typeof fixture>,flush:()=>Promise<void>)=>Promise<void>,blockStorage=false,noSubtle=false){
  const page=fixture(lineText);
+ const cryptoDesc=Object.getOwnPropertyDescriptor(globalThis,'crypto')!;
  const previous={document:globalThis.document,fetch:globalThis.fetch,localStorage:globalThis.localStorage};
  const flush=()=>new Promise<void>(resolve=>setTimeout(resolve,0));
  globalThis.document=page.documentStub as unknown as Document;
@@ -353,8 +409,14 @@ async function withPage(lineText:string,run:(page:ReturnType<typeof fixture>,flu
  globalThis.localStorage=(blockStorage?{
   getItem(){throw new Error('blocked');},setItem(){throw new Error('blocked');},removeItem(){throw new Error('blocked');},
  }:page.localStorageStub) as unknown as Storage;
+ // A browser can offer crypto.randomUUID but not crypto.subtle (for example a very
+ // old script engine): voting must then fail honestly with no request.
+ if(noSubtle)Object.defineProperty(globalThis,'crypto',{configurable:true,get:()=>({randomUUID:()=>'12345678-1234-4123-8123-123456789abc'})});
  try { eval(lighterFeedbackClientScript); await run(page,flush); }
- finally { globalThis.document=previous.document; globalThis.fetch=previous.fetch; globalThis.localStorage=previous.localStorage; }
+ finally {
+  globalThis.document=previous.document; globalThis.fetch=previous.fetch; globalThis.localStorage=previous.localStorage;
+  if(noSubtle)Object.defineProperty(globalThis,'crypto',cryptoDesc);
+ }
 }
 
 it('builds controls under a displayed line, votes, changes, and retracts',async()=>{
@@ -384,6 +446,9 @@ it('builds controls under a displayed line, votes, changes, and retracts',async(
   expect(page.fetchMock).toHaveBeenCalledTimes(1);
   const sent=JSON.parse(String(page.fetchMock.mock.calls[0][1]?.body??''));
   expect(sent).toMatchObject({url:item.url,lang:'en',vote:'up'});
+  // The vote names the SHA-256 of the exact displayed text, so it binds to this
+  // generation and a later regenerated text can never inherit the rating.
+  expect(sent.take).toBe(await takeHashOf(takeEn));
   expect(String(sent.token)).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   expect(up.getAttribute('aria-pressed')).toBe('true');
   expect(down.getAttribute('aria-pressed')).toBe('false');
@@ -413,6 +478,32 @@ it('fails honestly when browser storage is blocked',async()=>{
   expect(page.fetchMock).not.toHaveBeenCalled();
   expect(wrap.querySelector('.lighter-vote-note').textContent).toBe('Could not save the vote. Try again.');
  },true);
+});
+
+it('fails honestly without crypto.subtle: no request, no hidden write',async()=>{
+ await withPage(takeEn,async(page,flush)=>{
+  const wrap=page.note.querySelector('.lighter-vote');
+  page.listeners['click']({target:wrap.querySelectorAll('.lighter-vote-btn')[0]});
+  await flush();await flush();
+  expect(page.fetchMock).not.toHaveBeenCalled();
+  expect(wrap.querySelector('.lighter-vote-note').textContent).toBe('Could not save the vote. Try again.');
+ },false,true);
+});
+
+it('tells a stale client to reopen the satire instead of rating a replacement',async()=>{
+ await withPage(takeEn,async(page,flush)=>{
+  const wrap=page.note.querySelector('.lighter-vote');
+  page.fetchMock.mockResolvedValueOnce({ok:false,status:409,json:async()=>({status:'stale'})});
+  page.listeners['click']({target:wrap.querySelectorAll('.lighter-vote-btn')[0]});
+  await flush();await flush();
+  expect(page.fetchMock).toHaveBeenCalledTimes(1);
+  const sent=JSON.parse(String(page.fetchMock.mock.calls[0][1]?.body??''));
+  expect(sent.take).toBe(await takeHashOf(takeEn));
+  expect(wrap.querySelector('.lighter-vote-note').textContent).toBe('This satire is no longer the current version. Hide it and show it again to vote on the new one.');
+  // The buttons are re-enabled and nothing was recorded locally.
+  expect(wrap.querySelectorAll('.lighter-vote-btn')[0].disabled).toBe(false);
+  expect(page.storage.has('prnews-lighter-votes')).toBe(false);
+ });
 });
 
 it('renders no vote numbers without the view and keeps the stats copy bilingual',async()=>{

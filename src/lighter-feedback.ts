@@ -4,27 +4,33 @@ import type {Item} from './parse';
 import {VERSION, key, valid} from './lighter';
 
 /** Anonymous 👍/👎 on a displayed satire take.
- * A vote is accepted only for the exact cached generation the page can show right
- * now: the stored article's current headline/excerpt/language, resolved to the same
- * lighter-2 cache key generation uses, with a stored text that still passes valid().
- * A future headline or excerpt produces a different key, so it inherits no ratings.
- * One current vote per browser per take: the browser keeps a random UUID in
- * localStorage; the server stores only its SHA-256 hash and (token_hash, cache_key)
- * is the primary key, so repeats are idempotent and changes move one row.
+ * A vote binds to the exact displayed generation: not just the lighter-2 cache key
+ * (prompt version, URL, headline, excerpt, language) but the exact stored text. The
+ * cache key alone cannot distinguish a regenerated take: a clearly-wrong-edition line
+ * is cleared on the next explicit request and the same key can then hold a new,
+ * different text. The server re-resolves the current take, computes the SHA-256 of
+ * its trimmed text, and requires the client to name the same hash; anything else is
+ * stale and answers 409 without writing. A regenerated take therefore starts with no
+ * inherited ratings, while the old text's votes stay in the ledger, still counted in
+ * the up/down totals and never reassigned to the replacement.
+ * One current vote per browser per exact generation: the browser keeps a random UUID
+ * in localStorage; the server stores only its SHA-256 hash and (token_hash, cache_key,
+ * take_hash) is the primary key, so repeats are idempotent and changes move one row.
  * No email, IP, cookie, account, or fingerprint is read or stored. Votes never call
- * the model and never touch the generation budget or its removed global limits;
- * the guards below protect the counts only. GET never reaches a write. */
+ * the model and never touch the generation budget or its removed global limits; the
+ * single guard below (a global per-minute bucket) protects the counts only, because a
+ * vote is one cheap D1 write and a hard in-flight cap would refuse honest voters.
+ * GET never reaches a write. */
 
 /** A take needs at least this many votes before /stats lists it as an example,
  * so one vote can never present a take as the best or worst. */
 export const FEEDBACK_MIN_SAMPLE = 3;
-/** Vote writes per UTC minute, across everyone (not per person, no address stored). */
+/** Vote writes per UTC minute, across everyone (not per person, no address stored).
+ * Generous for real readers, but it bounds flood writes to the vote ledger. */
 export const FEEDBACK_RATE_PER_MINUTE = 60;
-/** Overlapping vote writes stay bounded to two short leases. */
-export const FEEDBACK_MAX_CONCURRENT = 2;
-const VOTE_LEASE_MS = 10_000;
 const BODY_LIMIT = 1000;
 const TOKEN_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const TAKE_HASH = /^[0-9a-f]{64}$/;
 
 export type FeedbackEdition = 'es' | 'en';
 export type FeedbackVote = 'up' | 'down' | 'none';
@@ -44,11 +50,23 @@ function sameOrigin(request: Request, url: URL) {
   return type.startsWith('application/json');
 }
 
-/** Domain-separated SHA-256, so the stored hash cannot be reused as any other feature's id. */
-async function tokenHash(token: string): Promise<string> {
-  const bytes = new TextEncoder().encode('prnews-lighter-vote:' + token);
+async function digestHex(prefix: string, value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(prefix + value);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/** Domain-separated SHA-256, so the stored hash cannot be reused as any other feature's id. */
+function tokenHash(token: string) {
+  return digestHex('prnews-lighter-vote:', token);
+}
+
+/** SHA-256 of the exact displayed take text. This is the generation binding: two
+ * different texts under the same cache key get different take hashes, so a vote
+ * can never silently rate a replacement. The client computes the same hash over
+ * the text it is showing; a mismatch is a stale client and is rejected. */
+function takeHash(text: string) {
+  return digestHex('prnews-lighter-take:', text);
 }
 
 async function loadStored(env: Env, articleUrl: string): Promise<Item | null> {
@@ -63,8 +81,9 @@ async function votableTake(env: Env, item: Item, lang: FeedbackEdition) {
   try {
     const row = await env.DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(cacheKey).first<{text: string | null}>();
     const take = typeof row?.text === 'string' ? row.text.trim() : '';
-    return {cacheKey, take: take && valid(take, item, lang) ? take : ''};
-  } catch { return {cacheKey, take: ''}; }
+    if (!take || !valid(take, item, lang)) return {cacheKey, take: '', takeHash: ''};
+    return {cacheKey, take, takeHash: await takeHash(take)};
+  } catch { return {cacheKey, take: '', takeHash: ''}; }
 }
 
 async function allowVoteRate(env: Env, now: number) {
@@ -72,19 +91,6 @@ async function allowVoteRate(env: Env, now: number) {
   await env.DB.prepare('DELETE FROM lighter_vote_rate WHERE bucket<?').bind(bucket - 2).run();
   const result = await env.DB.prepare('INSERT INTO lighter_vote_rate(bucket, hits) VALUES(?,1) ON CONFLICT(bucket) DO UPDATE SET hits=hits+1 WHERE hits<?').bind(bucket, FEEDBACK_RATE_PER_MINUTE).run();
   return changed(result);
-}
-
-async function claimVoteSlot(env: Env, now: number) {
-  const until = now + VOTE_LEASE_MS;
-  for (let id = 1; id <= FEEDBACK_MAX_CONCURRENT; id++) {
-    const result = await env.DB.prepare('UPDATE lighter_vote_inflight SET until_ms=? WHERE id=? AND until_ms<=?').bind(until, id, now).run();
-    if (changed(result)) return {id, until};
-  }
-  return null;
-}
-
-async function releaseVoteSlot(env: Env, slot: {id: number; until: number} | null) {
-  if (slot) await env.DB.prepare('UPDATE lighter_vote_inflight SET until_ms=0 WHERE id=? AND until_ms=?').bind(slot.id, slot.until).run().catch(() => {});
 }
 
 /** Public vote submission. GET, HEAD, and page renders never reach a write; no AI anywhere. */
@@ -99,31 +105,32 @@ export async function lighterFeedbackRoute(request: Request, env: Env, now = Dat
   if (raw.length > BODY_LIMIT) return json({status: 'bad_request'}, 400);
   let body: unknown;
   try { body = JSON.parse(raw); } catch { return json({status: 'bad_request'}, 400); }
-  const record = body && typeof body === 'object' ? body as {url?: unknown; lang?: unknown; vote?: unknown; token?: unknown} : {};
+  const record = body && typeof body === 'object' ? body as {url?: unknown; lang?: unknown; vote?: unknown; token?: unknown; take?: unknown} : {};
   const articleUrl = typeof record.url === 'string' && record.url.length >= 8 && record.url.length <= 2000 && /^https:\/\//.test(record.url) && !/[\u0000-\u001f\s]/.test(record.url) ? record.url : '';
   const lang: FeedbackEdition | '' = record.lang === 'es' || record.lang === 'en' ? record.lang : '';
   const vote: FeedbackVote | '' = record.vote === 'up' || record.vote === 'down' || record.vote === 'none' ? record.vote : '';
   const token = typeof record.token === 'string' && record.token.length <= 100 && TOKEN_ID.test(record.token) ? record.token.toLowerCase() : '';
-  if (!articleUrl || !lang || !vote || !token) return json({status: 'bad_request'}, 400);
+  const displayed = typeof record.take === 'string' && record.take.length === 64 && TAKE_HASH.test(record.take) ? record.take.toLowerCase() : '';
+  if (!articleUrl || !lang || !vote || !token || !displayed) return json({status: 'bad_request'}, 400);
   try {
     const item = await loadStored(env, articleUrl);
     if (!item) return json({status: 'unknown'}, 404);
     const take = await votableTake(env, item, lang);
     // Not the displayed take: superseded, hidden, or never generated. Never a write.
     if (!take.take) return json({status: 'gone'}, 409);
+    // Stale client: the browser shows a different generation than the one stored now
+    // (for example a replaced wrong-language line). The vote binds to the displayed
+    // text, so it is rejected instead of silently rating the replacement.
+    if (displayed !== take.takeHash) return json({status: 'stale'}, 409);
     if (!(await allowVoteRate(env, now))) return json({status: 'rate'}, 429);
-    const slot = await claimVoteSlot(env, now);
-    if (!slot) return json({status: 'busy'}, 429);
-    try {
-      const hash = await tokenHash(token);
-      if (vote === 'none') {
-        await env.DB.prepare('DELETE FROM lighter_votes WHERE token_hash=? AND cache_key=?').bind(hash, take.cacheKey).run();
-      } else {
-        await env.DB.prepare('INSERT INTO lighter_votes(token_hash,cache_key,vote,voted_at) VALUES(?,?,?,?) ON CONFLICT(token_hash,cache_key) DO UPDATE SET vote=excluded.vote, voted_at=excluded.voted_at').bind(hash, take.cacheKey, vote, now).run();
-      }
-      console.info('lighter_vote', {lang, vote});
-      return json({status: 'ok', vote});
-    } finally { await releaseVoteSlot(env, slot); }
+    const hash = await tokenHash(token);
+    if (vote === 'none') {
+      await env.DB.prepare('DELETE FROM lighter_votes WHERE token_hash=? AND cache_key=? AND take_hash=?').bind(hash, take.cacheKey, take.takeHash).run();
+    } else {
+      await env.DB.prepare('INSERT INTO lighter_votes(token_hash,cache_key,take_hash,vote,voted_at) VALUES(?,?,?,?,?) ON CONFLICT(token_hash,cache_key,take_hash) DO UPDATE SET vote=excluded.vote, voted_at=excluded.voted_at').bind(hash, take.cacheKey, take.takeHash, vote, now).run();
+    }
+    console.info('lighter_vote', {lang, vote});
+    return json({status: 'ok', vote});
   } catch {
     return json({status: 'unavailable'}, 503);
   }
@@ -152,57 +159,62 @@ async function takeTexts(env: Env, cacheKeys: string[]): Promise<Map<string, str
   return found;
 }
 
-type AggregateRow = {cache_key: string; ups: number; downs: number};
+type GroupRow = {cache_key: string; take_hash: string; ups: number; downs: number; n: number};
 
-async function exampleRows(env: Env, order: 'top' | 'bottom'): Promise<AggregateRow[]> {
-  // Best and worst stay separate: a take only leads its list when its net score
-  // has that sign, so a down-voted take never appears under "most up-voted".
-  const sign = order === 'top' ? '>0' : '<0';
+async function voteGroups(env: Env): Promise<GroupRow[]> {
   const rows = await env.DB.prepare(
-    `SELECT cache_key, SUM(CASE WHEN vote='up' THEN 1 ELSE 0 END) AS ups, SUM(CASE WHEN vote='down' THEN 1 ELSE 0 END) AS downs
-     FROM lighter_votes GROUP BY cache_key HAVING COUNT(*)>=? AND SUM(CASE WHEN vote='up' THEN 1 ELSE -1 END)${sign}
-     ORDER BY SUM(CASE WHEN vote='up' THEN 1 ELSE -1 END) ${order === 'top' ? 'DESC' : 'ASC'}, COUNT(*) DESC, cache_key LIMIT 3`
-  ).bind(FEEDBACK_MIN_SAMPLE).all<AggregateRow>();
+    `SELECT cache_key, take_hash, COUNT(*) AS n,
+            SUM(CASE WHEN vote='up' THEN 1 ELSE 0 END) AS ups,
+            SUM(CASE WHEN vote='down' THEN 1 ELSE 0 END) AS downs
+     FROM lighter_votes GROUP BY cache_key, take_hash`
+  ).all<GroupRow>();
   return rows.results;
 }
 
-async function examples(env: Env, rows: AggregateRow[], skipKeys: Set<string>): Promise<FeedbackExample[]> {
-  const texts = await takeTexts(env, rows.map(row => row.cache_key));
-  const out: FeedbackExample[] = [];
-  for (const row of rows) {
-    if (skipKeys.has(row.cache_key)) continue;
-    const take = takeFromKey(row.cache_key);
-    const text = texts.get(row.cache_key);
-    if (!take || !text) continue;
-    const item = {url: take.url, source: '', title: take.title, summary: take.summary, image: '', time: 0, observed: false, section: 'otras', reason: 'feedback'} as Item;
-    // A take the current guard hides is not shown as an example, but its votes stay counted.
-    if (!valid(text, item, take.lang)) continue;
-    out.push({lang: take.lang, title: take.title, text, url: take.url, storyId: null, ups: Number(row.ups) || 0, downs: Number(row.downs) || 0});
-    skipKeys.add(row.cache_key);
-  }
-  return out;
-}
-
-/** Aggregate read for /stats. A missing table or failed read is unavailable, never zero. */
+/** Aggregate read for /stats. A missing table or failed read is unavailable, never zero.
+ * Totals count every stored vote — each row is one browser's current vote on one exact
+ * generation, and a replaced text's votes stay in history instead of being reassigned.
+ * The rated-take count and the examples bind to the current stored text only. */
 export async function readLighterFeedback(env: Env): Promise<FeedbackView | {available: false}> {
   try {
     await env.DB.prepare('SELECT token_hash FROM lighter_votes LIMIT 1').first();
-    const totals = await env.DB.prepare("SELECT vote, COUNT(*) AS n FROM lighter_votes GROUP BY vote").all<{vote: string; n: number}>();
+    const groups = await voteGroups(env);
     let up = 0, down = 0;
-    for (const row of totals.results) { if (row.vote === 'up') up += Number(row.n) || 0; else if (row.vote === 'down') down += Number(row.n) || 0; }
-    const rated = await env.DB.prepare('SELECT COUNT(DISTINCT cache_key) AS n FROM lighter_votes').first<{n: number}>();
-    const topRows = await exampleRows(env, 'top');
-    const top = await examples(env, topRows, new Set());
-    const bottomRows = await exampleRows(env, 'bottom');
-    const bottom = await examples(env, bottomRows, new Set(topRows.map(row => row.cache_key)));
-    return {available: true, up, down, ratedTakes: Number(rated?.n) || 0, minSample: FEEDBACK_MIN_SAMPLE, top, bottom};
+    for (const group of groups) { up += Number(group.ups) || 0; down += Number(group.downs) || 0; }
+    const texts = await takeTexts(env, groups.map(group => group.cache_key));
+    const currentHash = new Map<string, string>();
+    for (const [cacheKey, text] of texts) currentHash.set(cacheKey, await takeHash(text));
+    // Only votes whose take hash matches the currently stored text rate that text.
+    const current = groups.filter(group => currentHash.get(group.cache_key) === group.take_hash);
+    const ratedTakes = new Set(current.map(group => group.cache_key)).size;
+    const order = (sign: 1 | -1) => current
+      .filter(group => group.n >= FEEDBACK_MIN_SAMPLE && (group.ups - group.downs) * sign > 0)
+      .sort((a, b) => (b.ups - b.downs) * sign - (a.ups - a.downs) * sign || b.n - a.n || (a.cache_key < b.cache_key ? -1 : 1))
+      .slice(0, 3);
+    const build = async (rows: GroupRow[]): Promise<FeedbackExample[]> => {
+      const out: FeedbackExample[] = [];
+      for (const row of rows) {
+        const take = takeFromKey(row.cache_key);
+        const text = texts.get(row.cache_key);
+        if (!take || !text) continue;
+        const item = {url: take.url, source: '', title: take.title, summary: take.summary, image: '', time: 0, observed: false, section: 'otras', reason: 'feedback'} as Item;
+        // A take the current guard hides is not shown as an example, but its votes stay counted.
+        if (!valid(text, item, take.lang)) continue;
+        out.push({lang: take.lang, title: take.title, text, url: take.url, storyId: null, ups: Number(row.ups) || 0, downs: Number(row.downs) || 0});
+      }
+      return out;
+    };
+    const top = await build(order(1));
+    const seen = new Set(order(1).map(row => row.cache_key));
+    const bottom = await build(order(-1).filter(row => !seen.has(row.cache_key)));
+    return {available: true, up, down, ratedTakes, minSample: FEEDBACK_MIN_SAMPLE, top, bottom};
   } catch { return {available: false}; }
 }
 
 /** Client copy for the vote controls. Same rules as lighterClientScript: DOM APIs and
  * textContent only, no innerHTML, no eval, no cookies, no analytics. */
 export const lighterFeedbackClientScript = `(function(){
- var copy={es:{up:'Me gusta esta sátira',down:'No me gusta esta sátira',saved:'¡Gracias por tu voto!',removed:'Tu voto se retiró.',fail:'No se pudo guardar el voto. Inténtalo de nuevo.',anon:'Voto anónimo por navegador: se guarda un token aleatorio en este navegador, nunca tu correo ni datos personales.'},en:{up:'I like this satire',down:'I dislike this satire',saved:'Thanks for your vote!',removed:'Your vote was removed.',fail:'Could not save the vote. Try again.',anon:'Anonymous per-browser vote: a random token is kept in this browser, never your email or personal data.'}};
+ var copy={es:{up:'Me gusta esta sátira',down:'No me gusta esta sátira',saved:'¡Gracias por tu voto!',removed:'Tu voto se retiró.',fail:'No se pudo guardar el voto. Inténtalo de nuevo.',stale:'Esta sátira ya no es la versión actual. Ocúltala y vuelve a mostrarla para votar sobre la nueva.',anon:'Voto anónimo por navegador: se guarda un token aleatorio en este navegador, nunca tu correo ni datos personales.'},en:{up:'I like this satire',down:'I dislike this satire',saved:'Thanks for your vote!',removed:'Your vote was removed.',fail:'Could not save the vote. Try again.',stale:'This satire is no longer the current version. Hide it and show it again to vote on the new one.',anon:'Anonymous per-browser vote: a random token is kept in this browser, never your email or personal data.'}};
  function langOf(ask){return ask&&ask.getAttribute('data-lighter-lang')==='en'?'en':'es';}
  function token(){
   try{
@@ -212,6 +224,20 @@ export const lighterFeedbackClientScript = `(function(){
    t=crypto.randomUUID();
    localStorage.setItem('prnews-lighter-vote-token',t);
    return t;
+  }catch(e){return '';}
+ }
+ // SHA-256 of the exact displayed text, the same domain-separated digest the server
+ // computes over the stored take. The vote names this hash, so it binds to the exact
+ // generation the browser is showing; a replaced take answers stale instead of
+ // silently receiving the old text's rating.
+ function takeHash(text){
+  try{
+   if(typeof crypto==='undefined'||!crypto.subtle||typeof crypto.subtle.digest!=='function')return '';
+   return crypto.subtle.digest('SHA-256',new TextEncoder().encode('prnews-lighter-take:'+text)).then(function(buffer){
+    var bytes=new Uint8Array(buffer),out='',i;
+    for(i=0;i<bytes.length;i++)out+=(bytes[i]<16?'0':'')+bytes[i].toString(16);
+    return out;
+   });
   }catch(e){return '';}
  }
  function digest(text){var h=0;for(var i=0;i<text.length;i++){h=(h*33+text.charCodeAt(i))|0;}return (h>>>0).toString(36);}
@@ -273,6 +299,7 @@ export const lighterFeedbackClientScript = `(function(){
   var line=note.querySelector('span');
   var status=wrap.querySelector('.lighter-vote-note');
   function say(t){if(status)status.textContent=t;}
+  function free(){wrap.removeAttribute('data-busy');for(var j=0;j<all.length;j++)all[j].disabled=false;}
   if(!line||wrap.getAttribute('data-busy')==='1')return;
   var text=line.textContent.replace(/^\\s+|\\s+$/g,'');
   var ask=note.parentNode&&typeof note.parentNode.querySelector==='function'?note.parentNode.querySelector('.lighter-ask'):null;
@@ -281,14 +308,17 @@ export const lighterFeedbackClientScript = `(function(){
   if(!url||!text)return;
   var tok=token();
   if(!tok){say(copy[lang].fail);return;}
+  var hashed=takeHash(text);
+  if(!hashed){say(copy[lang].fail);return;}
   var tk=takeKey(url,lang,text),prev=saved()[tk]||'';
   var next=prev===button.getAttribute('data-dir')?'none':button.getAttribute('data-dir');
   var all=wrap.querySelectorAll('.lighter-vote-btn');
   wrap.setAttribute('data-busy','1');
   for(var i=0;i<all.length;i++)all[i].disabled=true;
-  fetch('/api/lighter-vote',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-PRNews-Action':'lighter-vote'},body:JSON.stringify({url:url,lang:lang,vote:next,token:tok})}).then(function(r){return r.json().then(function(p){return {ok:r.ok,status:r.status,payload:p};});}).then(function(result){
-   wrap.removeAttribute('data-busy');
-   for(var i=0;i<all.length;i++)all[i].disabled=false;
+  hashed.then(function(take){
+   return fetch('/api/lighter-vote',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-PRNews-Action':'lighter-vote'},body:JSON.stringify({url:url,lang:lang,vote:next,token:tok,take:take})}).then(function(r){return r.json().then(function(p){return {ok:r.ok,status:r.status,payload:p};});});
+  }).then(function(result){
+   free();
    var payload=result.payload||{};
    if(result.ok&&payload.status==='ok'){
     remember(tk,next==='none'?'':next);
@@ -296,10 +326,9 @@ export const lighterFeedbackClientScript = `(function(){
     say(next==='none'?copy[lang].removed:copy[lang].saved);
     return;
    }
-   say(copy[lang].fail);
+   say(payload.status==='stale'||payload.status==='gone'?copy[lang].stale:copy[lang].fail);
   }).catch(function(){
-   wrap.removeAttribute('data-busy');
-   for(var i=0;i<all.length;i++)all[i].disabled=false;
+   free();
    say(copy[lang].fail);
   });
  });
