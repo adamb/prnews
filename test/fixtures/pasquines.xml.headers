@@ -1,0 +1,6 @@
+feed: https://pasquines.us/feed/
+status: 200
+content-type: application/rss+xml; charset=UTF-8
+captured: 2026-11-20
+items: 10
+robots: https://pasquines.us/robots.txt (Yoast) has an empty Disallow for User-agent: *; the feed is allowed. Article pages sit behind a Cloudflare challenge for this crawler; image enrichment will keep its bounded backoff and the monogram fallback.

@@ -7,7 +7,8 @@ import type { Item } from '../src/parse';
 import worker from '../src/render';
 const items = data.items as Item[];
 // Sources added after the bundled English snapshot. They enter the bounded live queue; this file does not call Workers AI.
-const laterSources = ['elvocero','wapa','wipr','claridad','radioisla','walo'];
+// Pasquines is absent because isEnglishSource covers it (bilingual English-default, like sjds).
+const laterSources = ['elvocero','wapa','wipr','claridad','radioisla','walo','vision','lacalle','elsol','esnoticia','eloriental','laesquina','millones','eyboricua','wkaq','presencia'];
 const needsBundledTranslation = (item: Item) => !isEnglishSource(item.source) && item.source !== 'reddit_puertorico' && !laterSources.includes(item.source);
 it('provides a current English translation for each pretranslated original snapshot article', () => {
  for (const item of items.filter(needsBundledTranslation)) {

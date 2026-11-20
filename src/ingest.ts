@@ -93,10 +93,10 @@ async function translatePending(env:Env, now:number) {
  // render stays stranded. Rows already readable from the bundled snapshot translations are skipped
  // too, so no duplicate AI calls are made for them. Attempts stay bounded at 96 per run with at
  // least an hour between retries of the same row. Language is per article, not per source:
- // sjds/nimb/newspr items are English by source default, and any item whose payload is
+ // sjds/nimb/newspr/pasquines items are English by source default, and any item whose payload is
  // demonstrably Spanish (originalLanguage='es') is still queued like any other Spanish
  // article; rows without a per-article signal keep their source's language default.
- const {results:rows}=await env.DB.prepare("SELECT url,payload,translation,translation_attempt FROM articles WHERE published_at>=? AND (json_extract(payload,'$.originalLanguage')='es' OR (source NOT IN ('sjds','nimb',?) AND COALESCE(json_extract(payload,'$.originalLanguage'),'')!='en'))").bind(now-14*86400000,newsprSource).all<{url:string;payload:string;translation:string|null;translation_attempt:number}>();
+ const {results:rows}=await env.DB.prepare("SELECT url,payload,translation,translation_attempt FROM articles WHERE published_at>=? AND (json_extract(payload,'$.originalLanguage')='es' OR (source NOT IN ('sjds','nimb','pasquines',?) AND COALESCE(json_extract(payload,'$.originalLanguage'),'')!='en'))").bind(now-14*86400000,newsprSource).all<{url:string;payload:string;translation:string|null;translation_attempt:number}>();
  const cached:Record<string,Translation>={};
  for(const row of rows)if(row.translation)try{cached[row.url]=JSON.parse(row.translation) as Translation;}catch{/* Counts as awaiting translation. */}
  const pending=rows.map(row=>({...row,item:JSON.parse(row.payload) as Item}))

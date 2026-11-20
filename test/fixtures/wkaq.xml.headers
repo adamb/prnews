@@ -1,0 +1,6 @@
+feed: https://www.wkaq580.com/search/?f=rss&t=article&l=50&s=start_time&sd=desc
+status: 200
+content-type: application/rss+xml; charset=UTF-8
+captured: 2026-11-20
+items: 50
+robots: https://wkaq580.com/robots.txt disallows /tncms/* paths only; this keywordless /search/ RSS is allowed (the #topstory variant returns zero items). Rechecked live 2026-11-20: 200, 50 items.

@@ -99,6 +99,17 @@ function feedStatus(id: string, snaps: FeedSnap[]): { status: FeedStatus; lastOk
 export const subscribedOn: Record<string, string> = {
   radioisla: '2026-11-19',
   walo: '2026-11-19',
+  vision: '2026-11-20',
+  lacalle: '2026-11-20',
+  elsol: '2026-11-20',
+  esnoticia: '2026-11-20',
+  eloriental: '2026-11-20',
+  laesquina: '2026-11-20',
+  millones: '2026-11-20',
+  eyboricua: '2026-11-20',
+  pasquines: '2026-11-20',
+  wkaq: '2026-11-20',
+  presencia: '2026-11-20',
 };
 
 /** A blank day is a captured zero only after a successful check that this outlet was already registered for. */
@@ -209,6 +220,17 @@ const COVERAGE: Record<string, [string, string]> = {
   radioisla: ['Feed registrado el 19 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos. Si el feed trae una nota con fecha anterior, ese día muestra el número, no un guion. Un cero a partir del 19 de noviembre es un día sin artículos capturados. El extracto sale de description y se queda en 300 caracteres.', 'Feed registered on November 19, 2026. A day before that with no captured article is a dash: we were not checking it yet. An article the feed still lists, with an earlier date, counts on that earlier day. A zero from November 19 on is a day with no captured article. The excerpt comes from description and stays at 300 characters.'],
   walo: ['Feed principal registrado el 19 de noviembre de 2026, no el feed más estrecho de Noticias. Un día anterior sin artículo capturado es un guion, no un silencio. Si el feed trae una nota con fecha anterior, ese día muestra el número. Un cero a partir del 19 de noviembre es un día sin artículos capturados.', 'Main feed registered on November 19, 2026, not the narrower Noticias feed. A day before that with no captured article is a dash, not silence. An article the feed still lists, with an earlier date, counts on that earlier day. A zero from November 19 on is a day with no captured article.'],
   reddit_puertorico: ['Las 25 publicaciones más nuevas, como máximo una vez por hora. Si ese feed falla, las 100 más nuevas de Arctic Shift. Es una comunidad, no una redacción.', 'The newest 25 posts, at most hourly. If that feed fails, the newest 100 from Arctic Shift. This is a community, not a newsroom.'],
+  vision: ['Feed registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos.', 'Feed registered on November 20, 2026. A day before that with no captured article is a dash: we were not checking it yet.'],
+  lacalle: ['Feed registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos.', 'Feed registered on November 20, 2026. A day before that with no captured article is a dash: we were not checking it yet.'],
+  elsol: ['Feed registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos.', 'Feed registered on November 20, 2026. A day before that with no captured article is a dash: we were not checking it yet.'],
+  esnoticia: ['Feed registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos.', 'Feed registered on November 20, 2026. A day before that with no captured article is a dash: we were not checking it yet.'],
+  eloriental: ['Feed registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos.', 'Feed registered on November 20, 2026. A day before that with no captured article is a dash: we were not checking it yet.'],
+  laesquina: ['Feed registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos.', 'Feed registered on November 20, 2026. A day before that with no captured article is a dash: we were not checking it yet.'],
+  millones: ['Feed registrado el 20 de noviembre de 2026. El feed trae historial; solo las notas dentro de la ventana de 14 días cuentan. Un día anterior sin artículo capturado es un guion.', 'Feed registered on November 20, 2026. The feed carries archive history; only stories inside the 14-day window count. A day before that with no captured article is a dash.'],
+  eyboricua: ['Feed registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos.', 'Feed registered on November 20, 2026. A day before that with no captured article is a dash: we were not checking it yet.'],
+  pasquines: ['Feed registrado el 20 de noviembre de 2026. El medio publica en español e inglés; cada nota se trata en su propio idioma. Un día anterior sin artículo capturado es un guion.', 'Feed registered on November 20, 2026. The publisher writes in Spanish and English; each story is treated in its own language. A day before that with no captured article is a dash.'],
+  wkaq: ['RSS de búsqueda, 50 artículos por consulta, registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion.', 'Search RSS, 50 items a check, registered on November 20, 2026. A day before that with no captured article is a dash.'],
+  presencia: ['Feed registrado el 20 de noviembre de 2026. Un día anterior sin artículo capturado es un guion: todavía no lo consultábamos.', 'Feed registered on November 20, 2026. A day before that with no captured article is a dash: we were not checking it yet.'],
 };
 
 function topicName(slug: string, lang: Language): string {

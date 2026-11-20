@@ -15,7 +15,19 @@ export const sources:Source[] = [
 ];
 
 
-export const isEnglishSource = (id: string) => id === 'sjds' || id === 'nimb' || id === 'newspr';
+export const isEnglishSource = (id: string) => id === 'sjds' || id === 'nimb' || id === 'newspr' || id === 'pasquines';
+
+/** Pasquines (https://pasquines.us) publishes in both English and Spanish on one
+ * feed, exactly like the San Juan Daily Star, so it follows the same bilingual
+ * mechanism rather than a Spanish blanket default: items without a per-article
+ * language signal keep an English source default, and demonstrably Spanish items
+ * (originalLanguage='es' from src/parse.ts's conservative detector) are queued
+ * for translation like any other Spanish article. This never sends an English
+ * Pasquines original to the Spanish→English model (its unchanged headline would
+ * fail validation and burn attempts), and it keeps the one shared queue
+ * definition in src/i18n.ts truthful: an unsignaled Pasquines item is
+ * English-readable, not eternally pending. Verified 2026-11-20, when the feed's
+ * newest items were English; see docs/pr-outlet-feeds.md. */
 
 /** news.pr (https://news.pr): the AI-written English newspaper. Its items keep the
  * English original at `title`/`summary` and are translated into Spanish for the

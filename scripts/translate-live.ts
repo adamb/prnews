@@ -11,7 +11,7 @@ async function api(path:string,body:unknown):Promise<any>{
  return data.result;
 }
 async function query(sql:string,params:unknown[]=[]){return (await api(`d1/database/${database}/query`,{sql,params}))[0].results;}
-const rows=await query("SELECT url,payload FROM articles WHERE published_at>=strftime('%s','now')*1000-14*86400000 AND (json_extract(payload,'$.originalLanguage')='es' OR (source NOT IN ('sjds','nimb') AND COALESCE(json_extract(payload,'$.originalLanguage'),'')!='en')) AND translation IS NULL ORDER BY published_at DESC");
+const rows=await query("SELECT url,payload FROM articles WHERE published_at>=strftime('%s','now')*1000-14*86400000 AND (json_extract(payload,'$.originalLanguage')='es' OR (source NOT IN ('sjds','nimb','pasquines') AND COALESCE(json_extract(payload,'$.originalLanguage'),'')!='en')) AND translation IS NULL ORDER BY published_at DESC");
 let next=0,completed=0,failed=0;
 await Promise.all(Array.from({length:3},async()=>{
  while(next<rows.length){
