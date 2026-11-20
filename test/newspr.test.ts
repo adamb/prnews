@@ -135,6 +135,73 @@ describe('news.pr English→Spanish translation direction', () => {
  });
 });
 
+describe('news.pr card labels and content language', () => {
+ const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+ const esTitle = 'Titular traducido del artículo en español';
+ const esSummary = 'Resumen traducido con la información completa del suceso publicado hoy.';
+ const spanishItem: Item = { url: 'https://www.noticel.com/apagon-san-juan/', source: 'noticel', title: 'El apagón afectó a miles de familias en San Juan', summary: 'El servicio eléctrico se restableció durante la madrugada del jueves.', image: '', time: seen - 3600000, observed: false, section: 'energia', reason: 'test' };
+ const englishTranslation: Translation = { originalTitle: spanishItem.title, originalSummary: spanishItem.summary, title: 'Power outage affected thousands of families in San Juan', summary: 'Electric service was restored early on Thursday morning.' };
+ const sectionPage = (path: string, lang: 'es' | 'en', live: object) =>
+  import('../src/render').then(({ default: renderer }) => renderer.fetch(new Request(`https://example.com${path}?lang=${lang}`), live as never).text());
+ it('labels the Spanish edition’s translated news.pr card as Spanish text translated from English', async () => {
+  const item = items[0];
+  const cache = { [item.url]: { target: 'es' as const, originalTitle: item.title, originalSummary: item.summary, title: esTitle, summary: esSummary } };
+  const es = await sectionPage(`/s/${item.section}`, 'es', { items: [item], translations: cache, feeds: [] });
+  expect(es).toContain(esTitle);
+  expect(es).toContain('lang="es"><a href="/click');          // heading content lang is the Spanish edition, not "en"
+  expect(es).toContain('hreflang="en"');                     // the publisher link keeps the English original’s language
+  expect(es).toContain('<p class="excerpt" lang="es">');     // excerpt carries the same content lang
+  expect(es).toContain('<span class="language">Traducido · Original en inglés</span>');
+  expect(es).not.toContain('Translated · Original in Spanish'); // the English-only label never leaks to the Spanish page
+ });
+ it('keeps the English original’s own card correct in both editions without a translation', async () => {
+  const item = items[0];
+  const es = await sectionPage(`/s/${item.section}`, 'es', { items: [item], translations: {}, feeds: [] });
+  expect(es).toContain('lang="en"><a href="/click');                       // untranslated news.pr: English text keeps lang="en"
+  expect(es).toContain('<p class="excerpt" lang="en">');
+  expect(es).toContain('<span class="language">EN · En inglés</span>');   // existing Spanish-edition disclosure for English originals
+  const en = await sectionPage(`/s/${item.section}`, 'en', { items: [item], translations: {}, feeds: [] });
+  expect(en).toContain(escape(item.title));
+  expect(en).toContain('lang="en"><a href="/click');
+  expect(en).toContain('<span class="language">Original in English</span>'); // English original stays "Original in English"
+  expect(en).not.toContain('Traducido · Original en inglés');
+ });
+ it('keeps the classic Spanish→English label and hreflang exactly as before', async () => {
+  const cache = { [spanishItem.url]: englishTranslation };
+  const en = await sectionPage('/s/energia', 'en', { items: [spanishItem], translations: cache, feeds: [] });
+  expect(en).toContain('Translated · Original in Spanish');   // unchanged EN-edition disclosure
+  expect(en).toContain('lang="en"><a href="/click');        // translated headline is English content
+  expect(en).toContain('hreflang="es"');                    // publisher link keeps the Spanish original’s language
+  expect(en).toContain(`<p class="excerpt" lang="en">`);
+  expect(en).not.toContain('Traducido · Original en inglés');
+  const es = await sectionPage('/s/energia', 'es', { items: [spanishItem], translations: cache, feeds: [] });
+  expect(es).toContain('lang="es"><a href="/click');        // Spanish edition: original text, no translation label
+  expect(es).not.toContain('<span class="language">');
+ });
+ it('localizes the community card label and keeps the translated community heading English-only content', async () => {
+  const post: Item = { url: 'https://www.reddit.com/r/PuertoRico/comments/abc123/outage/', source: 'reddit_puertorico', title: 'El apagón de LUMA en San Juan', summary: 'Publicación compartida en r/PuertoRico.', image: '', time: seen - 3600000, observed: false, section: 'comunidad', reason: 'test' };
+  const cache = { [post.url]: { originalTitle: post.title, originalSummary: post.summary, title: 'The LUMA outage in San Juan', summary: 'A community discussion about the outage.' } };
+  const en = await sectionPage('/s/comunidad', 'en', { items: [post], translations: cache, feeds: [] });
+  expect(en).toContain('Community discussion · Translated'); // same English wording as before
+  expect(en).toContain('lang="en"><a href="/click');
+  expect(en).toContain('<p class="reddit-summary" lang="en">');
+  const es = await sectionPage('/s/comunidad', 'es', { items: [post], translations: { [post.url]: { originalTitle: post.title, originalSummary: post.summary, title: post.title, summary: post.summary, spanishSummary: 'Una conversación sobre el apagón.' } }, feeds: [] });
+  expect(es).toContain('Discusión de la comunidad · Publicación original'); // untranslated community label stays Spanish on the Spanish page
+  expect(es).not.toContain('Discusión de la comunidad · Traducido');        // the saved Spanish summary is not a "translated" card
+  expect(es).toContain('lang=""><a href="/click');                          // community originals keep the neutral content lang
+ });
+ it('marks hall-of-fame summaries with the edition language when translated and the original’s own otherwise', async () => {
+  const renderer = (await import('../src/render')).default;
+  const item = items[0];
+  const hall = [{ url: item.url, clicks: 5, item, translation: { target: 'es' as const, originalTitle: item.title, originalSummary: item.summary, title: esTitle, summary: esSummary }, capturedAt: seen }];
+  const es = await (await renderer.fetch(new Request('https://example.com/hall?lang=es'), { items: [item], translations: {}, feeds: [], hall } as never)).text();
+  expect(es).toContain(esTitle);
+  expect(es).toContain(`<p lang="es">`); // the translated summary is Spanish content on the Spanish page
+  const en = await (await renderer.fetch(new Request('https://example.com/hall?lang=en'), { items: [], translations: {}, feeds: [], hall: [{ url: spanishItem.url, clicks: 5, item: spanishItem, translation: englishTranslation, capturedAt: seen }] } as never)).text();
+  expect(en).toContain(`<p lang="en">`); // the classic ES→EN direction keeps lang="en"
+ });
+});
+
 describe('news.pr reverse-direction cache cannot leak into English paths', () => {
  const item = items[0];
  const entry = (targetItem: Item, title: string, summary: string): Translation =>
