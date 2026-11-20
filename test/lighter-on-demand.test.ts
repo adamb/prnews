@@ -15,6 +15,7 @@ const action = '11111111-1111-4111-8111-111111111111';
 function database(): D1Database {
  const sqlite = new DatabaseSync(':memory:');
  for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql']) sqlite.exec(readFileSync(file,'utf8'));
+ sqlite.exec('CREATE TABLE IF NOT EXISTS story_ids (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL UNIQUE)');
  const prepare = (query: string) => {
   let args: any[] = [];
   return {bind(...values: unknown[]){args=values;return this;}, async first(){return sqlite.prepare(query).get(...args) ?? null;}, async all(){return {results: sqlite.prepare(query).all(...args)};}, async run(){const result = sqlite.prepare(query).run(...args); return {meta:{changes:Number(result.changes)}};}};
