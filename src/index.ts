@@ -176,9 +176,8 @@ export default {
   // v40 drops v39 pages whose explainer still says "Explicar el contexto" /
   // "Explain the context" instead of "Contexto" / "Context", and that omit the
   // new glossary entries and the shortened banner.
-  // v39 drops v38 pages whose share/preview copy still said "AI joke, not news"
-  // / "Chiste de IA, no noticia". The preview prefix, the share text tail and the
-  // page's share script all carry the new wording.
+  // v38 dropped v37 pages whose share/preview copy said "AI joke, not news"; the
+  // v39 bump itself changed the lighter failure notes and added no comment here.
   // v37 drops v36 pages that lack the keyword-alert invitation on reading routes.
   // v36 drops v35 pages whose share script cannot attach an open satire line.
   // v35 drops v34 pages that lack hreflang and canonical, and filtered pages that

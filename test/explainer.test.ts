@@ -65,6 +65,18 @@ it('keeps every entry concise with a source link', () => {
   }
 });
 
+it('does not imply the blocked PDFs and the PIP site were rechecked on the review date', () => {
+  const es = explainerHtml('El DDEC anuncia nuevos incentivos.', 'es');
+  const en = explainerHtml('The resident commissioner requested funds.', 'en');
+  for (const [html, latest, earlier] of [
+    [es, '20 de noviembre de 2026', '19 de noviembre'],
+    [en, 'November 20, 2026', 'November 19, 2026'],
+  ] as [string, string, string][]) {
+    expect(html).toContain(latest);
+    expect(html).toContain(earlier);
+  }
+});
+
 it('cites only https pages on the reviewed hosts', () => {
   const citations = explainerCitations();
   expect(citations.length).toBeGreaterThan(10);

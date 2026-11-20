@@ -603,14 +603,14 @@ export const ENTRIES: Entry[] = [
       title: 'Distrito T-Mobile',
       body: [
         'El Distrito T-Mobile es un complejo privado de entretenimiento, gastronomía y hospedería en el Distrito de Convenciones de San Juan, inaugurado oficialmente en agosto de 2021.',
-        'Su página aclara que no es propiedad de T-Mobile ni del gobierno: lo desarrolló y construyó la empresa local PRISA Group, con T-Mobile como patrocinador principal.',
+        'Su página aclara que T-Mobile no es el dueño ni el operador: lo desarrolló y construyó la empresa local PRISA Group, con T-Mobile como patrocinador principal.',
       ],
     },
     en: {
       title: 'Distrito T-Mobile',
       body: [
         'Distrito T-Mobile is a private dining, entertainment, and hospitality complex in San Juan’s Convention District that officially opened in August 2021.',
-        'Its own page clarifies it is not owned by T-Mobile or the government: it was developed and built by the local company PRISA Group, with T-Mobile as its main sponsor.',
+        'Its own page clarifies that T-Mobile is not the owner or operator: it was developed and built by the local company PRISA Group, with T-Mobile as its main sponsor.',
       ],
     },
     sources: [
@@ -730,8 +730,8 @@ export function explainerHtml(text: string, lang: ExplainerLang): string {
     'Background from a reviewed glossary; each entry links its public sources.',
   );
   const checked = t(
-    'Fuentes públicas revisadas el 20 de noviembre de 2026. Esto es contexto, no el reportaje.',
-    'Public sources checked on November 20, 2026. This is background, not the reporting.',
+    'Fuentes públicas revisadas el 20 de noviembre de 2026; las que solo se publican como PDF y el sitio del partido PIP conservan la revisión del 19 de noviembre. Esto es contexto, no el reportaje.',
+    'Public sources reviewed on November 20, 2026; sources published only as PDFs and the PIP party site keep their November 19, 2026 review. This is background, not the reporting.',
   );
   return `<details class="explainer" data-explainer="${escape(shown.map(entry => entry.id).join(','))}"><summary>${escape(t('Contexto', 'Context'))}</summary><div class="explainer-body" lang="${lang}"><p class="explainer-banner">${escape(banner)}</p>${entries}${more}<p class="explainer-checked">${escape(checked)}</p></div></details>`;
 }
