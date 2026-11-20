@@ -444,6 +444,9 @@ export const lighterClientScript = `(function(){
   var small=document.createElement('small'); small.textContent=copy.label;
   var body=document.createElement('span'); body.textContent=text;
   note.appendChild(small); note.appendChild(document.createElement('br')); note.appendChild(body);
+  // One hook for the anonymous vote controls: the take is now visibly on the page.
+  // Clearing or overwriting the note (hide, fail, wait, done) removes them with it.
+  try{ if(typeof CustomEvent==='function'&&note.dispatchEvent) note.dispatchEvent(new CustomEvent('prnews:satire',{bubbles:true,detail:{url:button.getAttribute('data-lighter-url'),lang:langOf(button),text:text}})); }catch(e){}
   button.disabled=false; button.removeAttribute('aria-busy'); button.setAttribute('aria-expanded','true');
   button.textContent=copy.hide; button.setAttribute('data-mode','open');
  }
