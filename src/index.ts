@@ -130,8 +130,13 @@ export default {
    return renderer.fetch(request,{alerts:alertsData,items:result.items,translations:result.translations,feeds:[],search:result,contactEmail:env.CONTACT_EMAIL},digestConfigured(env));
   }
   if(url.pathname==='/story') {
-   const story=await storyLookup(env,url.searchParams.get('id')??'');
-   return renderer.fetch(request,{alerts:alertsData,items:story?[story.item]:[],translations:story?.translation?{[story.item.url]:story.translation}:{},feeds:[],story:true,contactEmail:env.CONTACT_EMAIL},digestConfigured(env));
+   const raw=url.searchParams.get('id')??'';
+   const story=await storyLookup(env,raw);
+   // Saved satire state for this one page. read() already swallows a missing cache.
+   const lighter=story?await readLighter(env):{};
+   const storyIds:Record<string,number>={};
+   if(story&&/^[1-9]\d{0,8}$/.test(raw))storyIds[story.item.url]=Number(raw);
+   return renderer.fetch(request,{alerts:alertsData,items:story?[story.item]:[],translations:story?.translation?{[story.item.url]:story.translation}:{},feeds:[],story:true,lighter,storyIds,contactEmail:env.CONTACT_EMAIL},digestConfigured(env));
   }
   if(url.pathname==='/archive') {
    const date=url.searchParams.get('date')??'';
@@ -164,10 +169,12 @@ export default {
     return new Response('Actualizando… / Updating… Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});
    }
   }
-  // v32 drops v31 pages that omit the confirmed alert-account count.
-  // v31 dropped pages whose comparison toggle painted the selected label in the page background color.
-  // Compact imageless-lead rules and lighter-2 stay. 60s TTL still applies. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v33') : undefined;
+  // v36 drops v35 pages whose share script cannot attach an open satire line.
+  // v35 drops v34 pages that lack hreflang and canonical, and filtered pages that
+  // were still indexable. v34 dropped v33 pages whose source names are not links
+  // and that have no active-source chip. Compact imageless-lead rules and lighter-2
+  // stay. 60s TTL still applies. This does not purge R2 or D1.
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v36') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
@@ -176,12 +183,15 @@ export default {
   const cached = await cache?.match(cacheKey);
   if(cached) return serveBounded(cached);
   try {
-   const rows=await env.DB.prepare('SELECT payload,translation FROM articles WHERE published_at>=? ORDER BY published_at DESC LIMIT 10000').bind(Date.now()-14*86400000).all<{payload:string;translation:string|null}>();
+   const rows=await env.DB.prepare('SELECT a.payload AS payload,a.translation AS translation,s.id AS story_id FROM articles a LEFT JOIN story_ids s ON s.url=a.url WHERE a.published_at>=? ORDER BY a.published_at DESC LIMIT 10000').bind(Date.now()-14*86400000).all<{payload:string;translation:string|null;story_id:number|null}>();
    const feeds=await env.DB.prepare('SELECT * FROM feed_state').all<FeedState>();
    const translations:Record<string,Translation>={};
+   const storyIds:Record<string,number>={};
    const items=rows.results.map(row=>{
     const item=JSON.parse(row.payload) as Item;
     if(row.translation)try{translations[item.url]=JSON.parse(row.translation) as Translation;}catch{/* Row still renders untranslated. */}
+    const id=Number(row.story_id);
+    if(Number.isSafeInteger(id)&&id>0)storyIds[item.url]=id;
     return item;
    });
    const trending=url.pathname==='/'?await topClicked(env).catch(()=>[]):[];
@@ -205,7 +215,7 @@ export default {
     if(ready.available)await attachStoryIds(env,ready.examples);
     lighterView={ledger:await readLighterLedger(env),queue:await readLighterQueue(env,Date.now()),ready};
    }
-   const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,alertAccounts,sourceClicks,now:pageNow,recurringThemes},digestConfigured(env));
+   const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,alertAccounts,sourceClicks,now:pageNow,recurringThemes,storyIds},digestConfigured(env));
    if(response.status === 200) {
     response.headers.set('Cache-Control','public, max-age=60');
     // CDN-Cache-Control pins the edge TTL too, in case a zone Cache Rule ever overrides it.

@@ -9,6 +9,7 @@ function database(): D1Database {
  sqlite.exec(readFileSync('migrations/0001_live.sql','utf8'));
  sqlite.exec(readFileSync('migrations/0004_digest.sql','utf8'));
  sqlite.exec(readFileSync('migrations/0010_image_enrich.sql','utf8'));
+ sqlite.exec('CREATE TABLE IF NOT EXISTS story_ids (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL UNIQUE)');
  function prepare(sql:string):any {
   let args:any[]=[];
   return {bind(...values:any[]){args=values;return this;},async first(){return sqlite.prepare(sql).get(...args)??null;},async all(){return {results:sqlite.prepare(sql).all(...args)};},async run(){const result=sqlite.prepare(sql).run(...args);return {meta:{changes:Number(result.changes)}};}};

@@ -17,6 +17,7 @@ const maestrosTake = 'Maestros en Puerto Rico realizan manifestaciones para exig
 const englishTake = 'The bureau at PRITS Academy scheduled another course about its own course.';
 const namedEnglish = 'The bureau briefed WIPR and Suzanne Roig before the PRITS Academy course.';
 const namedSpanish = 'La agencia WIPR insiste en que PRITS Academy ya ofreció la capacitación.';
+const symposiumSpanish = 'El simposio celebró una década de supervisión y sirvió otro panel de preguntas.';
 const nameLead = 'Manatí files the form after Rosalía calls the bureau.';
 const ambiguous = 'PRITS Academy briefing.';
 
@@ -27,6 +28,7 @@ const quoted = 'The agency said "delay is policy" today and filed it.';
 function database(): D1Database {
  const sqlite = new DatabaseSync(':memory:');
  for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql']) sqlite.exec(readFileSync(file,'utf8'));
+ sqlite.exec('CREATE TABLE IF NOT EXISTS story_ids (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL UNIQUE)');
  const prepare = (query: string) => {
   let args: any[] = [];
   return {bind(...values: any[]){args=values;return this;}, async first(){return sqlite.prepare(query).get(...args) ?? null;}, async all(){return {results: sqlite.prepare(query).all(...args)};}, async run(){const result = sqlite.prepare(query).run(...args); return {meta:{changes:Number(result.changes)}};}};
@@ -78,8 +80,9 @@ it('asks in the page language and does not clamp the satire note', async () => {
  const english = await renderer.fetch(new Request('https://news.dev.pr/?lang=en'), data).text();
  expect(english).toContain(`data-lighter-url="${spanishStory.url}" data-lighter-lang="en" data-cached="0"`);
  expect(english).toContain(`data-lighter-url="${englishStory.url}" data-lighter-lang="en" data-cached="1"`);
- expect(english).toContain('Ask for a satire');
- expect(english).toContain('Show the saved satire');
+ expect(english).toContain('Show satire');
+ expect(english).not.toContain('Ask for a satire');
+ expect(english).not.toContain('Show the saved satire');
  expect(english).toContain('lang:langOf(button)');
  expect(english).not.toContain(spanishTake);
  expect(english).toContain('.card p.lighter-note{display:block;overflow:visible');
@@ -88,7 +91,9 @@ it('asks in the page language and does not clamp the satire note', async () => {
  expect(english).toContain('text-overflow:ellipsis');
  const spanish = await renderer.fetch(new Request('https://news.dev.pr/'), data).text();
  expect(spanish).toContain(`data-lighter-url="${spanishStory.url}" data-lighter-lang="es" data-cached="1"`);
- expect(spanish).toContain('Ver la sátira guardada');
+ expect(spanish).toContain('Mostrar sátira');
+ expect(spanish).not.toContain('Pedir una sátira');
+ expect(spanish).not.toContain('Ver la sátira guardada');
  expect(spanish).not.toContain(englishTake);
 });
 
@@ -145,7 +150,7 @@ it('stores a matching edition either way and keeps the other edition', async () 
  const run = vi.fn(async (_model: string, options: {messages:{content:string}[]}) => {
   const body = JSON.parse(options.messages[1].content) as {outputLanguage:string;title:string};
   if (body.outputLanguage === 'English' && body.title === spanishStory.title) return {response: JSON.stringify({text: englishTake})};
-  if (body.outputLanguage === 'Spanish' && body.title === englishStory.title) return {response: JSON.stringify({text: namedSpanish})};
+  if (body.outputLanguage === 'Spanish' && body.title === englishStory.title) return {response: JSON.stringify({text: symposiumSpanish})};
   return {response: JSON.stringify({text: ''})};
  });
  const env = {DB, AI:{run}} as unknown as Env;
@@ -153,7 +158,7 @@ it('stores a matching edition either way and keeps the other edition', async () 
  const en = await post(env, {url:spanishStory.url, lang:'en', action:'44444444-4444-4444-8444-444444444444'}, now);
  expect(await en?.json()).toEqual({status:'ready', text:englishTake});
  const es = await post(env, {url:englishStory.url, lang:'es', action:'55555555-5555-4555-8555-555555555555'}, now);
- expect(await es?.json()).toEqual({status:'ready', text:namedSpanish});
+ expect(await es?.json()).toEqual({status:'ready', text:symposiumSpanish});
  expect(run).toHaveBeenCalledTimes(2);
  expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'es')).first()).toBeNull();
  expect((await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(englishStory,'en')).first<{text:string|null}>())?.text ?? null).toBeNull();
@@ -172,7 +177,8 @@ it('replaces only a wrong-language cache cell and will not serve it from the oth
  expect(home.status).toBe(200);
  const homeHtml = await home.text();
  expect(homeHtml).toContain('data-lighter-lang="en" data-cached="0"');
- expect(homeHtml).toContain('Ask for a satire');
+ expect(homeHtml).toContain('Show satire');
+ expect(homeHtml).not.toContain('Ask for a satire');
  expect(homeHtml).not.toContain(spanishTake);
  expect(run).not.toHaveBeenCalled();
  expect(await DB.prepare('SELECT text FROM lighter_cache WHERE key=?').bind(key(spanishStory,'en')).first<{text:string}>()).toEqual({text:spanishTake});

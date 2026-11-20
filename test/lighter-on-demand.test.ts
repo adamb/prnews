@@ -8,13 +8,14 @@ import {readySnapshot} from '../src/lighter-stats';
 import type {Env} from '../src/ingest';
 import type {Item} from '../src/parse';
 
-const satire = 'The agency formed a committee to admire its own delay.';
+const satire = 'The delay turned into a second delay and called the extra copy a plan.';
 const item = {url:'https://example.com/a', source:'noticel', title:'Traffic delays', summary:'The agency reports traffic delays.', image:'', time:1, observed:false, section:'politica', reason:'test'} as Item;
 const action = '11111111-1111-4111-8111-111111111111';
 
 function database(): D1Database {
  const sqlite = new DatabaseSync(':memory:');
  for (const file of ['migrations/0001_live.sql','migrations/0011_lighter.sql','migrations/0012_lighter_stats.sql']) sqlite.exec(readFileSync(file,'utf8'));
+ sqlite.exec('CREATE TABLE IF NOT EXISTS story_ids (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL UNIQUE)');
  const prepare = (query: string) => {
   let args: any[] = [];
   return {bind(...values: unknown[]){args=values;return this;}, async first(){return sqlite.prepare(query).get(...args) ?? null;}, async all(){return {results: sqlite.prepare(query).all(...args)};}, async run(){const result = sqlite.prepare(query).run(...args); return {meta:{changes:Number(result.changes)}};}};
@@ -34,6 +35,15 @@ it('keeps the shared predicates and a new prompt version', () => {
  expect(satirePrompt('en')).toContain('satire');
  expect(satirePrompt('en')).toContain('untrusted');
  expect(satirePrompt('en')).not.toContain('Onion');
+ expect(satirePrompt('en')).not.toContain('Aim the joke at an institution, agency, or bureaucracy.');
+ expect(satirePrompt('en')).toContain('only when one is named or clearly present');
+ expect(satirePrompt('en')).toContain('situation, idea, or behavior');
+ expect(satirePrompt('en')).toContain('Generic stand-ins such as bureaucrats or officials are allowed when the story is about public affairs, government, or a protest.');
+ expect(satirePrompt('en')).toContain('Never invent a specific institution, government, agency, company, or person');
+ expect(satirePrompt('en')).not.toContain('official, company, or person');
+ expect(satirePrompt('en')).toContain('Never at injured people, victims, or private individuals');
+ expect(satirePrompt('en')).toContain('Do not invent quotes, numbers, names, places, motives, scenes, or allegations.');
+ expect(satirePrompt('en')).toContain('{"text":""}');
  expect(valid(satire, item)).toBe(true);
  expect(valid('The agency said "traffic is a lifestyle."', item)).toBe(false);
  expect(valid('<script>alert(1)</script> and more text', item)).toBe(false);
@@ -55,7 +65,9 @@ it('counts one explicit request, reuses cache, and ignores polls, GET, and page 
  const home = await worker.fetch(new Request('https://news.dev.pr/'), env);
  const html = await home.text();
  expect(html).toContain('data-lighter-url="https://example.com/a" data-lighter-lang="es"');
- expect(html).toContain('Pedir una sátira');
+ expect(html).toContain('Mostrar sátira');
+ expect(html).not.toContain('Pedir una sátira');
+ expect(html).not.toContain('Ver la sátira guardada');
  expect(html).toContain(item.title);
  expect(html).not.toContain(satire);
  expect(run).not.toHaveBeenCalled();

@@ -69,7 +69,7 @@ it('lists only own news.dev.pr story permalinks in the sitemap', async () => {
   expect(response?.status).toBe(200);
   expect(response?.headers.get('Content-Type')).toBe('application/xml; charset=utf-8');
   const xml = await response!.text();
-  expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+  expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">');
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
   expect(locs.filter(l=>l.includes('/story?'))).toEqual(storyIds(sql).map(id => `${SITE_ORIGIN}/story?id=${id}`));
   expect(locs.every(l => l.startsWith(SITE_ORIGIN+'/'))).toBe(true); // own permalinks only

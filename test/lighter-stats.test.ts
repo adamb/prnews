@@ -45,7 +45,7 @@ it('counts only current-version ready takes and classifies the same queue genera
  const pending=story('https://example.com/pending','Bridge maintenance','Crews schedule bridge maintenance.',700);
  const retry=story('https://example.com/retry','Office paperwork','The office delayed the paperwork.',600);
  const failed=story('https://example.com/failed','Power paperwork','The utility delayed a form.',500);
- const ready=story('https://example.com/ready','Road work','Crews repave the main road.',400);
+ const ready=story('https://example.com/ready','Road work','The agency says crews repave the main road.',400);
  const withheld=story('https://example.com/withheld','Budget hearing','The hearing covers the agency budget.',300);
  const sensitive=story('https://example.com/sensitive','Two dead after outage','Officials describe the outage.',900);
  const DB=database();
@@ -200,7 +200,7 @@ it('serves /stats counts from D1 without mixing them into outbound clicks',async
  expect(es).toContain('Listas para mostrar, texto válido del titular y extracto actuales: español 1 · inglés 1.');
  expect(en).toContain(takeEn);
  expect(es).not.toContain('lifetime outbound');
- const bare=database('',['migrations/0001_live.sql']);
+ const bare=database('CREATE TABLE IF NOT EXISTS story_ids (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL UNIQUE);',['migrations/0001_live.sql']);
  const failed=await (await worker.fetch(new Request('https://news.dev.pr/stats?lang=en'),{DB:bare} as unknown as Env)).text();
  const section=failed.slice(failed.indexOf('id="lighter-stats"'),failed.indexOf('id="clics"'));
  expect(section).toContain('does not substitute zeros');

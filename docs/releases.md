@@ -195,3 +195,40 @@
 - Deployed source: a4c54cb (branch redesign/ui, PR #7). Cloudflare Worker version: 1fb68051-8624-482e-a5d3-ad182506e34a. Previous: 44f543c8-1387-4560-b3c1-879ede9f1b30.
 - One link added to the sections sheet (hidden at 900px and up where the header link shows). No migrations or pipeline changes.
 - Validation: 351 tests, tsc; clean pushed tree before manual `wrangler deploy`; live 200 on / and /?lang=en with the link present.
+
+## 2026-11-20 — Shareable story links
+
+- Deployed source: e0a5346bcefbe2270486e3efd779d118cdb83193 (PR #30, squash-merged to main). Cloudflare Worker version: bd3df842-e37f-4c96-9af4-60960d3506c2. Previous: 1fb68051-8624-482e-a5d3-ad182506e34a.
+- Share button on every card with a permalink id (Web Share, clipboard, then navigation fallback); `/story?id=N` carries Open Graph/Twitter tags with the verbatim headline, excerpt and a real https image. Satire text is never put in meta tags. No migrations or pipeline changes.
+- Validation: 456 tests, typecheck, wrangler dry-run build; clean tree at the pushed SHA before manual `wrangler deploy`. Native share sheet not exercised headless.
+
+## 2026-11-20 — Source links and satire guard
+
+- PR #31 (source name on each card links to that source's stories, "Showing only … · Clear filter" chip, "See its stories →" on /fuentes), deployed from dec9d323b05ffab6d09f558329c748a234ab9602. Cloudflare Worker version: 3e15105c-5b83-4132-82ea-d62a5f508520. Previous: bd3df842-e37f-4c96-9af4-60960d3506c2. HTML cache prnews-html-v34. 459 tests, typecheck, dry-run build. Live check: filter chip, source links and 16 /fuentes links present.
+- PR #32 (satire no longer invents an institution: prompt change plus `valid()` rejects a line naming government/agency/ministry/officials/etc. that the headline and excerpt do not), deployed from e2c812bfc527c2c8167a0bce82147e32d7a857f5. Cloudflare Worker version: 42927b40-10fd-468d-ab09-0fb5d584ba7e. Previous: 3e15105c-5b83-4132-82ea-d62a5f508520. `lighter-2` cache key unchanged. 460 tests, typecheck, dry-run build. Read-only check before release: 15 of 71 stored satires fail the new rule and are hidden on read; nothing was deleted.
+- No migrations, pipeline or translation changes in either release.
+
+## 2026-11-20 — Satire guard relaxed; icon-only theme button
+
+- PR #34 (generic stand-ins such as bureaucrats/officials/authorities allowed again in satire; an invented government/agency/ministry/department/committee/board/State is still rejected; prompt adjusted; `lighter-2` unchanged) and PR #33 (theme toggle shows only its icon, 40 px target, aria-label plus title), deployed from 87d4e0bcc69472015aae32209a399d7c63f41617. Cloudflare Worker version: fd0b81d6-1c43-47d7-94c0-cfcc064cda58. Previous: 42927b40-10fd-468d-ab09-0fb5d584ba7e.
+- Read-only check against production before release: 8 of 71 stored satires fail the guard (down from 15); the two National Day of Indignation lines pass. Nothing deleted.
+- 460 tests, typecheck, dry-run build. No migrations or pipeline changes.
+- Known issue found after deploy (pre-existing, not from these PRs): at 320–360 px the homepage can scroll sideways by up to ~58 px when a Reddit "Comunidad" lead appears, because `.reddit-summary{white-space:nowrap}` widens its grid column. Fix pending.
+
+## 2026-11-20 — Phone overflow fix
+
+- PR #36 (one-line Reddit excerpts clip inside the section grid instead of widening the page), deployed from 0154027fe9854538208acd1bc50d39a51ccc29e1. Cloudflare Worker version: daebc57c-1913-4460-81ab-8cf03fd244f7. Previous: fd0b81d6-1c43-47d7-94c0-cfcc064cda58. CSS only; 461 tests, typecheck, dry-run build.
+- Live check with Playwright at 320, 360, 390 and 1440 px on /, /?lang=en, /s/comunidad and /s/politica: no sideways scroll. This resolves the known issue recorded in the previous release.
+
+## 2026-11-20 — Search indexing tags and one satire label
+
+- PR #35 (hreflang es/en/x-default in page heads and sitemap, canonical on indexable pages, `noindex,follow` on `?source=` views, /search, /stats, /hall and filtered /archive, English story URLs in the sitemap only when that edition returns 200; HTML cache `prnews-html-v35`) and PR #37 (the satire button reads "Mostrar sátira" / "Show satire" whether or not a line is stored), deployed from 950d5d4cbf1a79faaf2289bcba8635cd1169db75. Cloudflare Worker version: a61df213-2115-4b6c-b018-f8a5887f4238. Previous: daebc57c-1913-4460-81ab-8cf03fd244f7.
+- 469 tests, typecheck, dry-run build on the combined result. No migrations, pipeline or translation changes.
+- Live checks: home carries canonical plus es/en/x-default alternates and no robots tag; /?source=endi and /search carry `noindex,follow`; /story carries canonical and alternates; 63 cards show "Mostrar sátira"; sitemap is valid XML with 1,040 URLs (40 pages, 500 Spanish and 500 English stories) and about 370 KB.
+- robots.txt still disallows only /internal/. Existing index entries change only after Google recrawls.
+
+## 2026-11-20 — Share a story with its satire open
+
+- PR #38 (sharing with the satire open sends `/story?id=N&satire=1`, plus `&lang=en` in English, never the line itself; Web Share text carries the line and "chiste de IA, no noticia" / "AI joke, not news"; the preview description for that link is "Chiste de IA, no noticia: …" / "AI joke, not news: …" when a stored line passes `valid()`, otherwise the verbatim excerpt; the link opens with the satire already open; `noindex,follow` with the plain story URL as canonical; HTML cache `prnews-html-v36`), deployed from a0df03e9366876b81b21c234d77f6f58237f63fe. Cloudflare Worker version: 11d5d9b5-4f75-4385-aa1e-4dbf742ad3db. Previous: a61df213-2115-4b6c-b018-f8a5887f4238.
+- 477 tests, typecheck, dry-run build. No migrations, no model calls, nothing written on view. The on-card disclosure label is unchanged.
+- Not verified: the native OS share sheet, and how each messaging app caches or renders previews.
