@@ -6,7 +6,7 @@ import { isEnglishItem, isEnglishSource, sources } from '../src/sources';
 import { parseFeed, type Item } from '../src/parse';
 import { currentItem } from '../src/current-item';
 import { classify } from '../src/sections';
-import { translated, validSpanishTranslation, needsTranslation, needsSpanishTranslation, type Translation } from '../src/i18n';
+import { translated, validTranslation, validSpanishTranslation, needsTranslation, needsSpanishTranslation, type Translation } from '../src/i18n';
 import { clusterStories, sameEvent } from '../src/frontpage';
 import { refresh, type Env } from '../src/ingest';
 
@@ -105,6 +105,33 @@ describe('news.pr English→Spanish translation direction', () => {
  it('invalidates the cache when the publisher revises the item', () => {
   const revised = { ...item, title: item.title + ' (updated)' };
   expect(needsSpanishTranslation(revised, { [item.url]: spanishEntry() })).toBe(true);
+ });
+});
+
+describe('news.pr reverse-direction cache cannot leak into English paths', () => {
+ const item = items[0];
+ const entry = (targetItem: Item, title: string, summary: string): Translation =>
+  ({ target: 'es', originalTitle: targetItem.title, originalSummary: targetItem.summary, title, summary });
+ const esHeadline = 'Tres paradas de longaniza marcaron la historia de Orocovis';
+ const esSummary = 'El recorrido empieza en la casa original de 1934, según la tradición del pueblo.';
+ const spanish = parseFeed(`<?xml version="1.0"?><rss version="2.0"><channel><title>news.pr</title><item><title>La isla que viene: ${esHeadline}</title><link>https://news.pr/story/es-edge</link><guid>news-pr:es-edge:v1</guid><pubDate>Thu, 19 Nov 2026 12:00:00 GMT</pubDate><category>Culture &amp; Events</category><description>${esSummary}</description></item></channel></rss>`, newspr, seen)[0];
+ it('treats a reverse (target:es) entry as never being an English translation', () => {
+  // An English news.pr item with its valid Spanish translation cached: the English edition,
+  // the English alert mail and the ES→EN queue must all see the original, never the Spanish.
+  const cache = { [item.url]: entry(item, 'Titular traducido del artículo', 'Resumen traducido con la información completa del suceso publicado hoy.') };
+  expect(validTranslation(item, cache[item.url])).toBe(false);
+  expect(translated(item, 'en', cache)).toEqual({ ...item, translated: false });
+  expect(needsTranslation(item, cache)).toBe(false); // English item: nothing pending for the English edition
+ });
+ it('routes a Spanish news.pr payload to the Spanish→English queue only (no double queue)', () => {
+  expect(spanish.originalLanguage).toBe('es');            // a Spanish payload from the English source
+  expect(needsSpanishTranslation(spanish, {})).toBe(false); // the reverse queue never claims it
+  expect(needsTranslation(spanish, {})).toBe(true);         // the shared ES→EN queue owns it
+  // Even if a reverse entry is already stored on such a row (e.g. left by a retry race),
+  // the English queue stays pending and the English edition shows no Spanish as English:
+  const stale = { [spanish.url]: entry(spanish, esHeadline, esSummary) };
+  expect(needsTranslation(spanish, stale)).toBe(true);
+  expect(translated(spanish, 'en', stale)).toEqual({ ...spanish, translated: false });
  });
 });
 

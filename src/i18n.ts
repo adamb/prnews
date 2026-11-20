@@ -10,7 +10,8 @@ export type Language = 'es' | 'en';
  * a news.pr item, English→Spanish. */
 export type Translation = { originalTitle: string; originalSummary: string; title: string; summary: string; spanishSummary?: string; target?: 'es' };
 export function validTranslation(item:Item, entry?:Translation): boolean {
- if(!entry||entry.originalTitle!==item.title||entry.originalSummary!==item.summary||!entry.title?.trim()||(item.summary&&!entry.summary?.trim()))return false;
+ if(!entry||entry.target)return false; // a reverse-direction (target:'es') row is a Spanish translation, never an English one
+ if(entry.originalTitle!==item.title||entry.originalSummary!==item.summary||!entry.title?.trim()||(item.summary&&!entry.summary?.trim()))return false;
  // An unchanged headline from a Spanish newsroom is not a completed translation.
  if(!isEnglishItem(item)&&entry.title.trim()===item.title.trim()&& (item.source!=='reddit_puertorico'||/\b(el|la|los|las|del|una|para|por|que|con|en|como|cual|est[aá])\b/i.test(item.title)))return false;
  if(item.source!=='reddit_puertorico'&&item.summary&&entry.summary.trim()===item.summary.trim()&&/\b(el|la|los|las|del|una|un|para|por|que|con|en)\b/i.test(item.summary))return false;
@@ -45,9 +46,12 @@ export function needsTranslation(item: Item, translations: Record<string, Transl
 }
 /** The reverse queue (news.pr only): an item awaits translation iff the Spanish edition
  * cannot render it in Spanish right now — the mirror of needsTranslation for the
- * English→Spanish direction. Other English sources (sjds/nimb) are never inverted. */
+ * English→Spanish direction. Other English sources (sjds/nimb) are never inverted, and
+ * neither is a news.pr item whose own payload is demonstrably Spanish: that item is a
+ * Spanish original and belongs to the shared Spanish→English queue (needsTranslation),
+ * so the two directions stay mutually exclusive per row. */
 export function needsSpanishTranslation(item: Item, translations: Record<string, Translation> = {}): boolean {
- if (item.source !== newsprSource) return false;
+ if (item.source !== newsprSource || item.originalLanguage === 'es') return false;
  return !validSpanishTranslation(item, translations[item.url] ?? saved[item.url]);
 }
 export function localUrl(path: string, lang: Language) {
