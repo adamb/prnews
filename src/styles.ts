@@ -168,7 +168,7 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .card h2 a:hover,.card h3 a:hover{text-decoration:none}
 .card:hover h2 a,.card:hover h3 a,.card h2 a:focus-visible,.card h3 a:focus-visible{background-size:100% 1px}
 .excerpt,.reddit-summary{margin:0;color:var(--muted);font-size:.95rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.reddit-summary{display:block;white-space:nowrap;text-overflow:ellipsis}
+.reddit-summary{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .language{font-size:11px;color:var(--muted)}
 .also{margin:0;font-size:12px;color:var(--muted)}
 .also span{font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:11px;margin-right:4px}
@@ -244,6 +244,8 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .sec-head .more:hover{text-decoration:underline}
 .sec-grid{display:grid;gap:20px;grid-template-areas:"lead" "mid" "brief"}
 .g-lead{grid-area:lead}.g-mid{grid-area:mid;display:grid;gap:18px;align-content:start}.g-brief{grid-area:brief;display:grid;gap:12px;align-content:start}
+/* A nowrap Reddit excerpt's min-content is the full line. These grid items must be allowed to shrink so the ellipsis clips inside the column instead of widening the page. */
+.sec-grid>*,.g-lead,.g-mid,.lede>*,.tiles>*{min-width:0}
 .g-mid:empty,.g-brief:empty{display:none}
 @container (min-width:620px){
 .sec-grid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);column-gap:28px;grid-template-areas:"lead mid" "brief brief"}

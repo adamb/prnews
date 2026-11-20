@@ -189,6 +189,11 @@ describe('front page markup', () => {
   // Only the first, above-the-fold image loads eagerly.
   expect(html.match(/loading="lazy"/g)?.length ?? 0).toBe(html.match(/<img /g)!.length - html.match(/fetchpriority="high"/g)!.length);
  });
+ it('clips a one-line Reddit summary inside the section grid', () => {
+  // nowrap text sets a grid item's min-content width unless that item can shrink.
+  expect(css).toContain('.reddit-summary{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}');
+  expect(css).toContain('.sec-grid>*,.g-lead,.g-mid,.lede>*,.tiles>*{min-width:0}');
+ });
  it('lays an imageless section lead out as text, and keeps a real lead photo', async () => {
   const bare = story({ source: 'sjds', title: 'Nasdaq futures rise without a photo', section: 'negocios' });
   const photo = story({ source: 'sjds', title: 'A different business story with a photograph', section: 'negocios', image: 'https://img.example/real.jpg' });
