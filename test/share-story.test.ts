@@ -41,7 +41,8 @@ describe('share control', () => {
   const bare = await (await render('/', [item])).text();
   expect(articleOf(bare, item.title)).not.toContain('share-ask');
   expect(bare).not.toContain('property="og:');
-  expect(bare).not.toContain('rel="canonical"');
+  expect(headOf(bare)).toContain('<link rel="canonical" href="https://news.dev.pr/">');
+  expect(headOf(bare)).not.toContain('/story?');
  });
 
  it('adds lang=en to the shared path on the English edition and keeps the button quiet on brief cards', async () => {
@@ -144,8 +145,9 @@ describe('story social preview', () => {
   const about = await (await render('/about', [])).text();
   for (const html of [home, section, about]) {
    expect(html).not.toContain('property="og:');
-   expect(html).not.toContain('rel="canonical"');
    expect(html).not.toContain('twitter:card');
+   expect(headOf(html)).toContain('rel="canonical"');
+   expect(headOf(html)).not.toContain('/story?');
   }
   const missing = await render('/story?id=99', [], { story: true });
   expect(missing.status).toBe(404);

@@ -1,7 +1,7 @@
-import { sections } from './sections';
 import { sources } from './sources';
 import type { Item } from './parse';
 import type { Translation } from './i18n';
+import { alternateLinks, BILINGUAL_PATHS, englishStoryAvailable, pagePair, PUBLIC_ORIGIN, storyPair } from './seo';
 
 /**
  * Syndication: RSS 2.0, a sitemap of *own* story permalinks, and the
@@ -10,7 +10,7 @@ import type { Translation } from './i18n';
  */
 export interface SyndicationEnv { DB: D1Database }
 
-export const SITE_ORIGIN = 'https://news.dev.pr';
+export const SITE_ORIGIN = PUBLIC_ORIGIN;
 export const RSS_PAGES = ['feed', 'rss.xml', 'feed.xml'];
 export const RSS_LIMIT = 50;
 export const SITEMAP_PATH = 'sitemap.xml';
@@ -50,16 +50,35 @@ export async function rssRoute(request: Request, env: SyndicationEnv, now: numbe
 }
 
 /**
- * Handles GET/HEAD for /sitemap.xml. Every <loc> is a news.dev.pr summary
- * permalink (/story?id=<n>); foreign article URLs are never listed.
+ * Handles GET/HEAD for /sitemap.xml. Static pages are listed in both editions.
+ * Story <loc> values are news.dev.pr summary permalinks. The English story URL
+ * is a second entry, and an alternate, only when that edition returns 200.
+ * Foreign article URLs are never listed.
  */
 export async function sitemapRoute(request: Request, env: SyndicationEnv, now: number = Date.now()): Promise<Response | undefined> {
   const url = new URL(request.url);
   if (url.pathname !== `/${SITEMAP_PATH}`) return undefined;
   const guarded = methodOr(request);
   if (guarded) return guarded;
-  const rows = await env.DB.prepare('SELECT s.id, a.published_at FROM story_ids s JOIN articles a ON a.url=s.url WHERE a.published_at>=? ORDER BY a.published_at DESC LIMIT ?').bind(now-14*86400000,SITEMAP_LIMIT).all<{ id: number; published_at: number }>();
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/',...sections.map(([slug])=>'/s/'+slug),'/fuentes','/about','/archive','/signup','/comparar'].flatMap(path=>[path,path+'?lang=en']).map(path=>`<url><loc>${xmlEscape(SITE_ORIGIN+path)}</loc></url>`).join('')}${rows.results.map(r => `<url><loc>${xmlEscape(storyPermalink(SITE_ORIGIN, r.id))}</loc><lastmod>${new Date(r.published_at).toISOString().slice(0, 10)}</lastmod></url>`).join('')}</urlset>`;
+  const rows = await env.DB.prepare('SELECT s.id, a.published_at, a.payload, a.translation FROM story_ids s JOIN articles a ON a.url=s.url WHERE a.published_at>=? ORDER BY a.published_at DESC LIMIT ?').bind(now-14*86400000,SITEMAP_LIMIT).all<{ id: number; published_at: number; payload: string; translation: string | null }>();
+  const staticEntries = BILINGUAL_PATHS.flatMap(path => {
+    const pair = pagePair(path);
+    const links = alternateLinks(pair.es, pair.en, xmlEscape, 'xml');
+    return [pair.es, pair.en].map(loc => `<url><loc>${xmlEscape(loc)}</loc>${links}</url>`);
+  }).join('');
+  const storyEntries = rows.results.map(row => {
+    const pair = storyPair(row.id);
+    let item: Item | null = null;
+    let translation: Translation | null = null;
+    try { item = JSON.parse(row.payload) as Item; } catch { item = null; }
+    if (row.translation) { try { translation = JSON.parse(row.translation) as Translation; } catch { translation = null; } }
+    const en = item && englishStoryAvailable(item, translation) ? pair.en : null;
+    const links = alternateLinks(pair.es, en, xmlEscape, 'xml');
+    const lastmod = `<lastmod>${new Date(row.published_at).toISOString().slice(0, 10)}</lastmod>`;
+    const spanish = `<url><loc>${xmlEscape(pair.es)}</loc>${lastmod}${links}</url>`;
+    return en ? spanish + `<url><loc>${xmlEscape(en)}</loc>${lastmod}${links}</url>` : spanish;
+  }).join('');
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${staticEntries}${storyEntries}</urlset>`;
   return respondXml(request, body, xmlHeaders('application/xml'));
 }
 
