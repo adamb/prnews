@@ -14,6 +14,7 @@ function database(): D1Database {
  const sqlite=new DatabaseSync(':memory:');
  sqlite.exec(readFileSync('migrations/0001_live.sql','utf8'));
  sqlite.exec(readFileSync('migrations/0007_queue_history.sql','utf8'));
+ sqlite.exec('CREATE TABLE IF NOT EXISTS story_ids (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL UNIQUE)');
  function prepare(sql:string):any {
   let args:any[]=[];
   return {bind(...values:any[]){args=values;return this;},async first(){return sqlite.prepare(sql).get(...args)??null;},async all(){return {results:sqlite.prepare(sql).all(...args)};},async run(){const result=sqlite.prepare(sql).run(...args);return {meta:{changes:Number(result.changes)}};}};

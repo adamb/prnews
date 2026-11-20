@@ -273,10 +273,20 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .lighter-ask:disabled{cursor:default;opacity:.7}
 .card.brief .lighter-ask,.card.mid .lighter-ask{min-height:28px;padding:3px 0;border:0;font-size:11.5px}
 .card.brief .lighter-ask:hover:not(:disabled),.card.mid .lighter-ask:hover:not(:disabled){background:transparent;text-decoration:underline;text-underline-offset:3px}
+.share-ask{display:inline-flex;align-items:center;max-width:100%;min-height:34px;margin:2px 0 0;padding:5px 13px;text-align:left;white-space:normal;line-height:1.3;font:600 12px/1.3 var(--sans);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;cursor:pointer;transition:color .2s,border-color .2s,background-color .2s}
+.share-ask:hover{color:var(--ink);border-color:var(--muted);background:var(--soft)}
+.share-ask:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.card.brief .share-ask,.card.mid .share-ask{min-height:28px;padding:3px 0;border:0;font-size:11.5px}
+.card.brief .share-ask:hover,.card.mid .share-ask:hover{background:transparent;text-decoration:underline;text-underline-offset:3px}
+.card .lighter,.card .share{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;max-width:100%}
+.share-note{margin:0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.share-note:empty,.card p.share-note:empty,.card p.lighter-note:empty{display:none}
 .lighter-note{margin:0 0 .4rem;overflow-wrap:anywhere}.lighter-note small{display:block;color:var(--muted)}
 /* The card excerpt clamp also matched this note, so the label, the break, and one satire line were
    all that remained. Excerpts stay clamped; the note never is. */
 .card p.lighter-note{display:block;overflow:visible;white-space:normal;-webkit-line-clamp:unset;-webkit-box-orient:unset}
+.card p.share-note{display:block;overflow:visible;white-space:normal;-webkit-line-clamp:unset;-webkit-box-orient:unset}
+.card .lighter-note,.card .share-note{flex-basis:100%}
 .lighter-note:empty{display:none}
 .lighter-stats{margin:28px 0}.lighter-stats p,.lighter-stats h3,.lighter-stats a{overflow-wrap:anywhere}.lighter-stats .take{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:8px 0}.lighter-stats summary{cursor:pointer;min-height:44px;padding:8px 0}
 @media(max-width:390px){.lighter-stats .source{flex-direction:column;align-items:flex-start;gap:6px}.lighter-stats{margin:20px 0}}
@@ -305,8 +315,8 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .source>div,.source>span{min-width:0;overflow-wrap:anywhere}
 .source h2{font-size:1.3rem}
 @media(max-width:700px){.source{flex-direction:column;gap:8px}}
-main button:not(.lighter-ask):not(.ticker-pause){padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-weight:600;cursor:pointer}
-main button:not(.lighter-ask):not(.ticker-pause):hover{border-color:var(--muted)}
+main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause){padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-weight:600;cursor:pointer}
+main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause):hover{border-color:var(--muted)}
 .archive-list>div{border-bottom:1px solid var(--line);padding:24px 0}.archive-list .card.tile{display:flex;align-items:stretch;max-width:380px}.archive-list .card.tile .picture{aspect-ratio:3/2}.archive-list .card.tile .excerpt{display:block;overflow:visible}
 .digest-unavailable{font-size:14px;color:var(--muted);background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:6px 0 0}
 .signup-form{display:flex;flex-wrap:wrap;align-items:end;gap:12px}.signup-form label{display:grid;gap:6px;flex:1;min-width:180px}.signup-form input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);padding:12px;border-radius:4px}.signup-form p{flex-basis:100%;font-size:13px;color:var(--muted)}
@@ -337,7 +347,7 @@ footer a:hover{color:var(--ink)}
 .compare-head h2{margin:0}
 .compare-note{max-width:68ch;margin:8px 0 14px;color:var(--muted);font-size:14.5px;line-height:1.5}
 .compare-mode{display:flex;flex-wrap:wrap;gap:8px}
-/* Checked text is --bg. This beats main button:not(.lighter-ask):not(.ticker-pause), which otherwise keeps the panel background and the label disappears. */
+/* Checked text is --bg. This beats main button:not(.lighter-ask):not(.share-ask):not(.ticker-pause), which otherwise keeps the panel background and the label disappears. */
 main .compare .compare-mode button[type="button"]{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:600 13px/1 var(--sans);cursor:pointer}
 main .compare .compare-mode button[type="button"]:hover,main .compare .compare-mode button[type="button"]:focus-visible,main .compare .compare-mode button[type="button"]:active{background:var(--panel);color:var(--ink);border-color:var(--muted)}
 main .compare .compare-mode button[type="button"][aria-checked="true"],main .compare .compare-mode button[type="button"][aria-checked="true"]:hover,main .compare .compare-mode button[type="button"][aria-checked="true"]:focus-visible,main .compare .compare-mode button[type="button"][aria-checked="true"]:active{background:var(--ink);color:var(--bg);border-color:var(--ink)}

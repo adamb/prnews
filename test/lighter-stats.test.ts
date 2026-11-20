@@ -200,7 +200,7 @@ it('serves /stats counts from D1 without mixing them into outbound clicks',async
  expect(es).toContain('Listas para mostrar, texto válido del titular y extracto actuales: español 1 · inglés 1.');
  expect(en).toContain(takeEn);
  expect(es).not.toContain('lifetime outbound');
- const bare=database('',['migrations/0001_live.sql']);
+ const bare=database('CREATE TABLE IF NOT EXISTS story_ids (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL UNIQUE);',['migrations/0001_live.sql']);
  const failed=await (await worker.fetch(new Request('https://news.dev.pr/stats?lang=en'),{DB:bare} as unknown as Env)).text();
  const section=failed.slice(failed.indexOf('id="lighter-stats"'),failed.indexOf('id="clics"'));
  expect(section).toContain('does not substitute zeros');
