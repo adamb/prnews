@@ -16,7 +16,7 @@ const require = createRequire('/home/adam/code/hbpr/package.json');
 const { chromium } = require('playwright-core') as {
   chromium: {
     executablePath: () => string;
-    launch: (opts: { executablePath: string; args: string[] }) => Promise<{
+    launch: (opts: { executablePath: string; args: string[]; env?: Record<string, string | undefined> }) => Promise<{
       newPage: (opts: { viewport: { width: number; height: number } }) => Promise<PwPage>;
       close: () => Promise<void>;
     }>;
@@ -442,7 +442,11 @@ describe('satire landing layout', () => {
     const item = story({ title: headline, summary: excerpt, image: 'https://img.example/photo.jpg' });
     expect(valid(marked, item, 'es')).toBe(true);
     const html = await (await render(`/story?id=7&satire=1&cb=layout-${now}`, [item], { story: true, storyIds: { [item.url]: 7 }, lighter: { [key(item, 'es')]: marked } })).text();
-    const browser = await chromium.launch({ executablePath: chromium.executablePath(), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    const browser = await chromium.launch({
+      executablePath: chromium.executablePath(),
+      args: ['--no-sandbox', '--disable-dev-shm-usage'],
+      env: { ...process.env, TMPDIR: '/tmp' },
+    });
     try {
       for (const width of [390, 1440]) {
         const page = await browser.newPage({ viewport: { width, height: 1200 } });
