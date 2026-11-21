@@ -3,10 +3,11 @@ import {needsTranslation, type Translation} from './i18n';
 /** Samples the same queue the scheduler serves: every article the English edition cannot yet render
  * in English — not just rows with no stored translation — so missing and invalid cached
  * translations are both counted. Language is per article: sjds/nimb/newspr/pasquines rows are
- * English by source default (newspr's Spanish translation never makes a row pending
- * for the English edition), and rows marked demonstrably Spanish are pending like
- * any other Spanish article. Old samples used the narrower NULL-only
- * definition and remain as recorded; they are not recalculated. */
+ * English by source default (an English-origin row's Spanish translation from the reverse queue
+ * never makes it pending for the English edition), and rows marked demonstrably Spanish are
+ * pending like any other Spanish article. The reverse queue's own pending items are by definition
+ * English-readable, so this history keeps counting only the Spanish→English queue. Old samples
+ * used the narrower NULL-only definition and remain as recorded; they are not recalculated. */
 export async function sampleQueue(env:Env) {
  const now=Math.floor(Date.now()/900000)*900000;
  const rows=(await env.DB.prepare(`SELECT url,payload,translation FROM articles WHERE published_at>=? AND (json_extract(payload,'$.originalLanguage')='es' OR (source NOT IN ('sjds','nimb','pasquines','newspr') AND COALESCE(json_extract(payload,'$.originalLanguage'),'')!='en'))`).bind(now-14*86400000).all<{url:string;payload:string;translation:string|null}>()).results;
