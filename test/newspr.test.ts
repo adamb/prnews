@@ -104,8 +104,10 @@ describe('news.pr English→Spanish translation direction', () => {
  it('waits for a Spanish translation, not an English one', () => {
   expect(needsSpanishTranslation(item, {})).toBe(true);
   expect(needsSpanishTranslation(item, { [item.url]: spanishEntry() })).toBe(false);
-  // Only news.pr is ever inverted:
-  expect(needsSpanishTranslation({ ...item, source: 'sjds' }, {})).toBe(false);
+  // Every English-origin item is claimed by the reverse queue (2026-11-21 generalization);
+  // a demonstrably Spanish payload from the same feed belongs to the shared ES→EN queue instead.
+  expect(needsSpanishTranslation({ ...item, source: 'sjds' }, {})).toBe(true);
+  expect(needsSpanishTranslation({ ...item, source: 'sjds', originalLanguage: 'es' as const }, {})).toBe(false);
  });
  it('rejects copy-through English and entries without the reverse marker', () => {
   expect(validSpanishTranslation(item, { ...spanishEntry(), title: item.title })).toBe(false);  // unchanged headline
