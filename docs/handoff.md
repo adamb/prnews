@@ -4,8 +4,8 @@ State at the end of the previous thread. Read `README.md` and `AGENTS.md` first.
 
 ## Where things stand
 
-- `main` is at `05884d2`, clean and pushed. Production Worker version is `59331b4c-4485-4c63-b33e-a751b2c14b09`, built from `05884d2`.
-- Everything the user asked for in the last thread is merged and deployed, including PR #45's satire feedback and PR #46's eleven verified outlet feeds (see the newest `docs/releases.md` entries for the exact SHAs and live-check record).
+- `main` is at `424de56`, clean and pushed. Production Worker version is `9a202b15-1a45-4c0e-9ff4-70f4683dec30`, built from `424de56`.
+- Everything the user asked for in the last threads is merged and deployed, including PR #45's satire feedback, PR #46's eleven verified outlet feeds and PR #47's `/fuentes` publisher-site links (see the newest `docs/releases.md` entries for the exact SHAs and live-check record).
 - Nothing is pending from the user.
 - Open PRs not touched in the last thread: #29 (Reddit image repair through Roux), #19 (News is my Business articles, Nov 16–19), #16 (keep News is my Business paused). Check them before building anything nearby.
 
