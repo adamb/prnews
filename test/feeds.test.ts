@@ -90,13 +90,13 @@ it('localizes supporting pages, errors, and HEAD responses', async () => {
  expect(await head.text()).toBe('');
 });
 it('links every source and blocked outlet to its verified publisher site, in both editions', async () => {
-  for (const [lang, label] of [['es', 'Visitar sitio web'], ['en', 'Visit website']] as const) {
-   const html = await worker.fetch(new Request(`https://example.com/fuentes?lang=${lang}`)).text();
-   for (const s of sources) expect(html).toContain(`<a href="${s.homepage}" target="_blank" rel="noopener noreferrer">`);
-   for (const s of unavailableSources) expect(html).toContain(`<a href="${s.homepage}" target="_blank" rel="noopener noreferrer">`);
-   expect(html).toContain(label);
-  }
- });
+ for (const [lang, label] of [['es', 'Visitar sitio web'], ['en', 'Visit website']] as const) {
+  const html = await worker.fetch(new Request(`https://example.com/fuentes?lang=${lang}`)).text();
+  for (const s of sources) expect(html).toContain(`<a href="${s.homepage}" target="_blank" rel="noopener noreferrer">`);
+  for (const s of unavailableSources) expect(html).toContain(`<a href="${s.homepage}" target="_blank" rel="noopener noreferrer">`);
+  expect(html).toContain(label);
+ }
+});
 it('keeps Reddit discussions in Community without republishing post bodies', async () => {
  const items = feed('reddit_puertorico');
  expect(items).toHaveLength(25);
