@@ -152,7 +152,7 @@ export default {
   // Glossary disclosure, separate from satire. Matched only on this card's headline and excerpt.
   const context = explainerHtml([original.title, original.summary, item.title, item.summary].filter(Boolean).join('\n'), lang);
   // A translated card always shows text in the edition's own language (Spanish originals
-  // translated for the English edition, news.pr English originals translated for the Spanish
+  // translated for the English edition, English-origin originals translated for the Spanish
   // one); an untranslated card keeps the original's language. The publisher links below keep
   // the original's actual hreflang either way.
   const contentLang = community && !item.translated ? '' : item.translated ? lang : isEnglishItem(item) ? 'en' : 'es';
