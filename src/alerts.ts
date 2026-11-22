@@ -488,6 +488,7 @@ export async function runAlertSweep(env: AlertEnv, now = Date.now()): Promise<Sw
 }
 
 async function prune(env: AlertEnv, now: number): Promise<void> {
+	await env.DB.prepare('DELETE FROM alert_delivery_history WHERE queued_at<?').bind(now - 90 * DAY).run();
 	await env.DB.prepare('DELETE FROM alert_tokens WHERE expires_at<?').bind(now - MAIL_RETENTION).run();
 	await env.DB.prepare('DELETE FROM alert_sessions WHERE expires_at<?').bind(now - MAIL_RETENTION).run();
 	await env.DB.prepare('DELETE FROM alert_notified WHERE notified_at<?').bind(now - NOTIFY_RETENTION).run();

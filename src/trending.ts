@@ -155,8 +155,8 @@ export async function hallOfFame(env: ClickEnv, limit: number = HALL_TOP): Promi
   const rows = await env.DB.prepare(`SELECT t.url,t.clicks,r.payload,r.translation,r.captured_at
    FROM article_click_totals t
    JOIN archive_revisions r ON r.url=t.url AND r.id=(SELECT MAX(id) FROM archive_revisions w WHERE w.url=t.url)
-   WHERE t.clicks>0 AND NOT EXISTS(SELECT 1 FROM articles a WHERE a.url=t.url)
-   ORDER BY t.clicks DESC,t.url ASC LIMIT ?`).bind(cap).all<{ url: string; clicks: number; payload: string; translation: string | null; captured_at: number }>();
+   WHERE t.clicks>0 AND NOT EXISTS(SELECT 1 FROM articles a WHERE a.url=t.url AND a.published_at>=?)
+   ORDER BY t.clicks DESC,t.url ASC LIMIT ?`).bind(Date.now()-14*86400000,cap).all<{ url: string; clicks: number; payload: string; translation: string | null; captured_at: number }>();
   return rows.results.flatMap(r => {
     try {
       const item = JSON.parse(r.payload) as Item;

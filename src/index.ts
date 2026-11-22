@@ -136,7 +136,7 @@ export default {
   const click=await clickRoute(request,env);
   if(click)return click;
   if(url.pathname==='/search') {
-   const result=await searchArticles(env,{q:url.searchParams.get('q')??'',source:url.searchParams.get('source')??'',english:url.searchParams.get('lang')==='en',page:Number(url.searchParams.get('page')??1)});
+   const result=await searchArticles(env,{range:url.searchParams.get('range')==='recent'?'recent':'all',q:url.searchParams.get('q')??'',source:url.searchParams.get('source')??'',english:url.searchParams.get('lang')==='en',page:Number(url.searchParams.get('page')??1)});
    return renderer.fetch(request,{alerts:alertsData,items:result.items,translations:result.translations,feeds:[],search:result,contactEmail:env.CONTACT_EMAIL},digestConfigured(env));
   }
   if(url.pathname==='/story') {

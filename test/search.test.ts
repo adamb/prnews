@@ -86,7 +86,7 @@ it('applies source and English-readable filters (sjds/nimb or a valid translatio
   expect(titles(await searchArticles(DB, { q: 'stale english' }, NOW)).length).toBe(0); // stale translation is not searchable either way
 });
 
-it('enforces the 14-day bound, 30-per-page pagination and newest-first ordering', async () => {
+it('defaults to all history with optional recent filtering, pagination and newest-first ordering', async () => {
   const { sql, DB } = setup();
   for (let i = 0; i < 31; i++) seed(sql, item(`https://example.com/p${i}/`, `Página ${i}`, 'Resumen.', 'noticel', NOW - (i + 1) * HOUR));
   seed(sql, item('https://example.com/boundary/', 'Límite', 'Resumen.', 'noticel', NOW - 14 * 24 * HOUR)); // inside, exactly 14 days
@@ -97,7 +97,9 @@ it('enforces the 14-day bound, 30-per-page pagination and newest-first ordering'
   expect(page1.hasNext).toBe(true);
   expect(page1.items[0].time).toBe(NOW - HOUR);
   const page2 = await searchArticles(DB, { page: 2 }, NOW);
-  expect(titles(page2).sort()).toEqual(['Límite', 'Página 30']);
+  expect(titles(page2).sort()).toEqual(['Expirada', 'Límite', 'Página 30']);
+  expect(titles(await searchArticles(DB, {page:2, range:'recent', source:'noticel'}, NOW)).sort()).toEqual(['Límite', 'Página 30']);
+  expect(titles(await searchArticles(DB, {q:'Expirada'}, NOW))).toEqual(['Expirada']);
   expect(page2.hasNext).toBe(false);
   expect((await searchArticles(DB, { page: 999 }, NOW)).items.length).toBe(0);
   for (const invalid of [0, -1, undefined, NaN]) expect((await searchArticles(DB, { page: invalid as number }, NOW)).page).toBe(1);
@@ -129,4 +131,15 @@ it('highlights matches without ever emitting raw HTML', () => {
   expect(highlight('Todo bien', [])).toBe('Todo bien');
   expect(highlight('<b>todo</b> corta', ['corta', 'a'])).toBe('&lt;b&gt;todo&lt;/b&gt; <mark>corta</mark>'); // terms shorter than 2 chars are ignored
   expect(highlight('sin coincidencia', ['luma'])).toBe('sin coincidencia');
+});
+
+it('restores deleted historical copies with searchable text and original watermarks', async () => {
+ const {sql,DB}=setup();
+ const old=item('https://example.com/old','Histórico único','Resumen','noticel',NOW-365*24*HOUR);
+ seed(sql,old);
+ sql.prepare('DELETE FROM articles WHERE url=?').run(old.url);
+ for(const name of ['0009_alerts.sql','0013_owner_signup_notice.sql','0018_history.sql']) sql.exec(readFileSync('migrations/'+name,'utf8'));
+ expect(titles(await searchArticles(DB,{q:'Histórico'},NOW))).toEqual(['Histórico único']);
+ expect((await searchArticles(DB,{q:'Histórico',range:'recent'},NOW)).items).toEqual([]);
+ expect(sql.prepare('SELECT first_seen FROM articles WHERE url=?').get(old.url)!.first_seen).toBe(old.time);
 });

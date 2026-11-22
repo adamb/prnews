@@ -36,7 +36,7 @@ Git originally held only the spec/fixture commit, so it cannot establish histori
 
 The live ingestion implementation uses a Cloudflare Cron Trigger (`*/15 * * * *`) and D1. Every 15 minutes it checks the configured news and community sources (including both NotiCel pages), saves articles by canonical URL, and processes up to 96 pending English translations. New and changed articles are translated once and stored in D1. Until translation succeeds, articles remain available in Spanish and are withheld from the English edition. A count indicates translations still pending. Existing snapshot translations can be imported without repeating AI calls.
 
-Feeds have independent timeouts, conditional requests, and exponential backoff capped at four hours. A database lease prevents overlapping runs. Observation timestamps remain stable across scans. Articles older than 14 days are removed. `/fuentes` shows the latest status and last successful check for each feed. HTML is cached for 60 seconds.
+Feeds have independent timeouts, conditional requests, and exponential backoff capped at four hours. A database lease prevents overlapping runs. Observation timestamps remain stable across scans. Articles are retained indefinitely; recent views cover 14 days. `/fuentes` shows the latest status and last successful check for each feed. HTML is cached for 60 seconds.
 
 Production is deployed with D1 and a 15-minute Cron Trigger. Cloudflare Web Analytics uses manual JS snippet installation on news.dev.pr. Its public beacon token is in src/analytics.json; the module script is included once before </body>. Local development and the workers.dev hostname do not emit the beacon.
 
@@ -124,7 +124,7 @@ Reddit image repair is bounded and reuses scan validation: a post that ages out 
 
 `/archive` keeps every observed headline/excerpt/image-URL revision indefinitely, with source links, original publication times, capture timestamps in AST, and a capture-date filter. An Archive link is in the footer. Existing articles were backfilled when migration `0002_archive.sql` ran; this cannot reconstruct revisions from before we started observing them.
 
-D1 triggers record inserts and content changes, but not unchanged scans or classification-only changes. Translations are attached to matching historical text. The archive tables have no cascading relationship to rolling articles, so the main feed's 14-day cleanup does not remove history. The archive date filter is based on capture date, in Puerto Rico time.
+D1 triggers record inserts and content changes, but not unchanged scans or classification-only changes. Translations are attached to matching historical text. The archive tables have no cascading relationship to rolling articles, and current article copies are also retained indefinitely. The archive date filter is based on capture date, in Puerto Rico time.
 
 Image originals are queued by URL and copied into the private `prnews-archive` R2 bucket, served through `/archive/images/<sha256>`. Identical bytes share one object. Saved images are never expired or re-downloaded. Each scan copies up to 40 queued images with two concurrent downloads; failures back off, stopping after six attempts. Only JPEG, PNG, WebP, GIF, and AVIF files up to 16 MiB are accepted. Unavailable/unsupported images retain their original URL and error status rather than being represented as saved. No full articles or videos are copied.
 
@@ -201,3 +201,5 @@ To change an entry, edit `src/explainer.ts`, open the cited URL, and update `VER
 The card change stays one call in `card()` in `src/render.ts`, inserted before the satire control. The `.explainer` rules in `src/styles.ts` sit next to satire and do not replace `.lighter` or `.compare`. The HTML cache name is `prnews-html-v43` (updated to drop cached `news.pr` trailing-slash `/click` links after `v42` `/fuentes` verified-homepage links, `v41` satire votes, and `v40`, which replaced the old “Explicar el contexto” label, the long banner, and the old entry set). A cached page can lag up to its 60-second TTL. At most three entries render on one card. When a card names LUMA, the PREPA entry stays hidden and the LUMA note names the Autoridad de Energía Eléctrica.
 
 Alert invitations now wait 15 cumulative visible seconds across reading pages in one tab, with 30-minute inactivity expiry. Anonymous daily shown/clicked/dismissed event totals appear on `/stats`, with start date and unavailable state; no visitor or duration telemetry is stored. See the November 22 migration plan in [alerts integration](docs/alerts-integration.md).
+
+See [historical search and delivery retention](docs/history-retention.md) for the additive migration and legacy limits.
