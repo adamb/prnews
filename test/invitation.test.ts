@@ -348,3 +348,33 @@ it('validates anonymous events and distinguishes absent migration from zero',asy
  const html=await renderer.fetch(new Request('https://news.dev.pr/stats?lang=en'),data({invitationStats:await invitationCounts({DB})})).text();
  expect(html).toContain('1 shown');expect(html).toContain('Events, not unique users');
 });
+
+function lifecyclePage(){
+ const dom=inviteDom();
+ const events:Record<string,(e:{persisted?:boolean})=>void>={};
+ new Function('document','window',invitationScript)(dom.doc,{addEventListener:(name:string,fn:(e:{persisted?:boolean})=>void)=>{events[name]=fn}});
+ return {dom,events,visibility(hidden:boolean){dom.doc.hidden=hidden;dom.doc.listeners.visibilitychange({key:''})}};
+}
+it('rehydrates shared reading progress when Back restores a cached page',async()=>{
+ vi.setSystemTime(NOON_AST);
+ vi.stubGlobal('localStorage',memoryStore());vi.stubGlobal('sessionStorage',memoryStore());
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,json:async()=>({active:false})})));
+ const a=lifecyclePage();await vi.advanceTimersByTimeAsync(6000);a.events.pagehide({});
+ const b=lifecyclePage();await vi.advanceTimersByTimeAsync(6000);b.events.pagehide({});
+ a.events.pageshow({persisted:true});
+ await vi.advanceTimersByTimeAsync(2750);expect(a.dom.box.hidden).toBe(true);
+ await vi.advanceTimersByTimeAsync(250);expect(a.dom.box.hidden).toBe(false);
+});
+it.each(['inactivity','midnight'])('invalidates deferred account checks after %s expiry',async(reason)=>{
+ vi.setSystemTime(reason==='midnight'?Date.UTC(2026,10,20,3,59,40):NOON_AST);
+ vi.stubGlobal('localStorage',memoryStore());vi.stubGlobal('sessionStorage',memoryStore());
+ let resolve!:(value:unknown)=>void;
+ const request=new Promise(r=>{resolve=r});
+ vi.stubGlobal('fetch',vi.fn((url:string)=>url==='/api/alerts-active'?request:Promise.resolve({ok:true})));
+ const p=lifecyclePage();await vi.advanceTimersByTimeAsync(INVITE_DELAY_MS);
+ p.visibility(true);
+ vi.setSystemTime(Date.now()+(reason==='midnight'?10000:1800001));
+ resolve({ok:true,json:async()=>({active:false})});await vi.advanceTimersByTimeAsync(0);
+ p.visibility(false);await vi.advanceTimersByTimeAsync(14750);expect(p.dom.box.hidden).toBe(true);
+ await vi.advanceTimersByTimeAsync(250);expect(p.dom.box.hidden).toBe(false);
+});
