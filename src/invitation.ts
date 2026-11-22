@@ -4,7 +4,7 @@ import { localUrl, type Language } from './i18n';
  *
  * Privacy posture (mirrors the rest of the site): the invitation markup ships inside the
  * shared, edge-cached page HTML and is identical for every visitor; the only personalization
- * happens in the browser — a local storage record (no cookies, no identifiers, no analytics)
+ * happens in the browser — a local storage record (no cookies or visitor identifiers; anonymous event totals)
  * and one same-origin boolean fetch. A signed-in browser that already has active alerts is
  * suppressed by `/api/alerts-active`, which answers exactly one bit and is always no-store,
  * so session state can never enter the shared HTML cache. A signed-out visitor who created
@@ -29,7 +29,7 @@ import { localUrl, type Language } from './i18n';
  * (1 = suppressed because this session has active alerts), v: variant index last SHOWN }. */
 export const INVITE_KEY = 'prnews-alert-invite';
 /** Modest reading delay before the invitation appears. */
-export const INVITE_DELAY_MS = 20000;
+export const INVITE_DELAY_MS = 15000;
 /** Puerto Rico is AST (UTC-4) all year; DST does not apply, so a fixed offset is exact. */
 export const AST_UTC_OFFSET_MS = 4 * 3600000;
 /** The America/Puerto_Rico calendar day of a moment, as a day number: the unit the
@@ -102,33 +102,44 @@ var box=document.getElementById('alert-invite');if(!box)return;
 var store;try{var p='__prnews-invite-probe';localStorage.setItem(p,p);localStorage.removeItem(p);store=localStorage}
 catch(e){try{var q='__prnews-invite-probe';sessionStorage.setItem(q,q);sessionStorage.removeItem(q);store=sessionStorage}catch(e2){store=null}}
 if(!store)return;
-var N=${INVITE_VARIANT_COUNT};
+var N=${INVITE_VARIANT_COUNT},selected=-1,closed=false,pending=false,attempt=0;
+function event(kind){if(selected<0)return;try{fetch('/api/invitation-event',{method:'POST',credentials:'omit',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({variant:selected,lang:document.documentElement&&document.documentElement.lang==='en'?'en':'es',event:kind})}).catch(function(){})}catch(e){}}
+
 function day(){return Math.floor((Date.now()-${AST_UTC_OFFSET_MS})/86400000)}
 function read(){try{var v=store.getItem('${INVITE_KEY}');return v?JSON.parse(v):null}catch(e){return null}}
 function save(a,v){try{store.setItem('${INVITE_KEY}',JSON.stringify({d:day(),a:a,v:v}))}catch(e){}}
 function sameDay(rec){return !!rec&&rec.d===day()}
 function shown(rec){return rec&&typeof rec.v==='number'&&rec.v>=0?rec.v:-1}
 function reveal(v){
+expire();if(elapsed<${INVITE_DELAY_MS}||closed||selected>=0)return;
+if(document.hidden){pending=true;return} pending=false;
 var r=read();if(sameDay(r))return; // another display already used today's slot
 var cards=box.querySelectorAll('.invite-card');if(!cards.length)return;
 for(var i=0;i<cards.length;i++)cards[i].hidden=i!==v;
-save(0,v);if(box.hidden)box.hidden=false;
+save(0,v);if(box.hidden){box.hidden=false;selected=v;event('shown')}
 }
 function show(){
+expire();if(elapsed<${INVITE_DELAY_MS}||document.hidden||closed||selected>=0)return;
+var ticket=++attempt;
 var rec=read();if(sameDay(rec))return; // today's display already happened or was dismissed
 var v=(shown(rec)+1)%N; // next variant: advances only when this display really happens
 fetch('/api/alerts-active',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){
+expire();if(ticket!==attempt)return;
 if(j&&j.active===true){save(1,shown(rec));return} // suppressed check never advances the rotation
-reveal(v)}).catch(function(){reveal(v)}); // a failed check stays quiet and shows the invitation
+reveal(v)}).catch(function(){expire();if(ticket===attempt)reveal(v)}); // a failed check stays quiet and shows the invitation
 }
-setTimeout(function(){
-if(document.hidden){document.addEventListener('visibilitychange',function h(){if(!document.hidden){document.removeEventListener('visibilitychange',h);show()}});return}
-show();
-},${INVITE_DELAY_MS});
-function close(){box.remove()}
+var elapsed=0,last=Date.now(),paused=document.hidden,stopped=false,activeAt=Date.now(),activeDay=day(),key='prnews-invite-reading';
+function expire(){if(Date.now()-activeAt>=1800000||day()!==activeDay){elapsed=0;pending=false;stopped=false;attempt++;activeDay=day();activeAt=Date.now();last=Date.now()}}
+function restore(){elapsed=0;pending=false;stopped=false;attempt++;last=Date.now();activeAt=last;activeDay=day();try{var saved=JSON.parse(sessionStorage.getItem(key)||'null');if(saved&&saved.day===day()&&last-saved.at>=0&&last-saved.at<1800000&&Number.isFinite(saved.ms))elapsed=Math.max(0,Math.min(${INVITE_DELAY_MS},saved.ms))}catch(e){}}
+restore();
+function tick(){expire();var now=Date.now(),gap=now-last;if(!paused)activeAt=now;if(!paused&&gap>=0&&gap<5000)elapsed=Math.min(${INVITE_DELAY_MS},elapsed+gap);last=now;if(!paused)try{sessionStorage.setItem(key,JSON.stringify({ms:elapsed,at:now,day:day()}))}catch(e){}if(!stopped&&!document.hidden&&elapsed>=${INVITE_DELAY_MS}){stopped=true;show()}}
+var timer=setInterval(tick,250);
+document.addEventListener('visibilitychange',function(){tick();paused=document.hidden;if(!paused&&pending){pending=false;show()}});
+if(typeof window!=='undefined'){window.addEventListener('pagehide',function(){tick();paused=true;attempt++;pending=false;clearInterval(timer)});window.addEventListener('pageshow',function(e){if(e.persisted)restore();last=Date.now();paused=document.hidden;clearInterval(timer);timer=setInterval(tick,250)})}
+function close(kind){if(closed||box.hidden)return;closed=true;event(kind);box.remove()}
 Array.prototype.forEach.call(box.querySelectorAll('.invite-card'),function(card){
-var b=card.querySelector('.invite-close');if(b)b.addEventListener('click',close);
-var c=card.querySelector('.invite-cta');if(c)c.addEventListener('click',close);
+var b=card.querySelector('.invite-close');if(b)b.addEventListener('click',function(){close('dismissed')});
+var c=card.querySelector('.invite-cta');if(c)c.addEventListener('click',function(){close('clicked')});
 });
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!box.hidden)close()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!box.hidden)close('dismissed')});
 })()`;

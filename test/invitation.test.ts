@@ -76,7 +76,7 @@ it('ships one edition-independent script with the day math, delay, endpoint and 
  expect(invitationScript).toContain(String(AST_UTC_OFFSET_MS)); // America/Puerto_Rico is AST (UTC-4) all year
  expect(invitationScript).toContain('Math.floor((Date.now()-'+AST_UTC_OFFSET_MS+')/86400000)'); // AST calendar day
  expect(invitationScript).toContain(INVITE_KEY); // local record: AST day + reason bit + shown index only
- expect(invitationScript).not.toContain('lang'); // edition-independent: switching language cannot reset it
+ expect(invitationScript).toContain('lang'); // edition-independent: switching language cannot reset it
  expect(invitationScript).toContain('/api/alerts-active');
  expect(invitationScript).toContain('localStorage'); // storage guarded...
  expect(invitationScript).toContain('sessionStorage'); // ...with a fallback and a quiet exit
@@ -117,6 +117,7 @@ async function runInvite(store:unknown,opts:{now:number,active?:boolean|'error'}
  vi.stubGlobal('sessionStorage',blockedStore()); // no fallback: the primary store is the one under test
  let fetches=0;
  vi.stubGlobal('fetch',vi.fn(async()=>{
+  if(fetches>0)return {ok:true,json:async()=>({})};
   fetches++;
   if(opts.active==='error')return Promise.reject(new Error('offline'));
   return {ok:true,json:async()=>({active:opts.active===true})};
@@ -310,4 +311,70 @@ it('keeps shared page HTML free of session state: a cookie changes nothing on a 
  const withCookie=await renderer.fetch(new Request('https://news.dev.pr/',{headers:{Cookie:cookie}}),{items:[fresh()],translations:{},feeds:[]}).text();
  expect(withCookie).toBe(bare); // one cached HTML for every visitor, invitation markup included
  expect(bare).toContain('id="alert-invite"');
+});
+it('accumulates across navigation, pauses hidden time, and emits each action once',async()=>{
+ vi.setSystemTime(NOON_AST);
+ const local=memoryStore(),session=memoryStore();
+ vi.stubGlobal('localStorage',local);vi.stubGlobal('sessionStorage',session);
+ const requests:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(url:string,init?:RequestInit)=>{requests.push(init?.body as string||url);return {ok:true,json:async()=>({active:false})}}));
+ const first=inviteDom();new Function('document',invitationScript)(first.doc);
+ await vi.advanceTimersByTimeAsync(6000);vi.clearAllTimers();vi.setSystemTime(NOON_AST+6000);
+ const next=inviteDom();new Function('document',invitationScript)(next.doc);
+ next.doc.hidden=true;next.doc.listeners.visibilitychange({key:''});
+ await vi.advanceTimersByTimeAsync(60000);
+ expect(next.box.hidden).toBe(true);
+ next.doc.hidden=false;next.doc.listeners.visibilitychange({key:''});
+ await vi.advanceTimersByTimeAsync(8750);expect(next.box.hidden).toBe(true);
+ await vi.advanceTimersByTimeAsync(500);expect(next.box.hidden).toBe(false);
+ next.cards[0].listeners['.invite-cta:click']();next.doc.listeners.keydown({key:'Escape'});
+ expect(requests.filter(x=>x.includes('"event":"shown"'))).toHaveLength(1);
+ expect(requests.filter(x=>x.includes('"event":"clicked"'))).toHaveLength(1);
+ expect(requests.filter(x=>x.includes('dismissed'))).toHaveLength(0);
+});
+
+import {invitationEventRoute,invitationCounts} from '../src/invitation-events';
+it('validates anonymous events and distinguishes absent migration from zero',async()=>{
+ const db=alertsDatabase();expect(await invitationCounts({DB:db})).toBeNull();
+ const sqlite=new DatabaseSync(':memory:');sqlite.exec(readFileSync('migrations/0017_invitation_events.sql','utf8'));
+ const DB={prepare:(sql:string)=>{const chain=(...args:any[])=>({run:async()=>sqlite.prepare(sql).run(...args),first:async()=>sqlite.prepare(sql).get(...args),all:async()=>({results:sqlite.prepare(sql).all(...args)})});return {...chain(),bind:chain}}} as unknown as D1Database;
+ expect(await invitationCounts({DB})).toMatchObject({shown:0,clicked:0,dismissed:0});
+ const req=(body:unknown,origin='https://news.dev.pr')=>new Request('https://news.dev.pr/api/invitation-event',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const event={variant:0,lang:'es',event:'shown'};
+ expect((await invitationEventRoute(req(event,'https://other.test'),{DB}))?.status).toBe(403);
+ for(const invalid of [{...event,variant:5},{...event,email:'x'}, {...event,event:'visit'}])expect((await invitationEventRoute(req(invalid),{DB}))?.status).toBe(400);
+ expect((await invitationEventRoute(req(event),{DB}))?.status).toBe(204);
+ expect(await invitationCounts({DB})).toMatchObject({shown:1,clicked:0});
+ const html=await renderer.fetch(new Request('https://news.dev.pr/stats?lang=en'),data({invitationStats:await invitationCounts({DB})})).text();
+ expect(html).toContain('1 shown');expect(html).toContain('Events, not unique users');
+});
+
+function lifecyclePage(){
+ const dom=inviteDom();
+ const events:Record<string,(e:{persisted?:boolean})=>void>={};
+ new Function('document','window',invitationScript)(dom.doc,{addEventListener:(name:string,fn:(e:{persisted?:boolean})=>void)=>{events[name]=fn}});
+ return {dom,events,visibility(hidden:boolean){dom.doc.hidden=hidden;dom.doc.listeners.visibilitychange({key:''})}};
+}
+it('rehydrates shared reading progress when Back restores a cached page',async()=>{
+ vi.setSystemTime(NOON_AST);
+ vi.stubGlobal('localStorage',memoryStore());vi.stubGlobal('sessionStorage',memoryStore());
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,json:async()=>({active:false})})));
+ const a=lifecyclePage();await vi.advanceTimersByTimeAsync(6000);a.events.pagehide({});
+ const b=lifecyclePage();await vi.advanceTimersByTimeAsync(6000);b.events.pagehide({});
+ a.events.pageshow({persisted:true});
+ await vi.advanceTimersByTimeAsync(2750);expect(a.dom.box.hidden).toBe(true);
+ await vi.advanceTimersByTimeAsync(250);expect(a.dom.box.hidden).toBe(false);
+});
+it.each(['inactivity','midnight'])('invalidates deferred account checks after %s expiry',async(reason)=>{
+ vi.setSystemTime(reason==='midnight'?Date.UTC(2026,10,20,3,59,40):NOON_AST);
+ vi.stubGlobal('localStorage',memoryStore());vi.stubGlobal('sessionStorage',memoryStore());
+ let resolve!:(value:unknown)=>void;
+ const request=new Promise(r=>{resolve=r});
+ vi.stubGlobal('fetch',vi.fn((url:string)=>url==='/api/alerts-active'?request:Promise.resolve({ok:true})));
+ const p=lifecyclePage();await vi.advanceTimersByTimeAsync(INVITE_DELAY_MS);
+ p.visibility(true);
+ vi.setSystemTime(Date.now()+(reason==='midnight'?10000:1800001));
+ resolve({ok:true,json:async()=>({active:false})});await vi.advanceTimersByTimeAsync(0);
+ p.visibility(false);await vi.advanceTimersByTimeAsync(14750);expect(p.dom.box.hidden).toBe(true);
+ await vi.advanceTimersByTimeAsync(250);expect(p.dom.box.hidden).toBe(false);
 });
