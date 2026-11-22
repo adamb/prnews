@@ -1,5 +1,17 @@
 # Releases
 
+## 2026-11-22 — Slashless news.pr canonical URLs, legacy /click compatibility, and D1 URL repair
+
+- Deployed source: `5bbbd30159cd5ab107f19fff894417145ab358b8`, the `origin/main` squash merge of https://github.com/adamb/prnews/pull/51 (head `76831cdc8c5a69d70ad589fb435ad663b0661662`, Gemini 4 Carbon). Cloudflare Worker version: `437ab712-b405-4492-a24c-26c8274155c9`. Previous: `dc7a995c-2b71-4ab3-9730-dadc1092b4f2`.
+- What shipped:
+  - **Slashless `news.pr` canonicalization (`src/parse.ts`):** `canonical()` strips trailing slashes when `u.hostname === 'news.pr'` (keeping `/` at root while preserving trailing slashes for all other publishers), matching `news.pr`'s slashless story permalinks (HTTP 200 vs. 404 with a trailing slash).
+  - **Legacy `/click` compatibility (`src/trending.ts`):** `lookupDestination()` adds a DB-backed `legacyNewsprFallbackKey()` fallback so pre-fix `/click?url=https%3A%2F%2Fnews.pr%2Fstory%2F...%2F` links resolve to and count under the slashless canonical URL while misses stay 404.
+  - **Cache bust & tests (`src/index.ts`, `README.md`, `docs/handoff.md`, `test/`):** bumped HTML Cache API key `prnews-html-v42` → `prnews-html-v43`, and added coverage in `test/newspr.test.ts`, `test/feeds.test.ts`, `test/trending.test.ts`, and `test/repair-newspr-urls.test.ts`.
+- Migrations: none pending (`wrangler d1 migrations list prnews --remote` reported none).
+- Remote D1 repair (`npx tsx scripts/repair-newspr-urls.ts --apply`, run after deploy): processed `legacyUrlsFound: 86` legacy `news.pr` URLs (`articles`: 86 legacy rows with 16 merged into newly ingested slashless rows, `updated: 490`, `deleted: 144` including SQLite FTS triggers; `archive_revisions`: 86 updated; `story_ids`: 70 updated, 16 deleted; `article_click_totals`: 53 updated; `article_click_buckets`: 51 upserted/deleted; `alert_notified`: 1 inserted/deleted; `alert_queue`: 0; `image_enrich_queue`: 81 deleted). Follow-up dry run (`npx tsx scripts/repair-newspr-urls.ts`) reported `legacyUrlsFound: 0`.
+- Validation on integrated `5bbbd30`: `npm ci` (0 vulnerabilities), `npm test` (45 files, 562 tests passed), `npm run typecheck`, and `npm run build` (dry run, 1379.34 KiB / gzip 416.15 KiB).
+- Live read-only checks after deploy and repair: `HEAD https://news.pr/story/c6b35bad627c459ca90ca82083646499` returned HTTP 200; `/`, `/?lang=en`, `/s/negocios?lang=en`, and `HEAD /story?id=4365&lang=en` returned HTTP 200; rendered `/click` links on `/?source=newspr` and `/s/negocios?lang=en` (including `c6b35bad627c459ca90ca82083646499`) carry slashless targets; `HEAD /click` with both the legacy trailing-slash URL (`...%2F`) and the slashless URL returned `302` → `https://news.pr/story/c6b35bad627c459ca90ca82083646499` without recording clicks.
+
 ## 2026-11-21 — Targeted satire cache lookups, Playwright TMPDIR fix, and docs sync
 
 - Deployed source: `a1d83a867219c13266574ebbdf4aead847d5c0f1`, the `origin/main` squash-merge tip combining https://github.com/adamb/prnews/pull/49 (`5a73592`, original head `62f9c58`, Gemini 3.8 Flash) and https://github.com/adamb/prnews/pull/50 (`a1d83a8`, original head `e4f7723`, Gemini 4 Carbon). Cloudflare Worker version: `dc7a995c-2b71-4ab3-9730-dadc1092b4f2`. Previous: `449663fb-249c-4338-8294-f6b3d199b8ec`.
