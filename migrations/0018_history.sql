@@ -24,12 +24,14 @@ CREATE TRIGGER alert_history_phrases AFTER UPDATE OF payload ON alert_queue BEGI
  UPDATE alert_delivery_history SET phrases=json_extract(NEW.payload,'$.phrases') WHERE account_id=NEW.account_id AND article_ref=NEW.url;
 END;
 CREATE TRIGGER alert_history_outbox_new AFTER UPDATE OF payload ON alert_outbox WHEN NEW.kind='notify' AND json_valid(NEW.payload) BEGIN
- UPDATE alert_delivery_history SET outbox_id=NEW.id,state='pending',updated_at=NEW.created_at
+ UPDATE alert_delivery_history SET state='withheld',accepted_at=NULL,updated_at=CAST(strftime('%s','now') AS INTEGER)*1000
+ WHERE outbox_id=NEW.id AND article_ref NOT IN (SELECT json_extract(value,'$.url') FROM json_each(NEW.payload,'$.items'));
+ UPDATE alert_delivery_history SET outbox_id=NEW.id,state=NEW.state,updated_at=NEW.created_at
  WHERE account_id=NEW.account_id AND article_ref IN (SELECT json_extract(value,'$.url') FROM json_each(NEW.payload,'$.items'));
 END;
 CREATE TRIGGER alert_history_state AFTER UPDATE OF state,attempts ON alert_outbox WHEN NEW.kind='notify' BEGIN
  UPDATE alert_delivery_history SET state=CASE NEW.state WHEN 'sent' THEN 'provider_accepted' ELSE NEW.state END,
- attempts=NEW.attempts,accepted_at=NEW.sent_at,updated_at=CAST(strftime('%s','now') AS INTEGER)*1000 WHERE outbox_id=NEW.id;
+ attempts=NEW.attempts,accepted_at=NEW.sent_at,updated_at=CAST(strftime('%s','now') AS INTEGER)*1000 WHERE outbox_id=NEW.id AND state<>'withheld';
 END;
 CREATE TRIGGER alert_history_outbox_expiry BEFORE DELETE ON alert_outbox BEGIN
  UPDATE alert_delivery_history SET state=CASE WHEN OLD.state IN ('sending','uncertain') THEN 'unresolved' ELSE 'expired' END,

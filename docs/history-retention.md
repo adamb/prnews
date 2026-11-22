@@ -9,3 +9,5 @@ Delivery history starts with new queue insertions after migration. It stores int
 No historical delivery success is backfilled. Legacy alert_notified means enqueue deduplication, not sending or acceptance; already-pruned outboxes cannot be reconstructed. Existing queued/outbox rows at migration time do not gain retrospective history. Phrase matching may reveal sensitive interests, so history remains internal and is removed at unsubscribe. The canonical URL is the existing internal article key, not a copied article body.
 
 Production preflight (November 22): the read-only latest-revision query found 13 missing current copies with 4,264 characters of payload/translation text; D1 reported 30,756,864 bytes total database size. This is a small restoration, but index/trigger storage overhead is additional. Measure local migration and verify the count again immediately before application.
+
+Send attempts persist the actual filtered article membership before contacting the provider. Quarantined items excluded from a batch are marked withheld and cannot inherit its acceptance during uncertain-send reconciliation.
