@@ -23,7 +23,7 @@ Release flow: `gh pr merge N --squash`, `git pull --ff-only`, `npm test`, `npm r
 
 ## Facts worth knowing
 
-- Cloudflare Worker (not Pages) with D1, R2, and a Cache API HTML cache. The cache name is `prnews-html-v42` with a 60 s TTL. Bump it in `src/index.ts` when page HTML changes, and add a unique query param when testing live.
+- Cloudflare Worker (not Pages) with D1, R2, and a Cache API HTML cache. The cache name is `prnews-html-v43` with a 60 s TTL. Bump it in `src/index.ts` when page HTML changes, and add a unique query param when testing live.
 - D1 can be queried read-only with `npx wrangler d1 execute prnews --remote --json`.
 - Pages are rendered in `src/render.ts`; CSS is a string in `src/styles.ts`.
 - SEO helpers are in `src/seo.ts`. The sitemap is served by `src/syndication.ts`; `src/discovery.ts` has a separate copy, so keep both on `seo.ts`.

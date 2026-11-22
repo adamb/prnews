@@ -53,6 +53,29 @@ export async function clickRoute(request: Request, env: ClickEnv, now: number = 
 const digits = (s: string) => /^[1-9]\d{0,8}$/.test(s);
 const safeParam = (s: string | null, max: number) => s && s.length <= max ? s : '';
 
+async function lookupByUrl(env: ClickEnv, key: string): Promise<string> {
+  const direct = await env.DB.prepare('SELECT url FROM articles WHERE url=?').bind(key).first<{ url: string }>();
+  if (direct) return safeUrl(direct.url);
+  // story_ids is keyed by the same normalized article URL the archive pages use.
+  const stored = await env.DB.prepare('SELECT url FROM story_ids WHERE url=?').bind(key).first<{ url: string }>();
+  if (stored) return safeUrl(stored.url);
+  // Manual-import/seed edge: a revised copy exists even where no permalink row does.
+  const revision = await env.DB.prepare('SELECT url FROM archive_revisions WHERE url=?').bind(key).first<{ url: string }>();
+  return revision ? safeUrl(revision.url) : '';
+}
+
+/** Narrow compatibility key for pre-fix news.pr links that carried a trailing slash. */
+function legacyNewsprFallbackKey(key: string): string {
+  if (!key.startsWith('https://news.pr/')) return '';
+  try {
+    const u = new URL(key);
+    if (u.protocol !== 'https:' || u.hostname !== 'news.pr' || u.port !== '' || u.username || u.password) return '';
+    if (u.pathname === '/' || !u.pathname.endsWith('/')) return '';
+    u.pathname = u.pathname.replace(/\/+$/, '') || '/';
+    return u.pathname === '/' ? '' : u.href;
+  } catch { return ''; }
+}
+
 /**
  * Resolves the redirect target strictly from the DB. `url` must equal an
  * ingestion-normalized key that is already stored, or `id` a story_ids row.
@@ -69,14 +92,10 @@ export async function lookupDestination(env: ClickEnv, key: string): Promise<str
       const row = await env.DB.prepare('SELECT s.url FROM story_ids s WHERE s.id=?').bind(Number(key)).first<{ url: string }>();
       return row ? safeUrl(row.url) : '';
     }
-    const direct = await env.DB.prepare('SELECT url FROM articles WHERE url=?').bind(key).first<{ url: string }>();
-    if (direct) return safeUrl(direct.url);
-    // story_ids is keyed by the same normalized article URL the archive pages use.
-    const stored = await env.DB.prepare('SELECT url FROM story_ids WHERE url=?').bind(key).first<{ url: string }>();
-    if (stored) return safeUrl(stored.url);
-    // Manual-import/seed edge: a revised copy exists even where no permalink row does.
-    const revision = await env.DB.prepare('SELECT url FROM archive_revisions WHERE url=?').bind(key).first<{ url: string }>();
-    return revision ? safeUrl(revision.url) : '';
+    const exact = await lookupByUrl(env, key);
+    if (exact) return exact;
+    const fallback = legacyNewsprFallbackKey(key);
+    return fallback ? await lookupByUrl(env, fallback) : '';
   } catch { return ''; }
 }
 

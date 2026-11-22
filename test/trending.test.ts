@@ -149,4 +149,47 @@ it('creates stable story ids for articles and leaves them intact over rotation',
   expect(fts.n).toBe(0); // retention/rotation also trims the maintained index
 });
 
+it('redirects legacy trailing-slash news.pr click URLs to canonical DB rows and counts under canonical URL', async () => {
+  const { sql, DB } = setup();
+  const canonicalUrl = 'https://news.pr/story/0348dd55e67a4a92ac82e8bb0abe2c6a';
+  const legacyUrl = `${canonicalUrl}/`;
+  const otherPublisher = 'https://example.com/apagon/';
+  seed(sql, item(canonicalUrl, 'San Juan decentralized AI meetup', 'newspr'));
+  seed(sql, item(otherPublisher));
+
+  const res = await redirects(`url=${encodeURIComponent(legacyUrl)}`, DB);
+  expect(res?.status).toBe(302);
+  expect(res?.headers.get('Location')).toBe(canonicalUrl);
+
+  const bucketRows = sql.prepare('SELECT url, SUM(clicks) AS clicks FROM article_click_buckets GROUP BY url').all() as { url: string; clicks: number }[];
+  expect(bucketRows).toEqual([{ url: canonicalUrl, clicks: 1 }]);
+  const totalRows = sql.prepare('SELECT url, clicks FROM article_click_totals').all() as { url: string; clicks: number }[];
+  expect(totalRows).toEqual([{ url: canonicalUrl, clicks: 1 }]);
+
+  // Rotated out of live articles: story_ids fallback still resolves legacy trailing-slash URL.
+  sql.prepare('DELETE FROM articles WHERE url=?').run(canonicalUrl);
+  const viaStoryIds = await redirects(`url=${encodeURIComponent(legacyUrl)}`, DB);
+  expect(viaStoryIds?.status).toBe(302);
+  expect(viaStoryIds?.headers.get('Location')).toBe(canonicalUrl);
+
+  // Archive-only edge: story_ids absent, archive_revisions still resolves legacy trailing-slash URL.
+  sql.prepare('DELETE FROM story_ids WHERE url=?').run(canonicalUrl);
+  const viaArchive = await redirects(`url=${encodeURIComponent(legacyUrl)}`, DB);
+  expect(viaArchive?.status).toBe(302);
+  expect(viaArchive?.headers.get('Location')).toBe(canonicalUrl);
+  expect((sql.prepare('SELECT clicks FROM article_click_totals WHERE url=?').get(canonicalUrl) as { clicks: number }).clicks).toBe(3);
+
+  // Unknown news.pr paths and non-news.pr prefix/slash mismatches stay 404.
+  for (const miss of [
+    'https://news.pr/story/not-in-db/',
+    'https://news.pr/story/not-in-db',
+    'https://news.pr/',
+    'https://news.pr.evil.org/story/0348dd55e67a4a92ac82e8bb0abe2c6a/',
+    'https://example.com/apagon',
+  ]) {
+    expect(await lookupDestination(DB, miss), miss).toBe('');
+    expect((await redirects(`url=${encodeURIComponent(miss)}`, DB))?.status, miss).toBe(404);
+  }
+});
+
 afterEach(() => vi.restoreAllMocks());

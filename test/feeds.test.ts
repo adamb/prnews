@@ -43,6 +43,12 @@ it('treats the Metro default card as no image and keeps a real Metro enclosure',
 });
 it('normalizes URLs and rejects unsafe schemes', () => {
  expect(canonical('https://EXAMPLE.com/story?utm_source=rss&keep=1#x', 'https://example.com')).toBe('https://example.com/story/?keep=1');
+ expect(canonical('https://news.pr/story/0348dd55e67a4a92ac82e8bb0abe2c6a', 'https://news.pr')).toBe('https://news.pr/story/0348dd55e67a4a92ac82e8bb0abe2c6a');
+ expect(canonical('https://news.pr/story/0348dd55e67a4a92ac82e8bb0abe2c6a/', 'https://news.pr')).toBe('https://news.pr/story/0348dd55e67a4a92ac82e8bb0abe2c6a');
+ expect(canonical('HTTPS://NEWS.PR/story/0348dd55e67a4a92ac82e8bb0abe2c6a///?utm_source=rss&fbclid=123&keep=1#x', 'https://news.pr')).toBe('https://news.pr/story/0348dd55e67a4a92ac82e8bb0abe2c6a?keep=1');
+ expect(canonical('https://news.pr', 'https://news.pr')).toBe('https://news.pr/');
+ expect(canonical('https://news.pr/', 'https://news.pr')).toBe('https://news.pr/');
+ expect(canonical('https://www.noticel.com/gobierno/ahora', 'https://www.noticel.com')).toBe('https://www.noticel.com/gobierno/ahora/');
  expect(safeUrl('javascript:alert(1)')).toBe('');
  expect(summary('<p>Hello &amp; world</p> The post Test appeared first on Site.')).toBe('Hello & world');
 });

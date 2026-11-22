@@ -33,7 +33,9 @@ export function canonical(value: string, base: string): string {
  const safe = safeUrl(value, base); if (!safe) return '';
  const u = new URL(safe); u.hash = '';
  for (const key of [...u.searchParams.keys()]) if (/^utm_/i.test(key) || key === 'fbclid') u.searchParams.delete(key);
- if (!/\.[a-z0-9]{1,8}$/i.test(u.pathname)) u.pathname = u.pathname.replace(/\/+$/, '') + '/'; return u.href;
+ if (u.hostname === 'news.pr') u.pathname = u.pathname.replace(/\/+$/, '') || '/';
+ else if (!/\.[a-z0-9]{1,8}$/i.test(u.pathname)) u.pathname = u.pathname.replace(/\/+$/, '') + '/';
+ return u.href;
 }
 /** Demonstrably-Spanish detection: transparent lexical signals, never a blanket
  * source assumption. It only ever says 'es' — items without strong signals keep their
