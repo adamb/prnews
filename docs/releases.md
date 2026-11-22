@@ -1,5 +1,16 @@
 # Releases
 
+## 2026-11-21 — Targeted satire cache lookups, Playwright TMPDIR fix, and docs sync
+
+- Deployed source: `a1d83a867219c13266574ebbdf4aead847d5c0f1`, the `origin/main` squash-merge tip combining https://github.com/adamb/prnews/pull/49 (`5a73592`, original head `62f9c58`, Gemini 3.8 Flash) and https://github.com/adamb/prnews/pull/50 (`a1d83a8`, original head `e4f7723`, Gemini 4 Carbon). Cloudflare Worker version: `dc7a995c-2b71-4ab3-9730-dadc1092b4f2`. Previous: `449663fb-249c-4338-8294-f6b3d199b8ec`.
+- What shipped:
+  - **Targeted satire cache reads (`src/lighter.ts`, `src/lighter-stats.ts`, `src/index.ts`, PR #50):** ordered bounded `read(env)` newest-first (`ORDER BY rowid DESC LIMIT 1000`) instead of arbitrary primary-key order, and added `readForItems(env, items)` to query `lighter_cache` only for the exact `es`/`en` keys of the active items in ≤80-parameter chunks. `/story?id=N` now queries just 2 keys instead of scanning 1,000 rows, `/stats` feeds `readySnapshot` with exact-key lookups across active items without truncation once `lighter_cache` grows past 1,000 historical rows, and non-card routes (`/fuentes`, `/about`, `/signup`, `/comparar`) skip the full `lighter_cache` read.
+  - **Playwright socket-path reliability (`test/share-open-satire.test.ts`, PR #49):** passes `env: { ...process.env, TMPDIR: '/tmp' }` to `chromium.launch` so long harness `TMPDIR` paths never trip Chromium's 108-byte `SingletonSocket` Unix domain socket limit.
+  - **Documentation & checkout hygiene (`README.md`, `docs/handoff.md`):** synced `prnews-html-v42` and release status notes; fast-forwarded root checkout from stale staged state and removed an ignored local scratch file.
+- No migrations (`wrangler d1 migrations list prnews --remote` reported none pending), no D1/R2 writes, no AI calls, and no HTML markup changes (`prnews-html-v42` and `lighter-2` unchanged).
+- Validation on integrated `a1d83a8`: `npm ci` (0 vulnerabilities), `npm test` (44 files, 556 tests passed), `npm run typecheck`, and `npm run build` (dry run, 1378.53 KiB / gzip 415.96 KiB); verified clean tree matching `origin/main` before `npx wrangler deploy`.
+- Live GET checks after deploy: HTTP 200 across `/`, `/?lang=en`, `/stats`, `/stats?lang=en`, `/fuentes`, and `/story?id=3381&lang=en&satire=1`.
+
 ## 2026-11-21 — Every English-origin original translated for the Spanish edition
 
 - Deployed source: `f270105f11345dc2dd6386496dc39a0ddc00a4d9`, the `origin/main` squash merge of https://github.com/adamb/prnews/pull/48 (original head `d8957dd31f60d470b5080407d84fdf7e26a9cca2`, integration-review merge `cc305310dfa527e93a1972ded18643ca08a013e6` pushed to the PR branch so the PR head included current main; the base for the reviewed merge was `159731e`, exactly the prior main tip). Cloudflare Worker version: `449663fb-249c-4338-8294-f6b3d199b8ec`. Previous: `9a202b15-1a45-4c0e-9ff4-70f4683dec30`. The merged tree is byte-identical to the reviewed integration merge (`git diff` empty).

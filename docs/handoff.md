@@ -4,8 +4,8 @@ State at the end of the previous thread. Read `README.md` and `AGENTS.md` first.
 
 ## Where things stand
 
-- `main` is at `fe3b701` (release notes for `f270105`), clean and pushed. Production Worker version is `449663fb-249c-4338-8294-f6b3d199b8ec`, built from `f270105` (PR #48, English-origin Spanish-edition translation queue).
-- Everything the user asked for in the last threads is merged and deployed, including PR #45's satire feedback, PR #46's eleven verified outlet feeds, PR #47's `/fuentes` publisher-site links, and PR #48's English-origin Spanish-edition translation queue (see the newest `docs/releases.md` entries for the exact SHAs and live-check record).
+- `main` holds the release-note commit for `a1d83a8`, clean and pushed. Production Worker version is `dc7a995c-2b71-4ab3-9730-dadc1092b4f2`, built from `a1d83a8` (PRs #49 and #50: Playwright `TMPDIR` socket fix, targeted `readForItems` satire cache reads, and doc sync; on top of `f270105` PR #48).
+- Everything the user asked for in the last threads is merged and deployed, including PR #45's satire feedback, PR #46's eleven verified outlet feeds, PR #47's `/fuentes` publisher-site links, PR #48's English-origin Spanish-edition translation queue, and PRs #49–#50's repo audit fixes (see `docs/releases.md` for exact SHAs and live checks).
 - Nothing is pending from the user.
 - Open PRs still on hold / unmerged: #19 (News is my Business articles, Nov 16–19), #16 (keep News is my Business paused; #29 was merged on 2026-11-20 below). Check them before building anything nearby.
 
