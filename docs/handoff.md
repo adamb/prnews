@@ -1,13 +1,13 @@
-# Handoff — 2026-11-20
+# Handoff — 2026-11-21
 
 State at the end of the previous thread. Read `README.md` and `AGENTS.md` first. `docs/releases.md` has per-deploy detail.
 
 ## Where things stand
 
-- `main` is at `424de56`, clean and pushed. Production Worker version is `9a202b15-1a45-4c0e-9ff4-70f4683dec30`, built from `424de56`.
-- Everything the user asked for in the last threads is merged and deployed, including PR #45's satire feedback, PR #46's eleven verified outlet feeds and PR #47's `/fuentes` publisher-site links (see the newest `docs/releases.md` entries for the exact SHAs and live-check record).
+- `main` is at `fe3b701` (release notes for `f270105`), clean and pushed. Production Worker version is `449663fb-249c-4338-8294-f6b3d199b8ec`, built from `f270105` (PR #48, English-origin Spanish-edition translation queue).
+- Everything the user asked for in the last threads is merged and deployed, including PR #45's satire feedback, PR #46's eleven verified outlet feeds, PR #47's `/fuentes` publisher-site links, and PR #48's English-origin Spanish-edition translation queue (see the newest `docs/releases.md` entries for the exact SHAs and live-check record).
 - Nothing is pending from the user.
-- Open PRs not touched in the last thread: #29 (Reddit image repair through Roux), #19 (News is my Business articles, Nov 16–19), #16 (keep News is my Business paused). Check them before building anything nearby.
+- Open PRs still on hold / unmerged: #19 (News is my Business articles, Nov 16–19), #16 (keep News is my Business paused; #29 was merged on 2026-11-20 below). Check them before building anything nearby.
 
 ## PR review outcomes (2026-11-20)
 
@@ -17,13 +17,13 @@ State at the end of the previous thread. Read `README.md` and `AGENTS.md` first.
 
 ## How work was run
 
-The user wants the orchestrator to delegate coding to Grok Build child agents (`delegate_task`, provider instance `grok`, `isolation: "worktree"`), then review the diff, test, merge and deploy. Children never merge or deploy.
+Orchestration and isolated-worktree coding tasks in T3 Code have used Codex, Claude, OpenCode/GLM, Grok Build child agents (`delegate_task`, `isolation: "worktree"`), and Gemini / Antigravity. Delegated coders work on isolated worktree branches, run checks, and open PRs; the orchestrator reviews the diff, tests the integrated branch, merges and deploys. Children never merge or deploy.
 
-Release flow: `gh pr merge N --squash`, `git pull --ff-only`, `npm test`, `npm run typecheck`, `npm run build`, `npx wrangler deploy`, then append a note to `docs/releases.md` (commit SHA and Worker version) and push it to main. Commit trailer: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+Release flow: `gh pr merge N --squash`, `git pull --ff-only`, `npm test`, `npm run typecheck`, `npm run build`, `npx wrangler deploy`, then append a note to `docs/releases.md` (commit SHA and Worker version) and push it to main. Commit trailers follow `AGENTS.md` (`AI-Tool`, `AI-Model`, `Validation`).
 
 ## Facts worth knowing
 
-- Cloudflare Worker (not Pages) with D1, R2, and a Cache API HTML cache. The cache name is `prnews-html-v36` with a 60 s TTL. Bump it in `src/index.ts` when page HTML changes, and add a unique query param when testing live.
+- Cloudflare Worker (not Pages) with D1, R2, and a Cache API HTML cache. The cache name is `prnews-html-v42` with a 60 s TTL. Bump it in `src/index.ts` when page HTML changes, and add a unique query param when testing live.
 - D1 can be queried read-only with `npx wrangler d1 execute prnews --remote --json`.
 - Pages are rendered in `src/render.ts`; CSS is a string in `src/styles.ts`.
 - SEO helpers are in `src/seo.ts`. The sitemap is served by `src/syndication.ts`; `src/discovery.ts` has a separate copy, so keep both on `seo.ts`.
@@ -33,7 +33,7 @@ Release flow: `gh pr merge N --squash`, `git pull --ff-only`, `npm test`, `npm r
   - `inventedInstitution()` rejects a line that names an invented government, agency, ministry, department, committee, board or State. Generic stand-ins like "bureaucrats" are allowed on purpose, because the user liked the Indignation Day line.
 - Share links: `src/share.ts`. The satire text is never put in the URL, only id, `satire=1` and `&lang=en`. `/story?id=N&satire=1` renders the satire pre-opened and is `noindex,follow` with the plain story URL as canonical.
 - Screenshots and overflow checks: Playwright resolves from `/home/adam/code/hbpr/node_modules/playwright-core`. Don't use `pkill -f`.
-- Tests: 477 passing at last release.
+- Tests: 554+ passing (554 at the `f270105` PR #48 release).
 
 ## Open items (not code, mostly the user's)
 

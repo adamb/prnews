@@ -193,8 +193,22 @@ export async function generate(env:Env,now:number){
   }
  }
 }
-export async function read(env:Env){
- try {const rows=await env.DB.prepare('SELECT key,text FROM lighter_cache WHERE text IS NOT NULL LIMIT 1000').all<{key:string;text:string}>();return Object.fromEntries(rows.results.map(r=>[r.key,r.text]));}catch{return {};}
+const READ_KEY_CHUNK=80;
+export async function read(env:Env):Promise<Record<string,string>>{
+ try {const rows=await env.DB.prepare('SELECT key,text FROM lighter_cache WHERE text IS NOT NULL ORDER BY rowid DESC LIMIT 1000').all<{key:string;text:string}>();return Object.fromEntries(rows.results.map(r=>[r.key,r.text]));}catch{return {};}
+}
+export async function readForItems(env:Env,items:Item[]):Promise<Record<string,string>>{
+ if(!items.length)return {};
+ try{
+  const keys=[...new Set(items.flatMap(item=>{const ci=currentItem(item);return [key(ci,'es'),key(ci,'en')];}))];
+  const found:Record<string,string>={};
+  for(let index=0;index<keys.length;index+=READ_KEY_CHUNK){
+   const chunk=keys.slice(index,index+READ_KEY_CHUNK);
+   const rows=await env.DB.prepare(`SELECT key,text FROM lighter_cache WHERE key IN (${chunk.map(()=>'?').join(',')}) AND text IS NOT NULL`).bind(...chunk).all<{key:string;text:string}>();
+   for(const row of rows.results)if(typeof row.text==='string')found[row.key]=row.text;
+  }
+  return found;
+ }catch{return {};}
 }
 
 async function addStats(env:Env, lang:Edition, delta:{interactions?:number;cache_hits?:number;attempts?:number;generations?:number;failures?:number}, now:number){
