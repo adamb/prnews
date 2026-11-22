@@ -220,3 +220,18 @@ it('includes verified English originals from mixed-language publishers without a
    expect(html).not.toContain('DeepSeek');
   }
  });
+
+it('explains runtime AI satire in both About editions without replacing development history', async()=>{
+ for(const [lang,heading,input,ratings] of [
+  ['es','Cómo funciona la sátira con IA','no navega por el artículo completo','no entrenan el modelo'],
+  ['en','How AI satire works','does not browse the full article','do not train the model'],
+ ]) {
+  const html=await renderer.fetch(new Request(`https://news.dev.pr/about?lang=${lang}`),{items:[],translations:{},feeds:[]}).text();
+  const section=html.match(/<section aria-labelledby="ai-satire">([\s\S]*?)<\/section>/)?.[1];
+  expect(section).toBeDefined();
+  for(const text of [heading,input,ratings,'Cloudflare Workers AI','Meta Llama 3.3 70B (FP8 Fast)','https://developers.cloudflare.com/workers-ai/models/llama-3.3-70b-instruct-fp8-fast/']) expect(section).toContain(text);
+  expect(section).not.toContain('Codex');
+  expect(html).toContain('id="how-built"');
+  expect(html).toContain('GLM-5.3-Flash Cloud');
+ }
+});
