@@ -314,7 +314,7 @@ The client script does the only personalization, entirely in the browser:
   created alerts elsewhere cannot be recognized; nothing claims otherwise.
 - Storage is probed (localStorage, then sessionStorage); with both blocked the invitation
   never appears rather than nagging per page. A failed status check stays quiet and the
-  invitation shows anyway. No new cookies, no visitor identity, no analytics; the Cloudflare
+  invitation shows anyway. No new cookies, no visitor identity; anonymous invitation events are now counted (see November 22 update); the Cloudflare
   beacon is unchanged.
 
 Tests live in `test/invitation.test.ts`: bilingual variant copy and lang-preserving
@@ -323,3 +323,29 @@ close/CTA dismissal, deterministic round-robin with wraparound, index preservati
 account-active suppression, edition-switch continuity, quiet storage failures, the
 boolean endpoint's one-bit answers (no email/phrase, no-store, 405 on mutations), and
 shared-HTML isolation (a session cookie changes nothing in the cached page).
+
+### Invitation events and cumulative delay (November 22, 2026)
+
+This supersedes the earlier invitation “no analytics” wording. The invitation waits for
+15 seconds of cumulative visible time on eligible reading pages in one tab. sessionStorage
+holds only elapsed milliseconds, last update and AST day, never URLs or history. Progress
+expires after 30 minutes away or a changed AST day. Hidden time and timer gaps of 5 seconds
+or more do not accrue; this is a reading-delay heuristic, not proof of attention. Storage
+failure falls back to a per-page delay. Daily suppression and variant rotation remain local.
+
+POST /api/invitation-event accepts only variant 0–4, es/en, and shown/clicked/dismissed,
+with exact same-origin Origin and a 256-byte JSON limit. Actual reveal counts shown;
+CTA counts clicked, close/Escape counts dismissed. In-page guards prevent duplicate actions.
+Requests omit credentials and use keepalive, with no automatic retry: ambiguous network
+outcomes may lose events; manually repeated requests can inflate totals. These are events,
+not people or conversions. There are no visitor IDs, cookies, IPs, email, fingerprints,
+browsing history or general duration telemetry in this ledger. Ordinary page fetches write
+nothing. Daily AST totals persist by variant/language/event; /stats shows lifetime totals
+and migration start date, distinguishing unavailable data from zero. No backfill.
+
+Migration plan: review and apply only additive 0017_invitation_events.sql to the existing
+D1 database before deploying the tested revision. It creates two new tables and records
+counting start without changing existing tables or replaying seeds. Verify the start row
+and empty totals, then deploy. Missing migration returns unavailable/503 without breaking
+reading pages. Rollback code may leave these additive tables intact. No production migration
+or deployment was performed during implementation.

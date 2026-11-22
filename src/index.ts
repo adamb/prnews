@@ -1,3 +1,4 @@
+import {invitationEventRoute,invitationCounts} from './invitation-events';
 import {lighterRoute,read as readLighter,readForItems} from './lighter';
 import {lighterFeedbackRoute,readLighterFeedback} from './lighter-feedback';
 import {attachStoryIds, lighterCacheReadable, readLighterLedger, readLighterQueue, readySnapshot, type LighterView} from './lighter-stats';
@@ -50,6 +51,7 @@ export default {
  },
  async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   try {
+  const invitationEvent=await invitationEventRoute(request,env);if(invitationEvent)return invitationEvent;
   const alerts=env.DB?await alertsRoute(request,env as unknown as AlertEnv):undefined;
   if(alerts)return alerts;
   // Boolean-only alert-account status for the reading-page invitation: no-store, never cached,
@@ -193,7 +195,7 @@ export default {
   // were still indexable. v34 dropped v33 pages whose source names are not links
   // and that have no active-source chip. Compact imageless-lead rules and lighter-2
   // stay. 60s TTL still applies. This does not purge R2 or D1.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v43') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v44') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
@@ -219,6 +221,7 @@ export default {
    const totals=url.pathname==='/stats'?await totalClicks(env).catch(()=>undefined):undefined;
    const popular=url.pathname==='/stats'?await cumulativeTop(env).catch(()=>[]):[];
    const analytics=url.pathname==='/stats'?await webAnalyticsSnapshot(env).catch(()=>undefined):undefined;
+   const invitationStats=url.pathname==='/stats'?await invitationCounts(env):undefined;
    const alertAccounts=url.pathname==='/stats'?await confirmedAlertAccountCounts(env):undefined;
    const sourceClicks=url.pathname==='/comparar'?await clicksBySource(env):undefined;
    const pageNow=Date.now();
@@ -238,7 +241,7 @@ export default {
     if(feedbackView.available)await attachStoryIds(env,[...feedbackView.top,...feedbackView.bottom]);
     lighterView={ledger:await readLighterLedger(env),queue:await readLighterQueue(env,Date.now()),ready,feedback:feedbackView};
    }
-   const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,alertAccounts,sourceClicks,now:pageNow,recurringThemes,storyIds},digestConfigured(env));
+   const response = renderer.fetch(request,{lighter,lighterView,alerts:alertsData,history,items,translations,feeds:feeds.results,trending,contactEmail:env.CONTACT_EMAIL,totals,popular,analytics,alertAccounts,invitationStats,sourceClicks,now:pageNow,recurringThemes,storyIds},digestConfigured(env));
    if(response.status === 200) {
     response.headers.set('Cache-Control','public, max-age=60');
     // CDN-Cache-Control pins the edge TTL too, in case a zone Cache Rule ever overrides it.
