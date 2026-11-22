@@ -34,7 +34,7 @@ it('scans all feeds, preserves first-seen times, handles 304 and isolates failur
  await refresh(env);
  expect(isFeedRequest(requests[0].toString()));
  const feedURLs=new Set(Object.values(feeds).flat());
- expect(requests.filter(u=>[...feedURLs].some(f=>f===u||u.startsWith(f))).length).toBe(27); // every configured feed URL, including NotiCel page 2 and the 11 outlets added 2026-11-20; enrichment adds only article-page fetches
+ expect(requests.filter(u=>[...feedURLs].some(f=>f===u||u.startsWith(f))).length).toBe(26); // Vision quarantined; every configured feed URL, including NotiCel page 2 and the 11 outlets added 2026-11-20; enrichment adds only article-page fetches
  expect(requests.some(r=>r.includes('_refresh='))).toBe(true);
  const first=await DB.prepare("SELECT payload FROM articles WHERE source='telemundo' LIMIT 1").first<{payload:string}>();
  expect(first).toBeTruthy();
@@ -48,7 +48,7 @@ it('scans all feeds, preserves first-seen times, handles 304 and isolates failur
  const conditional=vi.fn(async()=>new Response(null,{status:304}));vi.stubGlobal('fetch',conditional);
  await refresh(env);
  const calls=conditional.mock.calls as unknown as [URL, any?][];
- expect(calls.filter(([,options])=>options?.headers?.['If-None-Match']==='"v1"').length).toBe(24); // reddit and elvocero wait longer than 15 minutes; metro failed; the 11 outlets added 2026-11-20 are all due
+ expect(calls.filter(([,options])=>options?.headers?.['If-None-Match']==='"v1"').length).toBe(23); // Vision quarantined; reddit and elvocero wait longer than 15 minutes; metro failed; the 11 outlets added 2026-11-20 are all due
  // Bounded image enrichment continues with still-ready queue rows (first run handled 12).
  const nonFeeds=calls.filter(([u])=>![...feedURLs].some(f=>String(u)===f||String(u).startsWith(f)));
  expect(nonFeeds.length).toBeGreaterThanOrEqual(1);expect(nonFeeds.length).toBeLessThanOrEqual(12);
@@ -133,4 +133,19 @@ it.each(['wrapped','array'])('saves valid translation peers from %s responses wh
  // on hero excerpts (original or translated), and the table keeps no new rows.
  expect(importancePrompts).toBe(0);
  expect((await DB.prepare('SELECT COUNT(*) AS n FROM article_importance').first<any>()).n).toBe(0);
+});
+
+it('does not republish retained undated items older than fourteen days',async()=>{
+ const DB=database(), now=Date.parse('2026-11-22T12:00:00Z');
+ vi.spyOn(Date,'now').mockReturnValue(now);
+ const url='https://www.telemundopr.com/noticias/old-undated/';
+ const old={url,source:'telemundo',title:'Noticia antigua',summary:'Resumen',image:'',time:now-30*86400000,observed:true,section:'otras',reason:'test'};
+ await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(url,old.source,JSON.stringify(old),old.time,old.time,old.time).run();
+ const xml='<rss version="2.0"><channel><item><title>Noticia antigua</title><link>'+url+'</link><description>Resumen</description></item></channel></rss>';
+ vi.stubGlobal('fetch',async(input:URL)=>input.hostname==='www.telemundopr.com'?new Response(xml):new Response(null,{status:304}));
+ await refresh({DB});
+ const row=await DB.prepare('SELECT payload,published_at,first_seen FROM articles WHERE url=?').bind(url).first<any>();
+ expect(row.published_at).toBe(old.time);
+ expect(JSON.parse(row.payload).time).toBe(old.time);
+ expect(row.first_seen).toBe(old.time);
 });

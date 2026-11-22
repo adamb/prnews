@@ -1,3 +1,4 @@
+import {quarantined, unavailableMessage} from './quarantine';
 import { safeUrl, type Item } from './parse';
 import type { Translation } from './i18n';
 
@@ -41,6 +42,7 @@ export async function clickRoute(request: Request, env: ClickEnv, now: number = 
   const key = id ? (digits(id) ? id : '') : safeParam(url.searchParams.get('url'), 2048);
   const destination = await lookupDestination(env, key);
   if (!destination) return new Response('Not found', { status: 404, headers });
+  if (quarantined(destination)) return new Response(unavailableMessage(url.searchParams.get('lang') ?? 'es'), {status: 403, headers});
   if (request.method === 'GET') {
     try {
       await recordClick(env, destination, now);

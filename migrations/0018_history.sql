@@ -16,7 +16,7 @@ CREATE TABLE alert_delivery_history (
 );
 CREATE INDEX alert_history_expiry ON alert_delivery_history(queued_at);
 CREATE INDEX alert_history_outbox ON alert_delivery_history(outbox_id);
-CREATE TRIGGER alert_history_queue AFTER INSERT ON alert_queue BEGIN
+CREATE TRIGGER alert_history_queue AFTER INSERT ON alert_queue WHEN EXISTS(SELECT 1 FROM alert_accounts WHERE id=NEW.account_id AND status='active') BEGIN
  INSERT OR IGNORE INTO alert_delivery_history(account_id,article_ref,phrases,queued_at,updated_at,state)
  VALUES(NEW.account_id,NEW.url,json_extract(NEW.payload,'$.phrases'),NEW.enqueued_at,NEW.enqueued_at,'queued');
 END;

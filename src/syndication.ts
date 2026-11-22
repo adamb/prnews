@@ -1,3 +1,4 @@
+import {quarantined} from './quarantine';
 import { sources } from './sources';
 import type { Item } from './parse';
 import type { Translation } from './i18n';
@@ -45,7 +46,7 @@ export async function rssRoute(request: Request, env: SyndicationEnv, now: numbe
   if (guarded) return guarded;
   const rows = await env.DB.prepare('SELECT payload FROM articles WHERE published_at>=? ORDER BY published_at DESC LIMIT ?').bind(now-14*86400000,RSS_LIMIT).all<{ payload: string }>();
   const items = rows.results.map(r => JSON.parse(r.payload) as Item).filter(i => httpUrl(i));
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel><title>news.dev.pr</title><link>${SITE_ORIGIN}/</link><description>Noticias de Puerto Rico · Puerto Rico news from many sources in one place</description><language>es-PR</language><lastBuildDate>${new Date(now).toUTCString()}</lastBuildDate><ttl>15</ttl>${items.map(item => `<item><title>${xmlEscape(item.title)}</title><link>${xmlEscape(httpUrl(item))}</link><guid isPermaLink="true">${xmlEscape(httpUrl(item))}</guid><pubDate>${new Date(item.time).toUTCString()}</pubDate><source url="${xmlEscape(sourceHomepage(item.source))}">${xmlEscape(sourceName(item.source))}</source><description>${xmlEscape(excerpt(item.summary))}</description></item>`).join('')}</channel></rss>`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel><title>news.dev.pr</title><link>${SITE_ORIGIN}/</link><description>Noticias de Puerto Rico · Puerto Rico news from many sources in one place</description><language>es-PR</language><lastBuildDate>${new Date(now).toUTCString()}</lastBuildDate><ttl>15</ttl>${items.filter(item => !quarantined(item.url) && !quarantined(sourceHomepage(item.source))).map(item => `<item><title>${xmlEscape(item.title)}</title><link>${xmlEscape(httpUrl(item))}</link><guid isPermaLink="true">${xmlEscape(httpUrl(item))}</guid><pubDate>${new Date(item.time).toUTCString()}</pubDate><source url="${xmlEscape(sourceHomepage(item.source))}">${xmlEscape(sourceName(item.source))}</source><description>${xmlEscape(excerpt(item.summary))}</description></item>`).join('')}</channel></rss>`;
   return respondXml(request, body, xmlHeaders('application/rss+xml'));
 }
 

@@ -1,3 +1,4 @@
+import {publisherFetch} from './quarantine';
 import {additionalFeedURLs} from './additional-sources';
 import {refreshStatus} from './live-status';
 import { arcticFeed, parseArctic, redditSource } from './reddit';
@@ -52,10 +53,10 @@ async function scanFeed(env: Env, source: typeof sources[number], url: string, n
   if (url!==arcticFeed && state?.modified) headers['If-Modified-Since']=state.modified;
   const target=new URL(url);
   if(source.id==='sjds') target.searchParams.set('_refresh',String(Math.floor(now/900000)));
-  let response=await fetch(target,{headers,signal:AbortSignal.timeout(10000)});
+  let response=await publisherFetch(target,{headers,signal:AbortSignal.timeout(10000)});
   if(response.status===403 && source.id!==redditSource) {
    await response.body?.cancel();
-   response=await fetch(target,{headers:{...headers,'User-Agent':'Mozilla/5.0 (compatible; news.dev.pr/1.0; +https://news.dev.pr/about)'},signal:AbortSignal.timeout(10000)});
+   response=await publisherFetch(target,{headers:{...headers,'User-Agent':'Mozilla/5.0 (compatible; news.dev.pr/1.0; +https://news.dev.pr/about)'},signal:AbortSignal.timeout(10000)});
   }
   status=response.status;
   if(status===429||status===503){const value=response.headers.get('Retry-After');if(value){const seconds=Number(value);retryAfter=Number.isFinite(seconds)?now+Math.max(0,seconds)*1000:Date.parse(value);if(!Number.isFinite(retryAfter))retryAfter=0;}}
@@ -66,8 +67,13 @@ async function scanFeed(env: Env, source: typeof sources[number], url: string, n
    if(xml.length>8_000_000) throw new Error('Feed exceeds size limit');
    const parsed=url===arcticFeed ? parseArctic(xml,now) : parseFeed(xml,source,now);
    if(!parsed.length && url!==arcticFeed) throw new Error('Feed contained no usable articles');
-   const previous=await env.DB.prepare('SELECT url,payload FROM articles WHERE source=? AND published_at>=?').bind(source.id,now-14*86400000).all<{url:string;payload:string}>();
-   const old=new Map(previous.results.map(r=>[r.url,JSON.parse(r.payload) as Item]));
+   const old=new Map<string,Item>();
+   const urls=[...new Set(parsed.map(item=>item.url))];
+   for(let offset=0;offset<urls.length;offset+=50) {
+    const batch=urls.slice(offset,offset+50);
+    const previous=await env.DB.prepare(`SELECT url,payload FROM articles WHERE url IN (${batch.map(()=>'?').join(',')})`).bind(...batch).all<{url:string;payload:string}>();
+    for(const row of previous.results) old.set(row.url,JSON.parse(row.payload) as Item);
+   }
    const unique=new Map(parsed.map(i=>[i.url,preserveObserved(i,old.get(i.url))]));
    count=unique.size;
    const statements=[...unique.values()].filter(i=>i.time>=now-14*86400000).map(item=>env.DB.prepare(`INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)

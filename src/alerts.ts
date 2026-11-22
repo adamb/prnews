@@ -1,3 +1,4 @@
+import {quarantined} from './quarantine';
 /**
  * Keyword alerts backend: passwordless accounts (email + one phrase per signup), per-phrase
  * watchers, hashed single-use magic tokens, scoped sessions, and a paced ImprovMX outbox.
@@ -749,7 +750,7 @@ function renderOutboxEmail(row: OutboxRow): { to: string; subject: string; text:
 			html: `<p>${es ? 'Abre tus alertas con este enlace (vence en 15 minutos; funciona una sola vez):' : 'Open your alerts with this link (expires in 15 minutes; single use):'}</p><p><a href="${link}">${link}</a></p><p>${es ? 'Si no solicitaste esto, ignora este correo.' : 'If you did not request this, ignore this email.'}</p>`,
 		};
 	}
-	const snapshots = (payload.items ?? []).slice(0, NOTIFY_ITEMS_MAX);
+	const snapshots = (payload.items ?? []).filter(i => !quarantined(i.url)).slice(0, NOTIFY_ITEMS_MAX);
 	if (!snapshots.length) return undefined;
 	const es = payload.language !== 'en';
 	const manage = payload.manageToken ? `${ORIGIN}/alerts/m?token=${payload.manageToken}&lang=${es ? 'es' : 'en'}` : `${ORIGIN}/alerts?lang=${es ? 'es' : 'en'}`;
