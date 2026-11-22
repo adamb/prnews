@@ -309,7 +309,7 @@ it('ships vote controls for a shared satire=1 story and hides them from the serv
  const page=await (await worker.fetch(new Request('https://news.dev.pr/story?id=7&satire=1'),env)).text();
  expect(page).toContain(takeEs);
  expect(page).toContain('data-mode="open"');
- expect(page).toContain('Sátira de IA · comentario, no es una noticia.');
+ expect(page).toContain('AI Satire');
  // The controls are built by the client script only after the take is on the page:
  // the script text ships, but no vote-control markup does.
  expect(page).not.toContain('class="lighter-vote');

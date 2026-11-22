@@ -8,8 +8,8 @@ export const SATIRE_PREVIEW_PREFIX = {
 
 /** Same words as lighterClientScript's open-block label. */
 export const SATIRE_BLOCK_LABEL = {
-  es: 'Sátira de IA · comentario, no es una noticia.',
-  en: 'AI satire · commentary, not reporting.',
+  es: 'AI Satire',
+  en: 'AI Satire',
 } as const;
 
 export type SharePayload = { title: string; url: string; text?: string };
