@@ -1,0 +1,44 @@
+Probed 2026-11-19 with User-Agent: news.dev.pr/1.0 (+https://news.dev.pr/about)
+No second user agent. Challenge scripts were not executed.
+
+robots.txt
+  200 text/plain; charset=utf-8
+  Thu, 19 Nov 2026 16:31:43 GMT
+  Content-Signal for User-agent *: search=yes, ai-train=no, use=reference
+  Allow: /
+  Disallow: /wp-admin/ (Allow: /wp-admin/admin-ajax.php)
+  Sitemap: https://newsismybusiness.com/sitemap.xml
+  Sitemap: https://newsismybusiness.com/sitemap.rss
+
+sitemap.xml
+  403 text/html (1522 bytes)
+  cf-ray: a5d09b58bb74b398-MIA
+  body: HTML titled "Error 403 Forbidden" with /cdn-cgi/challenge-platform/scripts/jsd/main.js
+  not XML
+
+sitemap.rss
+  403 text/html (1522 bytes)
+  cf-ray: a5d09b5a0b54cc25-MIA
+  same challenge HTML, not RSS
+
+homepage /
+  403 text/html (1883 bytes) at 16:32:34 GMT
+  cf-ray: a5d09c94e8dd4ba4-MIA
+  no rel=alternate feed link in the body
+
+/feed/
+  403 text/html (1522 bytes) at 16:32:50 GMT
+  cf-ray: a5d09cfb1c87a581-MIA
+  same challenge HTML, not RSS
+
+Production feed_state (read-only, unchanged) still has the retired URL
+https://newsismybusiness.com/feed/ source=nimb status=403 error=HTTP 403
+failures=3 last_ok=null item_count=0
+last_checked=2026-11-14T22:15:08.614Z
+next_check=2026-11-15T00:15:08.614Z
+(2 hour gap, which is retryDelay(3)). The current source list does not request it.
+
+articles WHERE source=nimb: 43 rows, all reason=manual-import.
+published_at from 2026-11-05T20:48:00Z through 2026-11-13T09:06:00Z.
+first_seen 2026-11-14T20:47:36.687Z. archive_revisions: 67 rows, 49 distinct URLs.
+changed_db=false rows_written=0.
