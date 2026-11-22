@@ -1,3 +1,4 @@
+import {quarantined} from './quarantine';
 /**
  * Additional Puerto Rico news feeds. WAPA, WIPR and Claridad were verified on
  * 2026-11-14; Radio Isla 1320 and WALO 1240 on 2026-11-19; news.pr on
@@ -51,7 +52,7 @@ export const additionalFeedURLs: Record<string, string[]> = {
  newspr: ['https://news.pr/rss.xml'],
  // Verified 2026-11-20 (docs/pr-outlet-feeds.md). The paths below are the
  // publisher's own feeds, allowed by each site's robots.txt.
- vision: ['https://periodicovision.com/feed/'],
+ vision: [],
  lacalle: ['https://lacallerevista.com/feed'],
  elsol: ['https://periodicoelsolpr.com/feed/'],
  esnoticia: ['https://esnoticiapr.com/feed/'],
@@ -103,5 +104,5 @@ export const unavailableSources: UnavailableSource[] = [
 
 /** Every additional source id has exactly one feed entry and vice versa. */
 export const additionalMappingIsConsistent = (urls: Record<string, string[]> = additionalFeedURLs): boolean =>
- additionalSources.every((s) => Array.isArray(urls[s.id]) && urls[s.id].length > 0) &&
+ additionalSources.every((s) => Array.isArray(urls[s.id]) && (urls[s.id].length > 0 || quarantined(s.homepage))) &&
  Object.keys(urls).length === additionalSources.length;

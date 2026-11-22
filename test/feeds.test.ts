@@ -1,3 +1,4 @@
+import {quarantined} from '../src/quarantine';
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { sources } from '../src/sources';
@@ -98,8 +99,8 @@ it('localizes supporting pages, errors, and HEAD responses', async () => {
 it('links every source and blocked outlet to its verified publisher site, in both editions', async () => {
  for (const [lang, label] of [['es', 'Visitar sitio web'], ['en', 'Visit website']] as const) {
   const html = await worker.fetch(new Request(`https://example.com/fuentes?lang=${lang}`)).text();
-  for (const s of sources) expect(html).toContain(`<a href="${s.homepage}" target="_blank" rel="noopener noreferrer">`);
-  for (const s of unavailableSources) expect(html).toContain(`<a href="${s.homepage}" target="_blank" rel="noopener noreferrer">`);
+  for (const s of sources.filter(s=>!quarantined(s.homepage))) expect(html).toContain(`<a href="${s.homepage}" target="_blank" rel="noopener noreferrer">`);
+  for (const s of unavailableSources.filter(s=>!quarantined(s.homepage))) expect(html).toContain(`<a href="${s.homepage}" target="_blank" rel="noopener noreferrer">`);
   expect(html).toContain(label);
  }
 });

@@ -487,12 +487,14 @@ describe('matching watermark, dedup and batching', () => {
 			setPacingForTests({ minIntervalMs: 1, minuteCap: 100, dailyCap: 100000 });
 			const { now } = await activated(env, {});
 			await insertArticle(env, item('https://one.example/1', 'LUMA anuncia plan', now + 1000), now + 1000);
+			await insertArticle(env, item('https://www.periodicovision.com/blocked', 'LUMA revisión', now + 1200), now + 1200);
 			await insertArticle(env, item('https://one.example/2', 'Otra noticia de LUMA', now + 1500), now + 1500);
 			const sweepOne = await runAlertSweep(env, now + 2000);
 			expect(sweepOne.flushed).toBe(1);
 			expect(notifySends(calls)).toHaveLength(1); // batched, sent once
 			const notifyRow = (await getOutbox(env, 'notify').first<any>());
-			expect(JSON.parse(notifyRow.payload).items).toHaveLength(2);
+			expect(JSON.parse(notifyRow.payload).items).toHaveLength(3);
+			expect(JSON.stringify(notifySends(calls))).not.toContain('periodicovision.com');
 			// Within the hour: a new match queues but cannot leave early.
 			await insertArticle(env, item('https://one.example/3', 'LUMA otra vez', now + 60000), now + 60000);
 			const sweepTwo = await runAlertSweep(env, now + 61000);

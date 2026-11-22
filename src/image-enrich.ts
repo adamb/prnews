@@ -1,3 +1,4 @@
+import {publisherFetch} from './quarantine';
 import {imageUrl} from './archive';
 import {publisherPlaceholder} from './parse';
 import type {Env} from './ingest';
@@ -61,7 +62,7 @@ export function extractImageCandidates(html: string): string[] {
  * 429/503 carries retryIn so the queue waits for the next run instead of the
  * multi-hour "no image" backoff. */
 async function fetchPage(url: string): Promise<string> {
- const response = await fetch(url, {headers: {'User-Agent': 'news.dev.pr/1.0 (+https://news.dev.pr/about)'}, signal: AbortSignal.timeout(PAGE_TIMEOUT)});
+ const response = await publisherFetch(url, {headers: {'User-Agent': 'news.dev.pr/1.0 (+https://news.dev.pr/about)'}, signal: AbortSignal.timeout(PAGE_TIMEOUT)});
  const type = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
  if (response.status === 429 || response.status === 503) {
   const retryIn = retryDelayMs(response.headers.get('retry-after'));
