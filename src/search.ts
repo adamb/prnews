@@ -7,7 +7,7 @@ import type { Translation } from './i18n';
  * (original + valid cached translated title/summary — see
  * migrations/0003_search_clicks.sql), with an automatic LIKE fallback.
  *
- * Contract: newest-first, 30 per page, hard 14-day bound, optional source and
+ * Contract: newest-first, 30 per page, optional 14-day bound, optional source and
  * English-readable filters. All values are bound; user text is never spliced
  * into SQL. `highlight()` is XSS-safe.
  */
@@ -25,6 +25,7 @@ export type SearchEngine = 'fts' | 'like' | 'filter';
 export interface SearchParams {
   /** Free text; FTS5-syntax characters are stripped and each token is quoted. */
   q?: string;
+  range?: 'recent' | 'all';
   /** Source id; unknown ids are ignored (same convention as the rendered filters). */
   source?: string;
   /** Only English-readable rows: English sources (sjds/nimb) or a valid translation. */
@@ -69,8 +70,9 @@ interface Compiled { sql: string; binds: (string | number)[] }
 /** Builds one bounded SELECT whose shape depends only on server-side flags. */
 function compileFilters(params: SearchParams, now: number): Compiled {
   const source = sources.some(s => s.id === params.source) ? params.source! : '';
-  const sql: string[] = ['SELECT payload, translation FROM articles', 'WHERE published_at>=?'];
-  const binds: (string | number)[] = [now - SEARCH_WINDOW_MS];
+  const sql: string[] = ['SELECT payload, translation FROM articles', 'WHERE 1=1'];
+  const binds: (string | number)[] = [];
+  if (params.range === 'recent') { sql.push('AND published_at>=?'); binds.push(now - SEARCH_WINDOW_MS); }
   if (source) { sql.push('AND source=?'); binds.push(source); }
   if (params.english) {
     sql.push(`AND (source IN (${englishSources.map(() => '?').join(',')}) OR json_extract(payload,'$.originalLanguage')='en' OR ${VALID_TRANSLATION})`);

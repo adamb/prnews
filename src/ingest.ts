@@ -67,8 +67,13 @@ async function scanFeed(env: Env, source: typeof sources[number], url: string, n
    if(xml.length>8_000_000) throw new Error('Feed exceeds size limit');
    const parsed=url===arcticFeed ? parseArctic(xml,now) : parseFeed(xml,source,now);
    if(!parsed.length && url!==arcticFeed) throw new Error('Feed contained no usable articles');
-   const previous=await env.DB.prepare('SELECT url,payload FROM articles WHERE source=?').bind(source.id).all<{url:string;payload:string}>();
-   const old=new Map(previous.results.map(r=>[r.url,JSON.parse(r.payload) as Item]));
+   const old=new Map<string,Item>();
+   const urls=[...new Set(parsed.map(item=>item.url))];
+   for(let offset=0;offset<urls.length;offset+=50) {
+    const batch=urls.slice(offset,offset+50);
+    const previous=await env.DB.prepare(`SELECT url,payload FROM articles WHERE url IN (${batch.map(()=>'?').join(',')})`).bind(...batch).all<{url:string;payload:string}>();
+    for(const row of previous.results) old.set(row.url,JSON.parse(row.payload) as Item);
+   }
    const unique=new Map(parsed.map(i=>[i.url,preserveObserved(i,old.get(i.url))]));
    count=unique.size;
    const statements=[...unique.values()].filter(i=>i.time>=now-14*86400000).map(item=>env.DB.prepare(`INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)
@@ -207,7 +212,7 @@ export async function refresh(env:Env) {
      if(primary?.error) await scanFeed(env,source,arcticFeed,now);
     }}
   }));
-  await env.DB.prepare('DELETE FROM articles WHERE published_at<?').bind(now-14*86400000).run();
+  // Current article copies and their indexed text are retained indefinitely.
   // Recover publisher images (og:image) for feed items without one, then copy the
   // queue — including the newly found URLs, raised by the archive triggers — to R2.
   await enrichImages(env,now).then(result=>console.log('image_enrich_result',JSON.stringify(result))).catch(error=>console.warn('image_enrich_error',String(error)));

@@ -136,7 +136,7 @@ export default {
   const click=await clickRoute(request,env);
   if(click)return click;
   if(url.pathname==='/search') {
-   const result=await searchArticles(env,{q:url.searchParams.get('q')??'',source:url.searchParams.get('source')??'',english:url.searchParams.get('lang')==='en',page:Number(url.searchParams.get('page')??1)});
+   const result=await searchArticles(env,{range:url.searchParams.get('range')==='recent'?'recent':'all',q:url.searchParams.get('q')??'',source:url.searchParams.get('source')??'',english:url.searchParams.get('lang')==='en',page:Number(url.searchParams.get('page')??1)});
    return renderer.fetch(request,{alerts:alertsData,items:result.items,translations:result.translations,feeds:[],search:result,contactEmail:env.CONTACT_EMAIL},digestConfigured(env));
   }
   if(url.pathname==='/story') {
@@ -196,7 +196,7 @@ export default {
   // and that have no active-source chip. Compact imageless-lead rules and lighter-2
   // stay. 60s TTL still applies. This does not purge R2 or D1.
   // v45 removes outbound links to quarantined domains from cached HTML.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v45') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v46') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);

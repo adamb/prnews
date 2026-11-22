@@ -134,3 +134,18 @@ it.each(['wrapped','array'])('saves valid translation peers from %s responses wh
  expect(importancePrompts).toBe(0);
  expect((await DB.prepare('SELECT COUNT(*) AS n FROM article_importance').first<any>()).n).toBe(0);
 });
+
+it('does not republish retained undated items older than fourteen days',async()=>{
+ const DB=database(), now=Date.parse('2026-11-22T12:00:00Z');
+ vi.spyOn(Date,'now').mockReturnValue(now);
+ const url='https://www.telemundopr.com/noticias/old-undated/';
+ const old={url,source:'telemundo',title:'Noticia antigua',summary:'Resumen',image:'',time:now-30*86400000,observed:true,section:'otras',reason:'test'};
+ await DB.prepare('INSERT INTO articles(url,source,payload,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?)').bind(url,old.source,JSON.stringify(old),old.time,old.time,old.time).run();
+ const xml='<rss version="2.0"><channel><item><title>Noticia antigua</title><link>'+url+'</link><description>Resumen</description></item></channel></rss>';
+ vi.stubGlobal('fetch',async(input:URL)=>input.hostname==='www.telemundopr.com'?new Response(xml):new Response(null,{status:304}));
+ await refresh({DB});
+ const row=await DB.prepare('SELECT payload,published_at,first_seen FROM articles WHERE url=?').bind(url).first<any>();
+ expect(row.published_at).toBe(old.time);
+ expect(JSON.parse(row.payload).time).toBe(old.time);
+ expect(row.first_seen).toBe(old.time);
+});

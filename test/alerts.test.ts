@@ -21,7 +21,7 @@ import { alertsRoute, alertThemeBoot, alertThemeToggle, alertThemeBootHash, aler
 import { turnstileClientScript, turnstileClientScriptHash } from '../src/turnstile';
 import type { Item } from '../src/parse';
 
-const MIGRATIONS = ['0001_live.sql', '0009_alerts.sql', '0013_owner_signup_notice.sql'];
+const MIGRATIONS = ['0001_live.sql', '0002_archive.sql', '0003_search_clicks.sql', '0009_alerts.sql', '0013_owner_signup_notice.sql', '0018_history.sql'];
 function database() {
 	const db = new DatabaseSync(':memory:');
 	for (const name of MIGRATIONS) db.exec(readFileSync(`migrations/${name}`, 'utf8'));
@@ -493,7 +493,9 @@ describe('matching watermark, dedup and batching', () => {
 			expect(sweepOne.flushed).toBe(1);
 			expect(notifySends(calls)).toHaveLength(1); // batched, sent once
 			const notifyRow = (await getOutbox(env, 'notify').first<any>());
-			expect(JSON.parse(notifyRow.payload).items).toHaveLength(3);
+			expect(JSON.parse(notifyRow.payload).items).toHaveLength(2);
+			expect((await env.DB.prepare("SELECT state FROM alert_delivery_history WHERE article_ref=?").bind('https://www.periodicovision.com/blocked').first<any>()).state).toBe('withheld');
+			expect((await env.DB.prepare("SELECT state FROM alert_delivery_history WHERE article_ref=?").bind('https://one.example/1').first<any>()).state).toBe('provider_accepted');
 			expect(JSON.stringify(notifySends(calls))).not.toContain('periodicovision.com');
 			// Within the hour: a new match queues but cannot leave early.
 			await insertArticle(env, item('https://one.example/3', 'LUMA otra vez', now + 60000), now + 60000);
@@ -1572,4 +1574,38 @@ describe('confirmed alert account counts', () => {
   expect(about).toContain('not a count of people');
   expect(about).not.toContain(OWNER_SIGNUP_EMAIL);
  });
+});
+
+it('keeps minimal history across outbox pruning and removes it on account closure', () => {
+ const {db} = database();
+ db.prepare("INSERT INTO alert_accounts(id,email,created_at,status) VALUES('history','test@example.com',1,'active')").run();
+ const payload=JSON.stringify({url:'https://example.com/history',phrases:['luma'],title:'Private body'});
+ db.prepare("INSERT INTO alert_queue VALUES('q','history','https://example.com/history',?,1)").run(payload);
+ db.prepare("INSERT INTO alert_outbox(id,kind,account_id,email,payload,state,created_at) VALUES('o','notify','history','test@example.com','pending-render','pending',1)").run();
+ db.prepare("UPDATE alert_outbox SET payload=? WHERE id='o'").run(JSON.stringify({items:[JSON.parse(payload)],manageToken:'secret'}));
+ db.exec("UPDATE alert_outbox SET state='sent',sent_at=2,attempts=1 WHERE id='o'; DELETE FROM alert_outbox WHERE id='o'; DELETE FROM alert_queue");
+ const history=db.prepare('SELECT * FROM alert_delivery_history').get()!;
+ expect(history.state).toBe('provider_accepted');
+ expect(history.accepted_at).toBe(2);
+ expect(JSON.stringify(history)).not.toMatch(/secret|test@example|Private body/);
+ db.exec("UPDATE alert_accounts SET status='closed' WHERE id='history'");
+ expect(db.prepare('SELECT COUNT(*) AS n FROM alert_delivery_history').get()!.n).toBe(0);
+ // A sweep holding a stale active-watcher snapshot must not recreate closed history.
+ db.prepare("INSERT INTO alert_queue VALUES('late','history','https://example.com/late',?,3)").run(payload);
+ expect(db.prepare('SELECT COUNT(*) AS n FROM alert_delivery_history').get()!.n).toBe(0);
+});
+
+it('preserves withheld membership through uncertain reconciliation and expiry', () => {
+ const {db}=database();
+ db.exec("INSERT INTO alert_accounts(id,email,created_at,status) VALUES('h','test@example.com',1,'active')");
+ const items=['https://example.com/allowed','https://periodicovision.com/blocked'].map(url=>({url,phrases:['luma']}));
+ for(const [i,item] of items.entries()) db.prepare("INSERT INTO alert_queue VALUES(?, 'h', ?, ?, 1)").run(String(i),item.url,JSON.stringify(item));
+ db.exec("INSERT INTO alert_outbox(id,kind,account_id,email,payload,state,created_at) VALUES('o','notify','h','test@example.com','pending-render','pending',1)");
+ db.prepare("UPDATE alert_outbox SET payload=? WHERE id='o'").run(JSON.stringify({items}));
+ db.exec("UPDATE alert_outbox SET state='sending',attempts=1 WHERE id='o'");
+ db.prepare("UPDATE alert_outbox SET payload=? WHERE id='o'").run(JSON.stringify({items:items.slice(0,1)}));
+ db.exec("UPDATE alert_outbox SET state='uncertain' WHERE id='o'; UPDATE alert_outbox SET state='sent',sent_at=3 WHERE id='o'; DELETE FROM alert_outbox WHERE id='o'");
+ const rows=db.prepare('SELECT article_ref,state,accepted_at FROM alert_delivery_history ORDER BY article_ref').all();
+ expect(rows.map(r=>r.state)).toEqual(['provider_accepted','withheld']);
+ expect(rows[1].accepted_at).toBeNull();
 });

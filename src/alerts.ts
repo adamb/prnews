@@ -489,6 +489,7 @@ export async function runAlertSweep(env: AlertEnv, now = Date.now()): Promise<Sw
 }
 
 async function prune(env: AlertEnv, now: number): Promise<void> {
+	await env.DB.prepare('DELETE FROM alert_delivery_history WHERE queued_at<?').bind(now - 90 * DAY).run();
 	await env.DB.prepare('DELETE FROM alert_tokens WHERE expires_at<?').bind(now - MAIL_RETENTION).run();
 	await env.DB.prepare('DELETE FROM alert_sessions WHERE expires_at<?').bind(now - MAIL_RETENTION).run();
 	await env.DB.prepare('DELETE FROM alert_notified WHERE notified_at<?').bind(now - NOTIFY_RETENTION).run();
@@ -682,6 +683,14 @@ async function dispatch(env: AlertEnv, now: number, outboxId: string | null = nu
 		const claim = await env.DB.prepare("UPDATE alert_outbox SET state='sending',lease_until=?,attempts=attempts+1,attempt_at=COALESCE(attempt_at,?) WHERE id=? AND state='pending' AND lease_until<=? AND attempts<?")
 			.bind(now + 120000, now, row.id, now, MAX_ATTEMPTS).run();
 		if (!claim.meta.changes) continue;
+		// Persist the exact eligible membership before any provider call. Reconciliation
+		// must describe this attempt, not the original batch or today's domain policy.
+		if (row.kind === 'notify') {
+			const payload = JSON.parse(row.payload) as { items?: QueuePayload[] };
+			payload.items = (payload.items ?? []).filter(item => !quarantined(item.url)).slice(0, NOTIFY_ITEMS_MAX);
+			row.payload = JSON.stringify(payload);
+			await env.DB.prepare('UPDATE alert_outbox SET payload=? WHERE id=?').bind(row.payload, row.id).run();
+		}
 		const mail = renderOutboxEmail(row);
 		if (!mail) {
 			await env.DB.prepare("UPDATE alert_outbox SET state='failed' WHERE id=?").bind(row.id).run();
