@@ -25,9 +25,23 @@ describe('news.pr registry', () => {
   expect(isEnglishSource('newspr')).toBe(true);
   for (const item of items) {
    expect(item.source).toBe('newspr');
+   expect(item.url).toMatch(/^https:\/\/news\.pr\/story\/[a-f0-9]+$/);
+   expect(item.url.endsWith('/')).toBe(false);
    expect(isEnglishItem(item)).toBe(true);          // English source default; no per-article Spanish signal asserted
    expect(needsTranslation(item, {})).toBe(false);  // English edition renders the original: no redundant AI
   }
+ });
+ it('keeps news.pr story links without a trailing slash even if the feed emits one', () => {
+  const [slashless, stripped] = parseFeed(
+   `<?xml version="1.0"?><rss version="2.0"><channel><title>news.pr</title>` +
+   `<item><title>First story</title><link>https://news.pr/story/abc123</link><pubDate>Thu, 19 Nov 2026 12:00:00 GMT</pubDate><description>Summary one.</description></item>` +
+   `<item><title>Second story</title><link>https://news.pr/story/def456/</link><pubDate>Thu, 19 Nov 2026 12:00:00 GMT</pubDate><description>Summary two.</description></item>` +
+   `</channel></rss>`,
+   newspr,
+   seen
+  );
+  expect(slashless.url).toBe('https://news.pr/story/abc123');
+  expect(stripped.url).toBe('https://news.pr/story/def456');
  });
 });
 
