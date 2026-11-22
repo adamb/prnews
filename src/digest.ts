@@ -1,3 +1,4 @@
+import {quarantined} from './quarantine';
 import type { Item } from './parse';
 import { safeUrl } from './parse';
 import { translated, type Translation, type Language } from './i18n';
@@ -64,7 +65,7 @@ export async function unsubscribe(env:Pick<DigestEnv,'DB'>,token:string) {
 }
 export interface Story { es:Item; en:Item|null; importanceEs:string; importanceEn:string }
 export function selectStories(items:Item[],cutoff:number,count=5):Item[] {
- const ordered=items.filter(i=>i.time>cutoff-DAY && i.time<=cutoff && i.source!=='reddit_puertorico' && safeUrl(i.url)).sort((a,b)=>b.time-a.time || a.url.localeCompare(b.url));
+ const ordered=items.filter(i=>!quarantined(i.url) && i.time>cutoff-DAY && i.time<=cutoff && i.source!=='reddit_puertorico' && safeUrl(i.url)).sort((a,b)=>b.time-a.time || a.url.localeCompare(b.url));
  const selected:Item[]=[],seen=new Set<string>(),urls=new Set<string>();
  for(const diverse of [true,false]) for(const item of ordered) {
   if(selected.length>=count) break;

@@ -1,3 +1,4 @@
+import {publisherFetch} from './quarantine';
 import {additionalFeedURLs} from './additional-sources';
 import {refreshStatus} from './live-status';
 import { arcticFeed, parseArctic, redditSource } from './reddit';
@@ -52,10 +53,10 @@ async function scanFeed(env: Env, source: typeof sources[number], url: string, n
   if (url!==arcticFeed && state?.modified) headers['If-Modified-Since']=state.modified;
   const target=new URL(url);
   if(source.id==='sjds') target.searchParams.set('_refresh',String(Math.floor(now/900000)));
-  let response=await fetch(target,{headers,signal:AbortSignal.timeout(10000)});
+  let response=await publisherFetch(target,{headers,signal:AbortSignal.timeout(10000)});
   if(response.status===403 && source.id!==redditSource) {
    await response.body?.cancel();
-   response=await fetch(target,{headers:{...headers,'User-Agent':'Mozilla/5.0 (compatible; news.dev.pr/1.0; +https://news.dev.pr/about)'},signal:AbortSignal.timeout(10000)});
+   response=await publisherFetch(target,{headers:{...headers,'User-Agent':'Mozilla/5.0 (compatible; news.dev.pr/1.0; +https://news.dev.pr/about)'},signal:AbortSignal.timeout(10000)});
   }
   status=response.status;
   if(status===429||status===503){const value=response.headers.get('Retry-After');if(value){const seconds=Number(value);retryAfter=Number.isFinite(seconds)?now+Math.max(0,seconds)*1000:Date.parse(value);if(!Number.isFinite(retryAfter))retryAfter=0;}}

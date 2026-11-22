@@ -1,10 +1,11 @@
+import {quarantined} from './quarantine';
 import {safeUrl} from './parse';
 import type {Env} from './ingest';
 const maxBytes=16*1024*1024;
 const allowedTypes=new Set(['image/jpeg','image/png','image/webp','image/gif','image/avif']);
 export function imageUrl(raw:string):string {
  const safe=safeUrl(raw);
- if(!safe) throw new Error('Invalid image URL');
+ if(!safe || quarantined(safe)) throw new Error('Invalid image URL');
  const url=new URL(safe);
  if(url.protocol!=='https:'||url.username||url.password||!url.hostname.includes('.')||/^[\d.]+$/.test(url.hostname)||url.hostname.includes(':')||/\.(localhost|local|internal)$/.test(url.hostname)) throw new Error('Image URL must use a public HTTPS host');
  return url.href;
