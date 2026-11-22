@@ -38,7 +38,7 @@ export async function lighterCacheReadable(env: Env): Promise<boolean> {
 }
 
 /** Current-article takes only. A cached text whose key is an older title or excerpt is ignored. */
-export function readySnapshot(items: Item[], lighter: Record<string, string> | undefined, cacheReadable: boolean): ReadySnapshot | { available: false } {
+export function readySnapshot(items: Item[], lighter: Record<string, string> | undefined, cacheReadable: boolean, truncated = Object.keys(lighter ?? {}).length >= TEXT_LOAD_CAP): ReadySnapshot | { available: false } {
  if (!cacheReadable) return { available: false };
  const map = lighter ?? {};
  const ready = emptyPair();
@@ -55,7 +55,7 @@ export function readySnapshot(items: Item[], lighter: Record<string, string> | u
    }
   }
  }
- return { available: true, truncated: Object.keys(map).length >= TEXT_LOAD_CAP, ready, examples };
+ return { available: true, truncated, ready, examples };
 }
 
 export async function attachStoryIds<T extends {url: string; storyId: number | null}>(env: Env, examples: T[]): Promise<void> {

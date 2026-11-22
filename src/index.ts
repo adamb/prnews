@@ -1,4 +1,4 @@
-import {lighterRoute,read as readLighter} from './lighter';
+import {lighterRoute,read as readLighter,readForItems} from './lighter';
 import {lighterFeedbackRoute,readLighterFeedback} from './lighter-feedback';
 import {attachStoryIds, lighterCacheReadable, readLighterLedger, readLighterQueue, readySnapshot, type LighterView} from './lighter-stats';
 import {sampleQueue,queueHistory} from './stats';
@@ -140,8 +140,8 @@ export default {
   if(url.pathname==='/story') {
    const raw=url.searchParams.get('id')??'';
    const story=await storyLookup(env,raw);
-   // Saved satire state for this one page. read() already swallows a missing cache.
-   const lighter=story?await readLighter(env):{};
+   // Saved satire state for this one story only. readForItems() swallows a missing cache.
+   const lighter=story?await readForItems(env,[story.item]):{};
    const storyIds:Record<string,number>={};
    if(story&&/^[1-9]\d{0,8}$/.test(raw))storyIds[story.item.url]=Number(raw);
    return renderer.fetch(request,{alerts:alertsData,items:story?[story.item]:[],translations:story?.translation?{[story.item.url]:story.translation}:{},feeds:[],story:true,lighter,storyIds,contactEmail:env.CONTACT_EMAIL},digestConfigured(env));
@@ -226,10 +226,12 @@ export default {
     recurringThemes=buildRecurringThemes(items,pageNow);
     await attachThemeStoryIds(env,recurringThemes);
    }
-   const lighter=await readLighter(env);
+   const lighter=url.pathname==='/'||url.pathname.startsWith('/s/')?await readLighter(env):{};
    let lighterView:LighterView|undefined;
    if(url.pathname==='/stats'){
-    const ready=readySnapshot(items,lighter,await lighterCacheReadable(env));
+    const cacheReadable=await lighterCacheReadable(env);
+    const statsLighter=cacheReadable?await readForItems(env,items):{};
+    const ready=readySnapshot(items,statsLighter,cacheReadable,false);
     if(ready.available)await attachStoryIds(env,ready.examples);
     const feedbackView=await readLighterFeedback(env);
     if(feedbackView.available)await attachStoryIds(env,[...feedbackView.top,...feedbackView.bottom]);

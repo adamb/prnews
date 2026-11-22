@@ -2,7 +2,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import {expect, it, vi} from 'vitest';
 import worker from '../src/index';
-import {DAILY_MODEL_CALLS, MAX_OUTPUT_TOKENS, VERSION, articleEligible, cacheSkips, key, lighterRoute, providerThrottleSeconds, satirePrompt, valid} from '../src/lighter';
+import {DAILY_MODEL_CALLS, MAX_OUTPUT_TOKENS, VERSION, articleEligible, cacheSkips, key, lighterRoute, providerThrottleSeconds, read, readForItems, satirePrompt, valid} from '../src/lighter';
 import {currentItem} from '../src/current-item';
 import {readySnapshot} from '../src/lighter-stats';
 import type {Env} from '../src/ingest';
@@ -337,4 +337,144 @@ it('caches the repaired headline the card uses and does not invent old generatio
 it('does not schedule satire generation', () => {
  expect(readFileSync('src/index.ts','utf8')).not.toContain('generate(env');
  expect(readFileSync('src/alerts-http.ts','utf8')).toContain("script-src https://challenges.cloudflare.com");
+});
+
+it('orders read() newest-first and keeps /story?satire=1 and /stats accurate past 1,000 cached rows', async () => {
+ const DB = database();
+ const published = Date.now();
+ const active = {
+  url:'https://zzz.example.com/active',
+  source:'noticel',
+  title:'Demoras de tránsito en la agencia',
+  summary:'La agencia informó demoras de tránsito esta mañana.',
+  image:'',
+  time:published,
+  observed:false,
+  section:'politica',
+  reason:'test',
+ } as Item;
+ const translation = {
+  originalTitle:active.title,
+  originalSummary:active.summary,
+  title:'Traffic delays at the agency',
+  summary:'The agency reported traffic delays this morning.',
+ };
+ const spanishSatire = 'La agencia archivó otra demora y llamó al segundo formulario un plan.';
+ const englishSatire = 'The agency turned the delay into a second delay and called the extra copy a plan.';
+ expect(valid(spanishSatire, active, 'es')).toBe(true);
+ expect(valid(englishSatire, active, 'en')).toBe(true);
+
+ await DB.prepare('INSERT INTO articles(url,source,payload,translation,first_seen,updated_at,published_at) VALUES(?,?,?,?,?,?,?)')
+  .bind(active.url, active.source, JSON.stringify(active), JSON.stringify(translation), published, published, published).run();
+ await DB.prepare('INSERT INTO story_ids(id,url) VALUES(?,?)').bind(42, active.url).run();
+ // Insert the active story's takes first (oldest rowids and lexicographically after aaa.example.com),
+ // then 1,010 newer historical rows so total non-null takes = 1,012 (>1,005).
+ await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(active,'es'), spanishSatire, 1, 0).run();
+ await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(active,'en'), englishSatire, 1, 0).run();
+ for (let i = 1; i <= 1010; i++) {
+  const histKey = JSON.stringify([VERSION, `https://aaa.example.com/old-${String(i).padStart(4,'0')}`, `Old ${i}`, 'Summary', 'en']);
+  await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(histKey, `Historical take row ${i} kept in cache.`, 1, 0).run();
+ }
+ expect(await DB.prepare('SELECT COUNT(*) AS n FROM lighter_cache WHERE text IS NOT NULL').first<{n:number}>()).toEqual({n:1012});
+
+ const queries: {sql:string; params:number}[] = [];
+ const trackedDb = {
+  prepare(sql: string) {
+   const stmt = DB.prepare(sql);
+   return {
+    bind(...values: unknown[]) {
+     queries.push({sql, params:values.length});
+     return stmt.bind(...values);
+    },
+    first: () => { queries.push({sql, params:0}); return stmt.first(); },
+    all: () => { queries.push({sql, params:0}); return stmt.all(); },
+    run: () => { queries.push({sql, params:0}); return stmt.run(); },
+   };
+  },
+  batch: DB.batch.bind(DB),
+ } as unknown as D1Database;
+ const env = {DB: trackedDb} as unknown as Env;
+
+ // read(env) prefers the 1,000 most recently inserted rows (ORDER BY rowid DESC LIMIT 1000).
+ const bounded = await read(env);
+ expect(Object.keys(bounded)).toHaveLength(1000);
+ expect(bounded[JSON.stringify([VERSION, 'https://aaa.example.com/old-1010', 'Old 1010', 'Summary', 'en'])]).toBe('Historical take row 1010 kept in cache.');
+ expect(bounded[JSON.stringify([VERSION, 'https://aaa.example.com/old-0011', 'Old 11', 'Summary', 'en'])]).toBe('Historical take row 11 kept in cache.');
+ expect(bounded[JSON.stringify([VERSION, 'https://aaa.example.com/old-0010', 'Old 10', 'Summary', 'en'])]).toBeUndefined();
+ expect(bounded[key(active,'es')]).toBeUndefined();
+ expect(bounded[key(active,'en')]).toBeUndefined();
+
+ // /story?id=42&satire=1 queries just the story's 2 keys and renders the cached satire even past 1,000 rows.
+ queries.length = 0;
+ const storyEs = await (await worker.fetch(new Request('https://news.dev.pr/story?id=42&satire=1'), env)).text();
+ expect(storyEs).toContain(`<span>${spanishSatire}</span>`);
+ expect(storyEs).toContain('>Ocultar sátira<');
+ expect(storyEs).toContain(spanishSatire);
+ const storyCacheQueries = queries.filter(q => q.sql.includes('lighter_cache'));
+ expect(storyCacheQueries).toHaveLength(1);
+ expect(storyCacheQueries[0]?.params).toBe(2);
+
+ const storyEn = await (await worker.fetch(new Request('https://news.dev.pr/story?id=42&satire=1&lang=en'), env)).text();
+ expect(storyEn).toContain(`<span>${englishSatire}</span>`);
+ expect(storyEn).toContain('>Hide satire<');
+
+ // /stats finds both active takes without truncation warnings despite 1,010 historical rows.
+ const statsEn = await (await worker.fetch(new Request('https://news.dev.pr/stats?lang=en'), env)).text();
+ expect(statsEn).toContain('Ready to show, valid text for the current headline and excerpt: Spanish 1 · English 1.');
+ expect(statsEn).not.toContain('at most 1000 texts');
+ expect(statsEn).toContain(englishSatire);
+
+ const statsEs = await (await worker.fetch(new Request('https://news.dev.pr/stats?lang=es'), env)).text();
+ expect(statsEs).toContain('Listas para mostrar, texto válido del titular y extracto actuales: español 1 · inglés 1.');
+ expect(statsEs).not.toContain('como máximo 1000 textos');
+ expect(statsEs).toContain(spanishSatire);
+});
+
+it('chunks readForItems safely across >50 items without exceeding D1 bind parameter limits', async () => {
+ const DB = database();
+ const many: Item[] = [];
+ for (let i = 0; i < 95; i++) {
+  const entry = i === 94
+   ? ({url:`https://example.com/item-${i}`, source:'nimb', title:'Amgens plant expands offshore', summary:'The company reports a larger plant this year.', image:'', time:i + 1, observed:false, section:'negocios', reason:'manual-import', titleOrigin:'url-slug'} as Item & {titleOrigin:string})
+   : ({...item, url:`https://example.com/item-${i}`, title:`Traffic delays ${i}`, summary:`The agency reports traffic delays at stop ${i}.`});
+  many.push(entry);
+ }
+ await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(currentItem(many[0]!), 'es'), 'La agencia informa demoras en la parada 0 hoy.', 1, 0).run();
+ await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(currentItem(many[50]!), 'en'), satire, 1, 0).run();
+ await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(currentItem(many[94]!), 'en'), satire, 1, 0).run();
+ await DB.prepare('INSERT INTO lighter_cache(key,text,attempts,next_try) VALUES(?,?,?,?)').bind(key(currentItem(many[10]!), 'es'), null, 2, 1000).run();
+
+ const bindCounts: number[] = [];
+ const trackedDb = {
+  prepare(sql: string) {
+   const stmt = DB.prepare(sql);
+   return {
+    bind(...values: unknown[]) {
+     bindCounts.push(values.length);
+     return stmt.bind(...values);
+    },
+    first: () => stmt.first(),
+    all: () => stmt.all(),
+    run: () => stmt.run(),
+   };
+  },
+  batch: DB.batch.bind(DB),
+ } as unknown as D1Database;
+ const env = {DB: trackedDb} as unknown as Env;
+
+ expect(await readForItems(env, [])).toEqual({});
+ expect(bindCounts).toEqual([]);
+
+ const found = await readForItems(env, many);
+ // 95 distinct items => 190 keys => 3 chunks of <= 80 bind parameters (80, 80, 30).
+ expect(bindCounts).toEqual([80, 80, 30]);
+ expect(Math.max(...bindCounts)).toBeLessThanOrEqual(80);
+ expect(found).toEqual({
+  [key(currentItem(many[0]!), 'es')]: 'La agencia informa demoras en la parada 0 hoy.',
+  [key(currentItem(many[50]!), 'en')]: satire,
+  [key(currentItem(many[94]!), 'en')]: satire,
+ });
+
+ const broken = {DB: {prepare(){ throw new Error('no such table: lighter_cache'); }}} as unknown as Env;
+ expect(await readForItems(broken, many)).toEqual({});
 });
