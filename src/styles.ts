@@ -294,6 +294,12 @@ input{font:inherit;padding:6px;background:var(--panel);color:var(--ink);border:1
 .share-note{margin:0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
 .share-note:empty,.card p.share-note:empty,.card p.lighter-note:empty{display:none}
 .lighter-note{margin:0 0 .4rem;overflow-wrap:anywhere}.lighter-note small{display:block;color:var(--muted)}
+/* The existing live region is the inline panel, including feedback. Empty notes
+ * stay collapsed; request/retry state and exact-text vote identity are unchanged. */
+.card p.lighter-note:not(:empty){min-width:0;max-width:100%;margin:8px 0 4px;padding:14px 16px;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-inline-start:3px solid var(--accent);border-radius:8px;box-shadow:0 2px 6px #0001;font-size:.875rem;line-height:1.6}
+.card .lighter-note>small{margin-bottom:8px;font:700 .75rem/1.5 var(--sans);color:var(--ink)}
+.card .lighter-note>br{display:none}
+.card .lighter-note>.lighter-vote{display:flex;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 /* The card excerpt clamp also matched this note, so the label, the break, and one satire line were
    all that remained. Excerpts stay clamped; the note never is. */
 .card p.lighter-note{display:block;overflow:visible;white-space:normal;-webkit-line-clamp:unset;-webkit-box-orient:unset}
