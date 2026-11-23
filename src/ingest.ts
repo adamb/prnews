@@ -8,7 +8,7 @@ import { enrichImages } from './image-enrich';
 import { repairArcticImages } from './reddit-repair';
 import {translated, validTranslation, validSpanishTranslation, needsTranslation, needsSpanishTranslation} from './i18n';
 import type { DigestEnv } from './digest';
-import { newsprSource, sources } from './sources';
+import { englishItemSQL, spanishItemSQL, sources } from './sources';
 import { parseFeed, publisherPlaceholder, summary, type Item } from './parse';
 import type { Translation } from './i18n';
 export interface Env extends DigestEnv, AlertEnvLike { DB: D1Database; ARCHIVE?: R2Bucket; AI?: Ai; REFRESH_TOKEN?: string; /** Read-only token for the Web Analytics GraphQL reader (src/analytics.ts); optional, secret-bound. */ CF_ANALYTICS_TOKEN?: string }
@@ -104,7 +104,7 @@ async function translatePending(env:Env, now:number) {
  // sjds/nimb/newspr/pasquines items are English by source default, and any item whose payload is
  // demonstrably Spanish (originalLanguage='es') is still queued like any other Spanish
  // article; rows without a per-article signal keep their source's language default.
- const {results:rows}=await env.DB.prepare("SELECT url,payload,translation,translation_attempt FROM articles WHERE published_at>=? AND (json_extract(payload,'$.originalLanguage')='es' OR (source NOT IN ('sjds','nimb','pasquines',?) AND COALESCE(json_extract(payload,'$.originalLanguage'),'')!='en'))").bind(now-14*86400000,newsprSource).all<{url:string;payload:string;translation:string|null;translation_attempt:number}>();
+ const {results:rows}=await env.DB.prepare(`SELECT url,payload,translation,translation_attempt FROM articles WHERE published_at>=? AND ${spanishItemSQL}`).bind(now-14*86400000).all<{url:string;payload:string;translation:string|null;translation_attempt:number}>();
  const cached:Record<string,Translation>={};
  for(const row of rows)if(row.translation)try{cached[row.url]=JSON.parse(row.translation) as Translation;}catch{/* Counts as awaiting translation. */}
  const pending=rows.map(row=>({...row,item:JSON.parse(row.payload) as Item}))
@@ -151,7 +151,7 @@ async function translatePending(env:Env, now:number) {
 const REVERSE_BATCH=4, REVERSE_PER_RUN=8;
 async function translatePendingReverse(env:Env, now:number) {
  if(!env.AI) return;
- const {results:rows}=await env.DB.prepare("SELECT url,payload,translation,translation_attempt FROM articles WHERE published_at>=? AND ((json_extract(payload,'$.originalLanguage')='en') OR (COALESCE(json_extract(payload,'$.originalLanguage'),'')='' AND source IN ('sjds','nimb','newspr','pasquines')))").bind(now-14*86400000).all<{url:string;payload:string;translation:string|null;translation_attempt:number}>();
+ const {results:rows}=await env.DB.prepare(`SELECT url,payload,translation,translation_attempt FROM articles WHERE published_at>=? AND ${englishItemSQL}`).bind(now-14*86400000).all<{url:string;payload:string;translation:string|null;translation_attempt:number}>();
  const cached:Record<string,Translation>={};
  for(const row of rows)if(row.translation)try{cached[row.url]=JSON.parse(row.translation) as Translation;}catch{/* Counts as awaiting translation. */}
  const pending=rows.map(row=>({...row,item:JSON.parse(row.payload) as Item}))

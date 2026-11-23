@@ -1,3 +1,4 @@
+import {sources, isEnglishItem, englishItemSQL, spanishItemSQL} from '../src/sources';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -136,6 +137,37 @@ describe('reverse queue (D1): multi-source drain, title-only storage, stats cons
   } } };
  };
 
+
+ it('SQL partitions every registered source and language override exactly like isEnglishItem', async () => {
+  const DB=database();
+  for(const source of [...sources.map(s=>s.id),'unknown']) for(const originalLanguage of [undefined,'','es','en','fr']) {
+   const item={...nimbImport('The agency publishes the report', `https://example.org/${source}/${originalLanguage}`),source,originalLanguage} as Item;
+   await insert(DB,item,seen);
+  }
+  const rows=(await DB.prepare(`SELECT payload, ${englishItemSQL} AS en, ${spanishItemSQL} AS es FROM articles`).all<any>()).results;
+  for(const row of rows) {
+   expect(Boolean(row.en)).toBe(isEnglishItem(JSON.parse(row.payload)));
+   expect(row.en+row.es).toBe(1);
+  }
+ });
+
+ it.each(['prreport','centro','thecity','documented','nbclatino'])('translates %s defaults into Spanish and Spanish overrides into English', async source => {
+  const DB=database(), now=seen;
+  const english={...nimbImport('The agency publishes the new report',`https://example.org/${source}/en`),source};
+  const spanish={...english,url:`https://example.org/${source}/es`,title:'El informe de la agencia para las familias',originalLanguage:'es'} as Item;
+  for(const item of [english,spanish]) await insert(DB,item,now);
+  const {calls,ai}=queueAI();
+  vi.spyOn(Date,'now').mockReturnValue(now);
+  vi.stubGlobal('fetch',vi.fn(async()=>new Response('',{status:503})));
+  await refresh({DB,AI:ai} as unknown as Env);
+  const rows=(await DB.prepare('SELECT payload,translation FROM articles').all<any>()).results;
+  expect(calls).toHaveLength(2);
+  for(const row of rows) {
+   const item=JSON.parse(row.payload),translation=JSON.parse(row.translation);
+   expect(translation.target).toBe(item.originalLanguage==='es'?undefined:'es');
+   expect(translation.originalTitle).toBe(item.title);
+  }
+ });
  it('drains sjds, nimb and pasquines in one run and stores title-only rows for empty excerpts', async () => {
   const DB = database(), now = Date.parse('2026-11-21T12:00:00Z');
   const nimb = nimbImport('Palmas athletic club 46 4m UBS seek 46 4m consent judgment', 'https://newsismybusiness.com/palmas-ubs/');
