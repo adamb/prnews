@@ -1,7 +1,7 @@
 import * as he from 'he';
 
 // Operator-authorized containment; this is not a verdict about phishing.
-export const quarantinedDomains = ['periodicovision.com', 'elpostantillano.com'] as const;
+export const quarantinedDomains = ['elpostantillano.com'] as const;
 export function quarantined(value: string | URL): boolean {
  try {
   const host = new URL(he.decode(String(value))).hostname.toLowerCase().replace(/\.+$/, '');

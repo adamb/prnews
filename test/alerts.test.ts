@@ -487,16 +487,16 @@ describe('matching watermark, dedup and batching', () => {
 			setPacingForTests({ minIntervalMs: 1, minuteCap: 100, dailyCap: 100000 });
 			const { now } = await activated(env, {});
 			await insertArticle(env, item('https://one.example/1', 'LUMA anuncia plan', now + 1000), now + 1000);
-			await insertArticle(env, item('https://www.periodicovision.com/blocked', 'LUMA revisión', now + 1200), now + 1200);
+			await insertArticle(env, item('https://www.elpostantillano.com/blocked', 'LUMA revisión', now + 1200), now + 1200);
 			await insertArticle(env, item('https://one.example/2', 'Otra noticia de LUMA', now + 1500), now + 1500);
 			const sweepOne = await runAlertSweep(env, now + 2000);
 			expect(sweepOne.flushed).toBe(1);
 			expect(notifySends(calls)).toHaveLength(1); // batched, sent once
 			const notifyRow = (await getOutbox(env, 'notify').first<any>());
 			expect(JSON.parse(notifyRow.payload).items).toHaveLength(2);
-			expect((await env.DB.prepare("SELECT state FROM alert_delivery_history WHERE article_ref=?").bind('https://www.periodicovision.com/blocked').first<any>()).state).toBe('withheld');
+			expect((await env.DB.prepare("SELECT state FROM alert_delivery_history WHERE article_ref=?").bind('https://www.elpostantillano.com/blocked').first<any>()).state).toBe('withheld');
 			expect((await env.DB.prepare("SELECT state FROM alert_delivery_history WHERE article_ref=?").bind('https://one.example/1').first<any>()).state).toBe('provider_accepted');
-			expect(JSON.stringify(notifySends(calls))).not.toContain('periodicovision.com');
+			expect(JSON.stringify(notifySends(calls))).not.toContain('elpostantillano.com');
 			// Within the hour: a new match queues but cannot leave early.
 			await insertArticle(env, item('https://one.example/3', 'LUMA otra vez', now + 60000), now + 60000);
 			const sweepTwo = await runAlertSweep(env, now + 61000);
@@ -1598,7 +1598,7 @@ it('keeps minimal history across outbox pruning and removes it on account closur
 it('preserves withheld membership through uncertain reconciliation and expiry', () => {
  const {db}=database();
  db.exec("INSERT INTO alert_accounts(id,email,created_at,status) VALUES('h','test@example.com',1,'active')");
- const items=['https://example.com/allowed','https://periodicovision.com/blocked'].map(url=>({url,phrases:['luma']}));
+ const items=['https://example.com/allowed','https://elpostantillano.com/blocked'].map(url=>({url,phrases:['luma']}));
  for(const [i,item] of items.entries()) db.prepare("INSERT INTO alert_queue VALUES(?, 'h', ?, ?, 1)").run(String(i),item.url,JSON.stringify(item));
  db.exec("INSERT INTO alert_outbox(id,kind,account_id,email,payload,state,created_at) VALUES('o','notify','h','test@example.com','pending-render','pending',1)");
  db.prepare("UPDATE alert_outbox SET payload=? WHERE id='o'").run(JSON.stringify({items}));
@@ -1606,6 +1606,7 @@ it('preserves withheld membership through uncertain reconciliation and expiry', 
  db.prepare("UPDATE alert_outbox SET payload=? WHERE id='o'").run(JSON.stringify({items:items.slice(0,1)}));
  db.exec("UPDATE alert_outbox SET state='uncertain' WHERE id='o'; UPDATE alert_outbox SET state='sent',sent_at=3 WHERE id='o'; DELETE FROM alert_outbox WHERE id='o'");
  const rows=db.prepare('SELECT article_ref,state,accepted_at FROM alert_delivery_history ORDER BY article_ref').all();
- expect(rows.map(r=>r.state)).toEqual(['provider_accepted','withheld']);
- expect(rows[1].accepted_at).toBeNull();
+ expect(rows.find(r=>r.article_ref===items[0].url)?.state).toBe('provider_accepted');
+ expect(rows.find(r=>r.article_ref===items[1].url)?.state).toBe('withheld');
+ expect(rows.find(r=>r.article_ref===items[1].url)?.accepted_at).toBeNull();
 });
