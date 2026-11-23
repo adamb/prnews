@@ -1,5 +1,12 @@
 # Releases
 
+## 2026-11-23 — Puerto Rico and diaspora sources
+
+- Deployed source: `71b729d5765b8fd5f6407ac1712024a3ae24e202`, merge of PR https://github.com/adamb/prnews/pull/59. Verified identical to remote main before deployment. Worker version: `470c87c1-8ddb-4ebb-a497-f45451362488`.
+- Enabled Puerto Rico Report, CENTRO, La Prensa Orlando, THE CITY, Documented NY and NBC Latino. Broad feeds require Puerto Rico relevance; NBC also requires its Latino URL scope. Orlando Sentinel and WAPA Orlando remain excluded; see diaspora-sources.md for verification evidence.
+- Integrated validation: npm ci, npm test (580 passed), npm run typecheck, npm run build. Clean committed checkout deployed with npx wrangler deploy. No migrations or production data repair.
+- Live sources page returned HTTP 200 and listed all six additions. Spanish and English homepages returned HTTP 200. Feed ingestion follows the existing 15-minute schedule; registration does not imply matching articles have already been ingested.
+
 ## 2026-11-22 — Slashless news.pr canonical URLs, legacy /click compatibility, and D1 URL repair
 
 - Deployed source: `5bbbd30159cd5ab107f19fff894417145ab358b8`, the `origin/main` squash merge of https://github.com/adamb/prnews/pull/51 (head `76831cdc8c5a69d70ad589fb435ad663b0661662`, Gemini 4 Carbon). Cloudflare Worker version: `437ab712-b405-4492-a24c-26c8274155c9`. Previous: `dc7a995c-2b71-4ab3-9730-dadc1092b4f2`.
