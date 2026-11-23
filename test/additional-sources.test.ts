@@ -27,7 +27,7 @@ describe('additional sources: verified publisher feeds', () => {
  it('covers exactly the verified ids and never registers the unavailable ones', () => {
   expect(additionalSources.map(s => s.id).sort()).toEqual(['claridad', 'eloriental', 'elsol', 'esnoticia', 'eyboricua', 'lacalle', 'laesquina', 'millones', 'newspr', 'pasquines', 'presencia', 'radioisla', 'vision', 'walo', 'wapa', 'wipr', 'wkaq']);
   expect(additionalMappingIsConsistent()).toBe(true);
-  expect(sources.map(s => s.id)).toHaveLength(27); // 10 base + 17 additional after the 2026-11-20 outlets
+  expect(sources.map(s => s.id)).toHaveLength(33); // 10 base + 17 additional after the 2026-11-20 outlets
   expect(Object.keys(additionalFeedURLs)).toEqual(['wapa', 'wipr', 'claridad', 'radioisla', 'walo', 'newspr', 'vision', 'lacalle', 'elsol', 'esnoticia', 'eloriental', 'laesquina', 'millones', 'eyboricua', 'pasquines', 'wkaq', 'presencia']);
   expect(feeds.radioisla).toEqual(['https://radioisla.tv/feed/']);
   expect(feeds.walo).toEqual(['https://waloradio.com/feed/']);

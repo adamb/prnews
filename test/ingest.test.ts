@@ -34,7 +34,7 @@ it('scans all feeds, preserves first-seen times, handles 304 and isolates failur
  await refresh(env);
  expect(isFeedRequest(requests[0].toString()));
  const feedURLs=new Set(Object.values(feeds).flat());
- expect(requests.filter(u=>[...feedURLs].some(f=>f===u||u.startsWith(f))).length).toBe(27); // every configured feed URL, including NotiCel page 2 and the 11 outlets added 2026-11-20; enrichment adds only article-page fetches
+ expect(requests.filter(u=>[...feedURLs].some(f=>f===u||u.startsWith(f))).length).toBe(33); // every configured feed URL, including NotiCel page 2 and the 11 outlets added 2026-11-20; enrichment adds only article-page fetches
  expect(requests.some(r=>r.includes('_refresh='))).toBe(true);
  const first=await DB.prepare("SELECT payload FROM articles WHERE source='telemundo' LIMIT 1").first<{payload:string}>();
  expect(first).toBeTruthy();
@@ -48,7 +48,7 @@ it('scans all feeds, preserves first-seen times, handles 304 and isolates failur
  const conditional=vi.fn(async()=>new Response(null,{status:304}));vi.stubGlobal('fetch',conditional);
  await refresh(env);
  const calls=conditional.mock.calls as unknown as [URL, any?][];
- expect(calls.filter(([,options])=>options?.headers?.['If-None-Match']==='"v1"').length).toBe(24); // reddit and elvocero wait longer than 15 minutes; metro failed; the 11 outlets added 2026-11-20 are all due
+ expect(calls.filter(([,options])=>options?.headers?.['If-None-Match']==='"v1"').length).toBe(30); // reddit and elvocero wait longer than 15 minutes; metro failed; the 11 outlets added 2026-11-20 are all due
  // Bounded image enrichment continues with still-ready queue rows (first run handled 12).
  const nonFeeds=calls.filter(([u])=>![...feedURLs].some(f=>String(u)===f||String(u).startsWith(f)));
  expect(nonFeeds.length).toBeGreaterThanOrEqual(1);expect(nonFeeds.length).toBeLessThanOrEqual(12);
