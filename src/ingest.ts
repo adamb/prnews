@@ -1,3 +1,4 @@
+import {diasporaFeeds, diasporaRelevant} from './diaspora-sources';
 import {publisherFetch} from './quarantine';
 import {additionalFeedURLs} from './additional-sources';
 import {refreshStatus} from './live-status';
@@ -13,7 +14,7 @@ import type { Translation } from './i18n';
 export interface Env extends DigestEnv, AlertEnvLike { DB: D1Database; ARCHIVE?: R2Bucket; AI?: Ai; REFRESH_TOKEN?: string; /** Read-only token for the Web Analytics GraphQL reader (src/analytics.ts); optional, secret-bound. */ CF_ANALYTICS_TOKEN?: string }
 type AlertEnvLike = import('./alerts').AlertEnv & { CONTACT_EMAIL?: string };
 export const feeds: Record<string,string[]> = {
- ...additionalFeedURLs,
+ ...diasporaFeeds, ...additionalFeedURLs,
  nimb:[], // Publisher blocks automated requests; retain manually imported links.
  elvocero:['https://www.elvocero.com/search/?f=rss&t=article&l=50&s=start_time&sd=desc'],
  reddit_puertorico:['https://www.reddit.com/r/PuertoRico/new/.rss?limit=25'],
@@ -65,8 +66,9 @@ async function scanFeed(env: Env, source: typeof sources[number], url: string, n
   if(status!==304) {
    const xml=await response.text();
    if(xml.length>8_000_000) throw new Error('Feed exceeds size limit');
-   const parsed=url===arcticFeed ? parseArctic(xml,now) : parseFeed(xml,source,now);
+   let parsed=url===arcticFeed ? parseArctic(xml,now) : parseFeed(xml,source,now);
    if(!parsed.length && url!==arcticFeed) throw new Error('Feed contained no usable articles');
+   parsed=parsed.filter(i=>diasporaRelevant(source.id,i.title,i.summary,i.url));
    const old=new Map<string,Item>();
    const urls=[...new Set(parsed.map(item=>item.url))];
    for(let offset=0;offset<urls.length;offset+=50) {

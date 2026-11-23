@@ -1,3 +1,4 @@
+import {diasporaSources} from './diaspora-sources';
 import {additionalSources} from './additional-sources';
 export interface Source {id:string;name:string;homepage:string;files:string[]}
 export const sources:Source[] = [
@@ -12,10 +13,11 @@ export const sources:Source[] = [
   { id: 'reddit_puertorico', name: 'Reddit · r/PuertoRico', homepage: 'https://www.reddit.com/r/PuertoRico/', files: ['reddit_puertorico.xml'] },
   { id: 'elvocero', name: 'El Vocero', homepage: 'https://www.elvocero.com', files: ['elvocero.xml'] },
   ...additionalSources,
+  ...diasporaSources,
 ];
 
 
-export const isEnglishSource = (id: string) => id === 'sjds' || id === 'nimb' || id === 'newspr' || id === 'pasquines';
+export const isEnglishSource = (id: string) => id === 'sjds' || id === 'nimb' || id === 'newspr' || id === 'pasquines' || ['prreport','centro','thecity','documented','nbclatino'].includes(id);
 
 /** Pasquines (https://pasquines.us) publishes in both English and Spanish on one
  * feed, exactly like the San Juan Daily Star, so it follows the same bilingual

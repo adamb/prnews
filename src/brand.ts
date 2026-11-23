@@ -29,6 +29,12 @@ const MARKS: Record<string, Mark> = {
  eyboricua: { code: '¡E!', hue: 335 },
  pasquines: { code: 'PAS', hue: 232 },
  wkaq: { code: 'WKAQ', hue: 105 },
+ prreport: { code: 'PRR', hue: 220 },
+ centro: { code: 'CEN', hue: 280 },
+ laprensafl: { code: 'LPO', hue: 15 },
+ thecity: { code: 'CITY', hue: 200 },
+ documented: { code: 'DOC', hue: 240 },
+ nbclatino: { code: 'NBC', hue: 310 },
  presencia: { code: 'PRE', hue: 272 },
 };
 

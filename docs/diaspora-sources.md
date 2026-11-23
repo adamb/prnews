@@ -1,0 +1,20 @@
+# Diaspora source verification — November 23, 2026
+
+Live HTTPS checks from the implementation host, with XML parsing (not status alone):
+
+| Outlet | Endpoint and evidence | Decision |
+| --- | --- | --- |
+| Puerto Rico Report | https://puertoricoreport.com/feed/ — 200 RSS, 9 items; congressional Puerto Rican representation and Act 60 coverage | Enable; English default. Puerto Rico policy focus, including statehood advocacy; inclusion is not endorsement. |
+| CENTRO / Centro Voices, Hunter CUNY | https://centropr.hunter.cuny.edu/feed/ — 200 RSS, 10 items; English and Spanish PROMESA symposium announcements | Enable as CENTRO, not a Voices-only feed. English default with shared Spanish detection. Includes institutional announcements and scholarship. |
+| La Prensa Orlando | https://laprensafl.com/feed/ — 200 RSS, 10 items; includes Universal Orlando passes and identity coverage | Enable Spanish default, explicit PR relevance required. General Florida/Latino coverage alone is excluded. |
+| THE CITY | https://www.thecity.nyc/feed/ — 200 RSS, 10 items; battery fires and school enrollment, article links on www.thecityreporter.nyc | Enable English default, PR relevance or uppercase SOMOS plus conference/legislative context. Bare “somos” is insufficient. Preserve publisher article links. |
+| Documented NY | https://documentedny.com/feed/ — 200 RSS, 10 items; ICE rules and Spanish Thanksgiving resources | Enable English default with Spanish detection and explicit PR relevance. Immigration/Latino identity alone does not establish PR relevance. robots.txt returned 403; revisit publisher crawl policy if feed access changes. |
+| NBC Latino | https://feeds.nbcnews.com/nbcnews/public/news — 200 RSS, 25 items, general national politics | Enable only exact www.nbcnews.com /news/latino/ links with explicit PR relevance. National politics alone is excluded. Feed is not Latino-specific and may capture very little coverage. |
+| Orlando Sentinel | https://www.orlandosentinel.com/arc/outboundfeeds/rss/ and same URL with ?outputType=xml both 403; https://www.orlandosentinel.com/sitemap_index.xml 404 | Skip: no verified usable endpoint. A sitemap is not RSS and would need a separate bounded adapter. No bypass. |
+| WAPA Orlando / WOTF | [Entravision announcement](https://entravision.com/es/hemisphere-media-group-y-entravision-se-asocian-para-lanzar-wapa-orlando/) identifies WOTF channel 26 and programming from Puerto Rico | Skip: no verified standalone publisher feed. Existing WAPA Puerto Rico remains distinct. Google News search or site:wapa.tv would mix reporting about the affiliate with its own output; no aggregator enabled. |
+
+[Hunter's institutional description](https://hunter-undergraduate.catalog.cuny.edu/student-life/research-centers-and-institutes) identifies CENTRO's Puerto Rican diaspora research and Voices dissemination mission. Feed checks used public requests; no credentials or full publisher bodies are committed. Puerto Rico Report, CENTRO and La Prensa robots allow the feed paths. THE CITY's generic crawler rules allow the feed, with explicit AI-agent exclusions; production uses news.dev.pr's existing crawler. NBC feed host returned “method not found” for robots.txt.
+
+Broad-feed matching uses only the sanitized headline and capped excerpt, not URL words, categories, boilerplate or full content. Puerto Rico/Puerto Rican, puertorriqueño, boricua and Nuyorican forms qualify; generic PR, San Juan, Latino and Orlando do not. This deliberately favors precision and can miss implicit diaspora references. Filtering happens after valid-feed parsing, so a healthy feed with no relevant items records zero instead of an outage; genuinely empty or malformed feeds still fail. No translation, excerpt, privacy, quarantine, archive or fetch-redirect protections change. Shared registry supplies bilingual source pages/search and comparison; marks and registration dates are explicit.
+
+Validation: npm ci, npm test, npm run typecheck, npm run build (dry run). No migration, deployment or production data changes.

@@ -110,6 +110,13 @@ export const subscribedOn: Record<string, string> = {
   pasquines: '2026-11-20',
   wkaq: '2026-11-20',
   presencia: '2026-11-20',
+  prreport: '2026-11-23',
+  centro: '2026-11-23',
+  laprensafl: '2026-11-23',
+  thecity: '2026-11-23',
+  documented: '2026-11-23',
+  nbclatino: '2026-11-23',
+
 };
 
 /** A blank day is a captured zero only after a successful check that this outlet was already registered for. */
