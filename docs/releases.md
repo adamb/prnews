@@ -1,5 +1,12 @@
 # Releases
 
+## 2026-11-23 — Registry-driven translation queues
+
+- Deployed source: `c79ca422ee2bbd43a335974f148a903af7a8123f`, merge of https://github.com/adamb/prnews/pull/60, verified against remote main. Worker version: `d874fa3f-9568-47af-b965-6d821e6dcb04`.
+- Forward and reverse translation selection and queue statistics now derive from the shared English-source registry. New diaspora sources participate in Spanish translation, respecting per-article language overrides and existing quotas/retry delays.
+- Integrated checks: npm ci, 586 tests, typecheck and build dry run passed. Deployed clean committed revision; no migration or original article changes.
+- Processing: existing 15-minute cron handles the seven eligible pending English stories found before release (six Puerto Rico Report, one CENTRO); the 13:15 UTC run stored Spanish translations for CENTRO and two Puerto Rico Report stories; four Puerto Rico Report stories remain pending for subsequent bounded runs.
+
 ## 2026-11-23 — Puerto Rico and diaspora sources
 
 - Deployed source: `71b729d5765b8fd5f6407ac1712024a3ae24e202`, merge of PR https://github.com/adamb/prnews/pull/59. Verified identical to remote main before deployment. Worker version: `470c87c1-8ddb-4ebb-a497-f45451362488`.
