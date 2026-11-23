@@ -17,7 +17,15 @@ export const sources:Source[] = [
 ];
 
 
-export const isEnglishSource = (id: string) => id === 'sjds' || id === 'nimb' || id === 'newspr' || id === 'pasquines' || ['prreport','centro','thecity','documented','nbclatino'].includes(id);
+export const englishSourceIds = ['sjds','nimb','newspr','pasquines','prreport','centro','thecity','documented','nbclatino'] as const;
+export const isEnglishSource = (id: string) => (englishSourceIds as readonly string[]).includes(id);
+
+/** SQL counterpart of isEnglishItem for articles. COALESCE keeps the complement
+ * two-valued even when the optional payload language is absent. Registry literals
+ * are escaped here, never supplied by requests. */
+export const englishItemSQL = `(COALESCE(json_extract(payload,'$.originalLanguage'),'')='en' OR (COALESCE(json_extract(payload,'$.originalLanguage'),'')='' AND source IN (${englishSourceIds.map(id=>"'"+id.replaceAll("'", "''")+"'").join(',')})))`;
+export const spanishItemSQL = `NOT ${englishItemSQL}`;
+
 
 /** Pasquines (https://pasquines.us) publishes in both English and Spanish on one
  * feed, exactly like the San Juan Daily Star, so it follows the same bilingual
