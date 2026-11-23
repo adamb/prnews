@@ -52,7 +52,7 @@ export const additionalFeedURLs: Record<string, string[]> = {
  newspr: ['https://news.pr/rss.xml'],
  // Verified 2026-11-20 (docs/pr-outlet-feeds.md). The paths below are the
  // publisher's own feeds, allowed by each site's robots.txt.
- vision: [],
+ vision: ['https://periodicovision.com/feed/'],
  lacalle: ['https://lacallerevista.com/feed'],
  elsol: ['https://periodicoelsolpr.com/feed/'],
  esnoticia: ['https://esnoticiapr.com/feed/'],
