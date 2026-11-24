@@ -752,6 +752,7 @@ describe('HTTP pages, bilingual UI and security headers', () => {
 		expect(html).toContain(`<html lang="${lang}">`);
 		expect(html).toContain(spanish ? 'Sugerir fuente' : 'Suggest a source');
 		expect(html).toContain(spanish ? 'Enviar sugerencia' : 'Send suggestion');
+		expect(html).toContain(spanish ? 'Tu correo electrónico (para confirmar que eres tú)' : 'Your email address (to confirm your submission)');
 		expect(html).toContain(`<form method="post" action="/sugerir?lang=${lang}">`);
 		expect(html).toContain(`name="lang" value="${lang}"`);
 		for (const field of ['kind', 'name', 'target', 'notes', 'email', 'x_presencia']) expect(html).toContain(`name="${field}"`);
