@@ -203,9 +203,10 @@ export default {
   // were still indexable. v34 dropped v33 pages whose source names are not links
   // and that have no active-source chip. Compact imageless-lead rules and lighter-2
   // stay. 60s TTL still applies. This does not purge R2 or D1.
+  // v49 drops v48 pages whose masthead and mobile nav sheet lack the /sugerir link.
   // v48 drops v47 pages whose footer and /fuentes page lack the bilingual /sugerir
   // source-suggestion link. v47 restores Vision links after operator-authorized re-enablement.
-  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v48') : undefined;
+  const cache = typeof caches !== 'undefined' && request.method === 'GET' ? await caches.open('prnews-html-v49') : undefined;
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.searchParams.set('lang', url.searchParams.get('lang') === 'en' ? 'en' : 'es');
   for(const key of ['source','q'])if(url.searchParams.has(key))cacheUrl.searchParams.set(key,url.searchParams.get(key)!);
