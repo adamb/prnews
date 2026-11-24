@@ -13,6 +13,8 @@ import { alertsRoute, alertsActiveRoute } from './alerts-http';
 import { runAlertSweep, confirmedAlertAccountCounts, type AlertEnv } from './alerts';
 import { suggestionsRoute } from './suggestions-http';
 import { flushSuggestionOutbox, type SuggestionEnv } from './suggestions';
+import { adminSuggestionsRoute } from './admin-suggestions-http';
+import { flushAdminOutbox } from './admin-suggestions';
 import { turnstileRenderConfigured } from './turnstile';
 import { digestRoute } from './digest-http';
 import { eligibleDigestCutoff, runDigest, configured as digestConfigured } from './digest';
@@ -48,6 +50,8 @@ export default {
   await runAlertSweep(env as unknown as AlertEnv,event.scheduledTime).catch(()=>{});
   // Source suggestions: deliver queued confirmation-notice mail, bounded.
   await flushSuggestionOutbox(env as unknown as SuggestionEnv,event.scheduledTime).catch(()=>{});
+  // Owner-only admin dashboard: deliver queued magic-link mail, bounded.
+  await flushAdminOutbox(env as unknown as SuggestionEnv,event.scheduledTime).catch(()=>{});
   const now=event.scheduledTime;
   const cutoff=eligibleDigestCutoff(now);
   // Continue bounded batches and retry transient sends using the same daily snapshot.
@@ -66,6 +70,10 @@ export default {
   // no-store, no-index, no-referrer headers as the alerts pages; undefined for non-suggestions paths.
   const suggestions=env.DB?await suggestionsRoute(request,env as unknown as SuggestionEnv):undefined;
   if(suggestions)return suggestions;
+  // Owner-only /admin dashboard for those suggestions: unlisted from every public page,
+  // session-gated, no-store, no-index; undefined for every other path.
+  const admin=env.DB?await adminSuggestionsRoute(request,env as unknown as SuggestionEnv):undefined;
+  if(admin)return admin;
   const digest=await digestRoute(request,env);
   if(digest)return digest;
   // Public signup needs server-side Turnstile (secret + site key + hostname allowlist);
